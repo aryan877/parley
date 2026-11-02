@@ -1,0 +1,19 @@
+{
+  "name": "parley",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "localnet": "scripts/localnet.sh",
+    "deploy:local": "bun packages/relayer/src/cli.ts deploy --network local",
+    "league": "bun packages/league/src/cli.ts",
+    "relayer": "bun packages/relayer/src/cli.ts",
+    "verify": "bun packages/league/src/verify.ts",
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.0"
+  }
+}
