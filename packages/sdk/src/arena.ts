@@ -35,11 +35,11 @@ export class Arena {
     return new Arena({ rpcUrl: this.rpcUrl, contractId: this.contractId, signer });
   }
 
-  async view<T>(method: string, args: object = {}): Promise<T> {
+  async view<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
     return (await this.provider.callFunction({ contractId: this.contractId, method, args })) as T;
   }
 
-  async call(method: string, args: object = {}, options: { deposit?: bigint; gas?: bigint } = {}): Promise<CallResult> {
+  async call(method: string, args: Record<string, unknown> = {}, options: { deposit?: bigint; gas?: bigint } = {}): Promise<CallResult> {
     if (!this.account) throw new Error("this Arena client has no signer");
     try {
       const outcome = await this.account.callFunctionRaw({
