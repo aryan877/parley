@@ -18,9 +18,9 @@ const request = (constitution: string, history: string, tail: string) =>
 const DECIDE = "Now choose. Reply with exactly one word: COOPERATE or DEFECT.";
 
 test("every house constitution maps to its own strategy", () => {
-  const found = loadConstitutions().map((c) => [c.id, strategyOf(c.text)]);
-  expect(found).toEqual(found.map(([id]) => [id, id]));
-  expect(found.length).toBe(8);
+  const constitutions = loadConstitutions();
+  expect(constitutions.map((c) => strategyOf(c.text) as string)).toEqual(constitutions.map((c) => c.id));
+  expect(constitutions.length).toBe(8);
 });
 
 test("an unknown constitution falls back to mirror", () => {
