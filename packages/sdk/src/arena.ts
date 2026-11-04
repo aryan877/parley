@@ -1,5 +1,5 @@
 import { Account, JsonRpcProvider, type KeyPairString } from "near-api-js";
-import type { Amendment, Coin, Config, Order, Overview, Parley, SignedReply, SignerList } from "./types.ts";
+import type { Amendment, Coin, Config, Model, Order, Overview, Parley, SignedReply } from "./types.ts";
 
 const TGAS = 1_000_000_000_000n;
 
@@ -62,7 +62,7 @@ export class Arena {
 
   overview = () => this.view<Overview>("get_overview");
   config = () => this.view<Config>("get_config");
-  signers = () => this.view<SignerList[]>("get_signers");
+  models = () => this.view<Model[]>("get_models");
   coin = (coin: string) => this.view<Coin | null>("get_coin", { coin });
   coins = () => this.view<Coin[]>("get_coins", { limit: 100 });
   parley = (id: number) => this.view<Parley | null>("get_parley", { id });
@@ -82,8 +82,11 @@ export class Arena {
   placeMint = (coin: string, deposit: bigint) => this.call("place_mint", { coin }, { deposit });
   placeRedeem = (coin: string, shares: bigint) => this.call("place_redeem", { coin, shares: shares.toString() });
   fillOrder = (coin: string, account: string) => this.call("fill_order", { coin, account });
+  cancelOrder = (coin: string) => this.call("cancel_order", { coin });
+  transferShares = (coin: string, to: string, shares: bigint) => this.call("transfer_shares", { coin, to, shares: shares.toString() });
   proposeAmendment = (coin: string, constitution: string, model: string) => this.call("propose_amendment", { coin, constitution, model });
   vote = (coin: string, support: boolean, shares: bigint) => this.call("vote", { coin, support, shares: shares.toString() });
   finalizeAmendment = (coin: string) => this.call("finalize_amendment", { coin });
   enactAmendment = (coin: string) => this.call("enact_amendment", { coin });
+  releaseVotes = (coin: string) => this.call("release_votes", { coin });
 }

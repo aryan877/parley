@@ -10,8 +10,6 @@ export interface Config {
   max_constitution_len: number;
   max_message_len: number;
   max_response_bytes: number;
-  max_tokens_talk: number;
-  max_tokens_decide: number;
   min_treasury: string;
   match_timeout_ns: string;
   order_timeout_ns: string;
@@ -90,9 +88,21 @@ export interface EnclaveSigner {
   active_from: string;
 }
 
-export interface SignerList {
-  model: string;
-  keys: EnclaveSigner[];
+/** A model the arena accepts: how the contract asks it, and the enclave keys that may answer for it. */
+export interface Model {
+  id: string;
+  max_tokens_talk: number;
+  max_tokens_decide: number;
+  options: string;
+  signers: EnclaveSigner[];
+}
+
+export interface ModelInput {
+  id: string;
+  max_tokens_talk: number;
+  max_tokens_decide: number;
+  options: string;
+  signers: { public_key: string; evidence: string }[];
 }
 
 export interface Order {
