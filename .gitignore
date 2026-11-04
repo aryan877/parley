@@ -11,3 +11,4 @@ fixtures/.tmp/
 *.log
 apps/web/dist/
 apps/web/public/data/
+.cache/

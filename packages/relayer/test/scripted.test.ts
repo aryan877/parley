@@ -39,20 +39,21 @@ test("history is read from the contract's prompt", () => {
 test("strategies follow their rules", () => {
   const betrayed = [{ mine: "COOPERATE", theirs: "DEFECT" }] as const;
   const peace = [{ mine: "COOPERATE", theirs: "COOPERATE" }] as const;
-  expect(decide("saint", [...betrayed], 1)).toBe("COOPERATE");
-  expect(decide("snake", [...peace], 1)).toBe("DEFECT");
-  expect(decide("mirror", [], 1)).toBe("COOPERATE");
-  expect(decide("mirror", [...betrayed], 1)).toBe("DEFECT");
-  expect(decide("skeptic", [], 1)).toBe("DEFECT");
-  expect(decide("skeptic", [...peace], 1)).toBe("COOPERATE");
-  expect(decide("grudge", [...betrayed, ...peace], 1)).toBe("DEFECT");
-  expect(decide("grudge", [...peace], 1)).toBe("COOPERATE");
-  expect(decide("pavlov", [...betrayed], 1)).toBe("DEFECT");
-  expect(decide("pavlov", [{ mine: "DEFECT", theirs: "COOPERATE" }], 1)).toBe("DEFECT");
-  expect(decide("diplomat", [...betrayed], 1)).toBe("COOPERATE");
-  expect(decide("diplomat", [...betrayed, ...betrayed], 1)).toBe("DEFECT");
-  expect(decide("gambler", [], 2)).toBe("COOPERATE");
-  expect(decide("gambler", [], 3)).toBe("DEFECT");
+  expect(decide("saint", [...betrayed], "")).toBe("COOPERATE");
+  expect(decide("snake", [...peace], "")).toBe("DEFECT");
+  expect(decide("mirror", [], "")).toBe("COOPERATE");
+  expect(decide("mirror", [...betrayed], "")).toBe("DEFECT");
+  expect(decide("skeptic", [], "")).toBe("DEFECT");
+  expect(decide("skeptic", [...peace], "")).toBe("COOPERATE");
+  expect(decide("grudge", [...betrayed, ...peace], "")).toBe("DEFECT");
+  expect(decide("grudge", [...peace], "")).toBe("COOPERATE");
+  expect(decide("pavlov", [...betrayed], "")).toBe("DEFECT");
+  expect(decide("pavlov", [{ mine: "DEFECT", theirs: "COOPERATE" }], "")).toBe("DEFECT");
+  expect(decide("diplomat", [...betrayed], "")).toBe("COOPERATE");
+  expect(decide("diplomat", [...betrayed, ...betrayed], "")).toBe("DEFECT");
+  expect(decide("gambler", [], "00ab34f7")).toBe("COOPERATE");
+  expect(decide("gambler", [], "00ab34f8")).toBe("DEFECT");
+  expect(decide("gambler", [], "00ab34fa")).toBe("DEFECT");
 });
 
 test("the scripted mind signs a completion the SDK can verify", async () => {
@@ -66,6 +67,6 @@ test("the scripted mind signs a completion the SDK can verify", async () => {
 
 test("the scripted mind talks before it decides", async () => {
   const mind = new ScriptedMind();
-  const reply = await mind.reply("local/scripted", request("Always cooperate.", "none", "Write your next public message to Y in at most 240 characters. Reply with the message only."));
+  const reply = await mind.reply("local/scripted", request("Always cooperate.", "none", "Write your next public message to Y: one or two short sentences, 40 words at most. Do not draft alternatives. Reply with the message only."));
   expect(JSON.parse(reply.response).choices[0].message.content).toContain("cooperate");
 });

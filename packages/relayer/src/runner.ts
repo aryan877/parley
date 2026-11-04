@@ -8,6 +8,8 @@ export interface TurnRecord {
   request: string;
   reply: SignedReply;
   txHash: string;
+  modelMs: number;
+  chainMs: number;
 }
 
 export interface PlayResult {
@@ -26,11 +28,13 @@ export async function playParley(arena: Arena, mind: Mind, id: number, onTurn?: 
 
     const index = parley.turns.length;
     const model = index % 2 === 0 ? parley.a_model : parley.b_model;
+    const asked = Date.now();
     const reply = await mind.reply(model, request);
     if (!verifyReply(model, request, reply)) throw new Error(`mind ${mind.name} returned a reply that does not verify`);
+    const answered = Date.now();
     const sent = await arena.submitTurn(id, reply);
     if (!sent.ok) throw new Error(`submit_turn failed for Parley ${id} turn ${index}: ${sent.error}`);
-    const record = { parley: id, index, model, request, reply, txHash: sent.hash };
+    const record = { parley: id, index, model, request, reply, txHash: sent.hash, modelMs: answered - asked, chainMs: Date.now() - answered };
     turns.push(record);
     onTurn?.(record);
   }

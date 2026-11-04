@@ -1,12 +1,13 @@
 import { Account, JsonRpcProvider, KeyPair, type KeyPairString, actions } from "near-api-js";
-import { type Config, MINUTE_NS, NETWORKS, near } from "@parley/sdk";
+import { type Config, MINUTE_NS, type ModelInput, NETWORKS, near } from "@parley/sdk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export const ROOT = join(import.meta.dir, "../../..");
 const HOME = join(ROOT, ".localnet");
 const DEPLOYMENT = join(HOME, "deployment.json");
-const WASM = join(ROOT, "target/near/parley_arena/parley_arena.wasm");
+const BUILT_WASM = join(ROOT, "target/near/parley_arena/parley_arena.wasm");
+const KEPT_WASM = join(ROOT, "contracts/arena/res/parley_arena.wasm");
 
 export interface Deployment {
   network: "local";
@@ -20,10 +21,8 @@ export const DEMO_CONFIG: Config = {
   talk_turns: 2,
   max_coins: 64,
   max_constitution_len: 1200,
-  max_message_len: 240,
+  max_message_len: 280,
   max_response_bytes: 16_384,
-  max_tokens_talk: 200,
-  max_tokens_decide: 24,
   min_treasury: near(1).toString(),
   match_timeout_ns: (10n * MINUTE_NS).toString(),
   order_timeout_ns: (10n * MINUTE_NS).toString(),
@@ -40,8 +39,10 @@ export function loadDeployment(): Deployment {
 }
 
 /** Deploys a fresh arena on the local chain and funds a handful of named accounts. */
-export async function deployLocal(signers: { model: string; public_key: string; evidence: string }[], commons = near(200)): Promise<Deployment> {
-  const validator = JSON.parse(readFileSync(join(HOME, "validator_key.json"), "utf8")) as { account_id: string; secret_key: string };
+export async function deployLocal(models: ModelInput[], overrides: Partial<Config> = {}, commons = near(200)): Promise<Deployment> {
+  const keyFile = join(HOME, "validator_key.json");
+  if (!existsSync(keyFile)) throw new Error("the local chain is not set up; run `bun run localnet start` first");
+  const validator = JSON.parse(readFileSync(keyFile, "utf8")) as { account_id: string; secret_key: string };
   const rpcUrl = NETWORKS.local.rpcUrl;
   const provider = new JsonRpcProvider({ url: rpcUrl });
   const root = new Account(validator.account_id, provider, validator.secret_key as KeyPairString);
@@ -59,8 +60,8 @@ export async function deployLocal(signers: { model: string; public_key: string; 
   await arena.signAndSendTransaction({
     receiverId: arena.accountId,
     actions: [
-      actions.deployContract(new Uint8Array(readFileSync(WASM))),
-      actions.functionCall("new", { config: DEMO_CONFIG, signers }, 100_000_000_000_000n, commons),
+      actions.deployContract(new Uint8Array(readFileSync(existsSync(BUILT_WASM) ? BUILT_WASM : KEPT_WASM))),
+      actions.functionCall("new", { config: { ...DEMO_CONFIG, ...overrides }, models }, 100_000_000_000_000n, commons),
     ],
   });
 

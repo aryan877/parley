@@ -1,46 +1,23 @@
-import { Arena, LocalEnclave, formatNear, near } from "@parley/sdk";
-import { loadConstitutions } from "./constitutions.ts";
-import { deployLocal, loadDeployment } from "./localnet.ts";
-import type { Mind } from "./minds/mind.ts";
-import { NearAiMind } from "./minds/nearai.ts";
-import { ScriptedMind } from "./minds/scripted.ts";
+import { Arena, formatNear, near } from "@parley/sdk";
+import { challenge } from "./commands/challenge.ts";
+import { govern } from "./commands/govern.ts";
+import { coinNames, deployHouse, flag, printParley } from "./commands/shared.ts";
+import { loadDeployment } from "./localnet.ts";
+import { RoutingMind } from "./minds/routing.ts";
 import { openAndPlay } from "./runner.ts";
 
-const LOCAL_MODEL = "local/scripted";
-
-function flag(name: string, fallback?: string): string | undefined {
-  const i = process.argv.indexOf(`--${name}`);
-  return i > 0 ? process.argv[i + 1] : fallback;
-}
-
-function mind(kind: string): Mind {
-  if (kind === "scripted") return new ScriptedMind();
-  const key = process.env.NEAR_AI_API_KEY;
-  if (!key) throw new Error("NEAR_AI_API_KEY is not set; use --mind scripted or add it to .env");
-  return new NearAiMind(key, process.env.NEAR_AI_BASE_URL);
-}
-
 async function deploy() {
-  const enclave = new LocalEnclave();
-  const deployment = await deployLocal([{ model: LOCAL_MODEL, public_key: enclave.publicKey, evidence: "local scripted enclave, not a TEE" }]);
-  const arena = new Arena({ ...deployment, signer: deployment.accounts.arena });
-  for (const c of loadConstitutions()) {
-    const made = await arena.createCoin({ id: c.id, name: c.name, constitution: c.text, model: LOCAL_MODEL }, near(100), true);
-    if (!made.ok) throw new Error(`create ${c.id}: ${made.error}`);
-  }
+  const { deployment, arena } = await deployHouse(flag("mind", "scripted")!, near(100));
   console.log(`arena ${deployment.contractId} deployed with ${(await arena.coins()).length} house coins`);
 }
 
 async function play() {
   const deployment = loadDeployment();
   const arena = new Arena({ ...deployment, signer: deployment.accounts.arena });
-  const rounds = Number(flag("rounds", "1"));
-  const chosen = mind(flag("mind", "scripted")!);
-  for (let round = 0; round < rounds; round++) {
-    const { parley } = await openAndPlay(arena, chosen);
-    const talk = parley.turns.filter((t) => t.kind === "Talk").map((t) => `    ${t.side === "A" ? parley.a : parley.b}: ${t.text}`);
-    console.log(`#${parley.id} ${parley.a} vs ${parley.b}  stake ${formatNear(parley.stake)} NEAR\n${talk.join("\n")}`);
-    console.log(`    ${parley.a} ${parley.a_move} (${formatNear(parley.a_delta)})  ${parley.b} ${parley.b_move} (${formatNear(parley.b_delta)})\n`);
+  const mind = new RoutingMind();
+  const names = await coinNames(arena);
+  for (let round = 0; round < Number(flag("rounds", "1")); round++) {
+    printParley((await openAndPlay(arena, mind)).parley, names);
   }
 }
 
@@ -55,10 +32,19 @@ async function status() {
   }
 }
 
-const commands: Record<string, () => Promise<void>> = { deploy, play, status };
+const commands: Record<string, () => Promise<void>> = { deploy, play, status, challenge, govern };
 const command = commands[process.argv[2] ?? ""];
 if (!command) {
-  console.error("usage: relayer deploy | play [--rounds N] [--mind scripted|near-ai] | status");
+  console.error(
+    [
+      "usage: bun run relayer <command>",
+      "  deploy [--mind scripted|near-ai]        fresh local arena with the eight house coins",
+      "  play [--rounds N]                       open random Parleys and play them",
+      "  challenge <file.md> [--rounds N]        launch your own constitution against the house",
+      "  govern [--mind scripted|near-ai]        walk through buying in, amending and leaving",
+      "  status                                  treasuries and records",
+    ].join("\n"),
+  );
   process.exit(1);
 }
 await command();

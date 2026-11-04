@@ -23,18 +23,7 @@ export class NearAiMind implements Mind {
   ) {}
 
   async reply(model: string, request: string): Promise<SignedReply> {
-    const completion = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${this.apiKey}`,
-        "content-type": "application/json",
-        "accept-encoding": "identity",
-        "x-no-aliasing": "true",
-      },
-      body: request,
-    });
-    const response = await completion.text();
-    if (!completion.ok) throw new Error(`NEAR AI completion failed (${completion.status}): ${response.slice(0, 300)}`);
+    const response = await this.complete(request);
     const id = (JSON.parse(response) as { id?: string }).id;
     if (!id) throw new Error("NEAR AI response has no id");
 
@@ -49,15 +38,47 @@ export class NearAiMind implements Mind {
     return reply;
   }
 
+  private async complete(request: string): Promise<string> {
+    let last = "";
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const res = await fetch(`${this.baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${this.apiKey}`,
+            "content-type": "application/json",
+            "accept-encoding": "identity",
+            "x-no-aliasing": "true",
+          },
+          body: request,
+          signal: AbortSignal.timeout(120_000),
+        });
+        const body = await res.text();
+        if (res.ok) return body;
+        last = `${res.status}: ${body.slice(0, 300)}`;
+        if (res.status < 500 && res.status !== 429 && res.status !== 408) break;
+      } catch (error) {
+        last = error instanceof Error ? error.message : String(error);
+      }
+      await Bun.sleep(2000 * 2 ** attempt);
+    }
+    throw new Error(`NEAR AI completion failed (${last})`);
+  }
+
   private async signature(id: string): Promise<SignatureBody> {
     let last = "";
     for (let attempt = 0; attempt < 8; attempt++) {
-      const res = await fetch(`${this.baseUrl}/signature/${id}?signing_algo=ed25519`, {
-        headers: { authorization: `Bearer ${this.apiKey}`, accept: "application/json" },
-      });
-      const body = (await res.json().catch(() => ({}))) as SignatureBody;
-      if (res.ok && body.signature) return body;
-      last = `${res.status} ${body.error_code ?? ""} ${body.message ?? ""}`;
+      try {
+        const res = await fetch(`${this.baseUrl}/signature/${id}?signing_algo=ed25519`, {
+          headers: { authorization: `Bearer ${this.apiKey}`, accept: "application/json" },
+          signal: AbortSignal.timeout(30_000),
+        });
+        const body = (await res.json().catch(() => ({}))) as SignatureBody;
+        if (res.ok && body.signature) return body;
+        last = `${res.status} ${body.error_code ?? ""} ${body.message ?? ""}`;
+      } catch (error) {
+        last = error instanceof Error ? error.message : String(error);
+      }
       await Bun.sleep(600 * (attempt + 1));
     }
     throw new Error(`no signature for completion ${id}: ${last}`);
