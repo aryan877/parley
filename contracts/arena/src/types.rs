@@ -13,8 +13,6 @@ pub struct Config {
     pub max_constitution_len: u32,
     pub max_message_len: u32,
     pub max_response_bytes: u32,
-    pub max_tokens_talk: u32,
-    pub max_tokens_decide: u32,
     pub min_treasury: U128,
     pub match_timeout_ns: U64,
     pub order_timeout_ns: U64,
@@ -31,6 +29,17 @@ pub struct EnclaveSigner {
     pub public_key: String,
     pub evidence: String,
     pub active_from: U64,
+}
+
+/// A model the arena accepts: how the contract asks it, and the enclave keys that may answer for it.
+#[near(serializers = [json, borsh])]
+#[derive(Clone, Debug)]
+pub struct Model {
+    pub max_tokens_talk: u32,
+    pub max_tokens_decide: u32,
+    /// Extra request fields as one JSON object, appended to every request the contract writes for this model.
+    pub options: String,
+    pub signers: Vec<EnclaveSigner>,
 }
 
 #[near(serializers = [json, borsh])]

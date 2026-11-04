@@ -5,7 +5,7 @@ use near_sdk::{AccountId, NearToken, testing_env};
 
 use crate::types::*;
 use crate::verify::{signed_text, to_hex};
-use crate::{Arena, SignerInput};
+use crate::{Arena, ModelInput, SignerInput};
 
 const NEAR: u128 = 10u128.pow(24);
 const MODEL: &str = "z-ai/glm-5.3-flash";
@@ -71,8 +71,6 @@ fn config() -> Config {
         max_constitution_len: 1200,
         max_message_len: 240,
         max_response_bytes: 16_384,
-        max_tokens_talk: 160,
-        max_tokens_decide: 16,
         min_treasury: U128(NEAR),
         match_timeout_ns: U64(30 * MINUTE),
         order_timeout_ns: U64(120 * MINUTE),
@@ -84,13 +82,18 @@ fn config() -> Config {
     }
 }
 
+fn signer(public_key: String) -> SignerInput {
+    SignerInput { public_key, evidence: "sha256:test".into() }
+}
+
+fn model(id: &str, public_key: String) -> ModelInput {
+    ModelInput { id: id.into(), max_tokens_talk: 160, max_tokens_decide: 16, options: String::new(), signers: vec![signer(public_key)] }
+}
+
 fn setup() -> (Arena, World) {
     let mut w = World { now: 1_000 * MINUTE, seed: 0, enclave: Enclave::new(7) };
     w.at("owner.near", 40 * NEAR);
-    let arena = Arena::new(
-        config(),
-        vec![SignerInput { model: MODEL.into(), public_key: w.enclave.public_key(), evidence: "sha256:test".into() }],
-    );
+    let arena = Arena::new(config(), vec![model(MODEL, w.enclave.public_key())]);
     (arena, w)
 }
 
@@ -160,7 +163,7 @@ mod setup_and_signers {
     fn rejects_a_malformed_signer_key() {
         let mut w = World { now: 0, seed: 0, enclave: Enclave::new(1) };
         w.at("owner.near", 0);
-        Arena::new(config(), vec![SignerInput { model: MODEL.into(), public_key: "abcd".into(), evidence: "".into() }]);
+        Arena::new(config(), vec![model(MODEL, "abcd".into())]);
     }
 
     #[test]
@@ -168,7 +171,7 @@ mod setup_and_signers {
     fn only_the_owner_adds_signers() {
         let (mut arena, mut w) = setup();
         w.at("mallory.near", 0);
-        arena.propose_signer(SignerInput { model: MODEL.into(), public_key: Enclave::new(9).public_key(), evidence: "".into() });
+        arena.propose_signer(MODEL.into(), signer(Enclave::new(9).public_key()));
     }
 
     #[test]
@@ -177,7 +180,7 @@ mod setup_and_signers {
         let (mut arena, mut w) = setup();
         w.at("owner.near", 0);
         let public_key = w.enclave.public_key();
-        arena.propose_signer(SignerInput { model: MODEL.into(), public_key, evidence: "".into() });
+        arena.propose_signer(MODEL.into(), signer(public_key));
     }
 
     #[test]
@@ -188,7 +191,7 @@ mod setup_and_signers {
         coin(&mut arena, &mut w, "bob.near", "snake", 100);
         let late = Enclave::new(9);
         w.at("owner.near", 0);
-        arena.propose_signer(SignerInput { model: MODEL.into(), public_key: late.public_key(), evidence: "".into() });
+        arena.propose_signer(MODEL.into(), signer(late.public_key()));
         let id = arena.open_parley_between("saint".into(), "snake".into());
         let request = arena.get_turn_request(id).unwrap();
         let response = completion("hello");
@@ -203,7 +206,7 @@ mod setup_and_signers {
         coin(&mut arena, &mut w, "bob.near", "snake", 100);
         let late = Enclave::new(9);
         w.at("owner.near", 0);
-        arena.propose_signer(SignerInput { model: MODEL.into(), public_key: late.public_key(), evidence: "".into() });
+        arena.propose_signer(MODEL.into(), signer(late.public_key()));
         w.wait(24 * 60 * MINUTE);
         w.at("owner.near", 0);
         let id = arena.open_parley_between("saint".into(), "snake".into());
@@ -215,13 +218,118 @@ mod setup_and_signers {
     }
 
     #[test]
+    fn model_options_are_appended_to_the_request() {
+        let mut w = World { now: 0, seed: 0, enclave: Enclave::new(7) };
+        w.at("owner.near", 0);
+        let quiet = ModelInput {
+            options: r#"{ "chat_template_kwargs": { "enable_thinking": false } }"#.into(),
+            max_tokens_talk: 200,
+            max_tokens_decide: 24,
+            ..model(MODEL, w.enclave.public_key())
+        };
+        let mut arena = Arena::new(config(), vec![quiet]);
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        coin(&mut arena, &mut w, "bob.near", "snake", 50);
+        w.at("owner.near", 0);
+        let id = arena.open_parley_between("saint".into(), "snake".into());
+        let request = arena.get_turn_request(id).unwrap();
+        assert!(request.ends_with(r#""stream":false,"chat_template_kwargs":{"enable_thinking":false}}"#));
+        let body: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(&request).unwrap();
+        assert_eq!(body["chat_template_kwargs"]["enable_thinking"], false);
+        assert_eq!(body["max_tokens"], 200);
+        assert_eq!(arena.get_models()[0].options, r#"{"chat_template_kwargs":{"enable_thinking":false}}"#);
+        answer(&mut arena, &mut w, id, "Peace?");
+        assert_eq!(arena.get_parley(id).unwrap().turns.len(), 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "options cannot replace a field the contract writes")]
+    fn options_cannot_override_the_request() {
+        let mut w = World { now: 0, seed: 0, enclave: Enclave::new(7) };
+        w.at("owner.near", 0);
+        Arena::new(config(), vec![ModelInput { options: r#"{"messages":[]}"#.into(), ..model(MODEL, w.enclave.public_key()) }]);
+    }
+
+    #[test]
+    #[should_panic(expected = "options must be a JSON object")]
+    fn options_must_be_an_object() {
+        let mut w = World { now: 0, seed: 0, enclave: Enclave::new(7) };
+        w.at("owner.near", 0);
+        Arena::new(config(), vec![ModelInput { options: "[1]".into(), ..model(MODEL, w.enclave.public_key()) }]);
+    }
+
+    #[test]
+    #[should_panic(expected = "model already registered")]
+    fn a_model_registers_once() {
+        let (mut arena, mut w) = setup();
+        w.at("owner.near", 0);
+        arena.propose_model(model(MODEL, Enclave::new(9).public_key()));
+    }
+
+    #[test]
+    #[should_panic(expected = "model is not registered")]
+    fn a_signer_needs_a_registered_model() {
+        let (mut arena, mut w) = setup();
+        w.at("owner.near", 0);
+        arena.propose_signer("some/other-model".into(), signer(Enclave::new(9).public_key()));
+    }
+
+    #[test]
+    #[should_panic(expected = "not an active enclave signer for this model")]
+    fn a_new_model_waits_out_the_delay() {
+        let (mut arena, mut w) = setup();
+        let other = Enclave::new(9);
+        w.at("owner.near", 0);
+        arena.propose_model(model("some/other-model", other.public_key()));
+        w.at("alice.near", 100 * NEAR);
+        arena.create_coin("saint".into(), "SAINT".into(), "Be kind.".into(), "some/other-model".into());
+        coin(&mut arena, &mut w, "bob.near", "snake", 100);
+        w.at("owner.near", 0);
+        let id = arena.open_parley_between("saint".into(), "snake".into());
+        let request = arena.get_turn_request(id).unwrap();
+        assert!(request.contains(r#""model":"some/other-model""#));
+        let response = completion("hello");
+        let signature = other.sign("some/other-model", &request, &response);
+        arena.submit_turn(id, response, signature, other.public_key());
+    }
+
+    #[test]
+    fn two_models_can_meet_in_one_parley() {
+        let mut w = World { now: 1_000 * MINUTE, seed: 0, enclave: Enclave::new(7) };
+        let other = Enclave::new(9);
+        w.at("owner.near", 40 * NEAR);
+        let thinker = ModelInput { max_tokens_decide: 900, ..model("some/thinker", other.public_key()) };
+        let mut arena = Arena::new(config(), vec![model(MODEL, w.enclave.public_key()), thinker]);
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        w.at("bob.near", 100 * NEAR);
+        arena.create_coin("snake".into(), "SNAKE".into(), "Win.".into(), "some/thinker".into());
+        w.at("owner.near", 0);
+        let id = arena.open_parley_between("saint".into(), "snake".into());
+        for (i, line) in ["hello", "hi", "deal?", "deal", "COOPERATE", "DEFECT"].iter().enumerate() {
+            let request = arena.get_turn_request(id).unwrap();
+            let response = completion(line);
+            let (enclave, model_id) = if i % 2 == 0 { (&w.enclave, MODEL) } else { (&other, "some/thinker") };
+            assert!(request.contains(&format!(r#""model":"{model_id}""#)));
+            if i == 5 {
+                assert!(request.contains(r#""max_tokens":900"#));
+            }
+            let signature = enclave.sign(model_id, &request, &response);
+            let key = enclave.public_key();
+            w.at("relayer.near", 0);
+            arena.submit_turn(id, response, signature, key);
+        }
+        let p = arena.get_parley(id).unwrap();
+        assert_eq!((p.a_move, p.b_move), (Some(Move::Cooperate), Some(Move::Defect)));
+    }
+
+    #[test]
     #[should_panic(expected = "owner only")]
     fn renouncing_ends_the_owner_role() {
         let (mut arena, mut w) = setup();
         w.at("owner.near", 0);
         arena.renounce_ownership();
         assert_eq!(arena.get_overview().owner, None);
-        arena.propose_signer(SignerInput { model: MODEL.into(), public_key: Enclave::new(9).public_key(), evidence: "".into() });
+        arena.propose_signer(MODEL.into(), signer(Enclave::new(9).public_key()));
     }
 }
 
@@ -273,8 +381,8 @@ mod coins {
     }
 
     #[test]
-    #[should_panic(expected = "model has no registered enclave signer")]
-    fn the_model_must_have_an_enclave_key() {
+    #[should_panic(expected = "model is not registered")]
+    fn the_model_must_be_registered() {
         let (mut arena, mut w) = setup();
         w.at("alice.near", 10 * NEAR);
         arena.create_coin("saint".into(), "SAINT".into(), "Be kind.".into(), "anthropic/claude".into());
@@ -306,7 +414,7 @@ mod coins {
         w.at("owner.near", 0);
         let mut arena = Arena::new(
             Config { max_coins: 2, ..config() },
-            vec![SignerInput { model: MODEL.into(), public_key: w.enclave.public_key(), evidence: "".into() }],
+            vec![model(MODEL, w.enclave.public_key())],
         );
         for id in ["aa", "bb", "cc"] {
             coin(&mut arena, &mut w, "alice.near", id, 5);
@@ -441,6 +549,39 @@ mod orders {
         w.at("carol.near", NEAR);
         arena.place_mint("saint".into());
         arena.place_mint("saint".into());
+    }
+
+    #[test]
+    fn shares_can_be_sent_to_another_account() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        w.at("alice.near", 0);
+        arena.transfer_shares("saint".into(), acc("bob.near"), U128(30 * NEAR));
+        assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 70 * NEAR);
+        assert_eq!(arena.get_shares("saint".into(), acc("bob.near")).0, 30 * NEAR);
+        assert_eq!(arena.get_coin("saint".into()).unwrap().total_shares.0, 100 * NEAR);
+        w.at("bob.near", 0);
+        arena.place_redeem("saint".into(), U128(30 * NEAR));
+    }
+
+    #[test]
+    #[should_panic(expected = "not enough free shares")]
+    fn cannot_send_more_shares_than_held() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        w.at("alice.near", 0);
+        arena.transfer_shares("saint".into(), acc("bob.near"), U128(101 * NEAR));
+    }
+
+    #[test]
+    #[should_panic(expected = "not enough free shares")]
+    fn shares_locked_in_a_vote_cannot_be_sent() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        w.at("alice.near", 0);
+        arena.propose_amendment("saint".into(), "Always defect.".into(), MODEL.into());
+        arena.vote("saint".into(), true, U128(100 * NEAR));
+        arena.transfer_shares("saint".into(), acc("bob.near"), U128(NEAR));
     }
 
     #[test]
@@ -719,6 +860,10 @@ mod parleys {
         assert!(user.contains("Opponent is SNAKE, treasury 50.00 NEAR."));
         assert!(user.contains("Stake at risk: 1.00 NEAR each."));
         assert!(user.contains(&arena.get_parley(id).unwrap().nonce));
+        assert!(user.ends_with(
+            "Write your next public message to SNAKE: one or two short sentences, 34 words at most. \
+             Do not draft alternatives. Reply with the message only."
+        ));
         assert_eq!(arena.get_turn_request(id).unwrap(), request);
     }
 
@@ -831,7 +976,7 @@ mod parleys {
         w.at("owner.near", 0);
         let mut arena = Arena::new(
             config(),
-            vec![SignerInput { model: MODEL.into(), public_key: w.enclave.public_key(), evidence: "".into() }],
+            vec![model(MODEL, w.enclave.public_key())],
         );
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         coin(&mut arena, &mut w, "bob.near", "snake", 50);
@@ -871,9 +1016,41 @@ mod parleys {
         assert!(snake_view.contains("History between you two, oldest first: you DEFECT, they COOPERATE."));
         assert!(snake_view.contains("Their record: 1 parleys, cooperated 1, defected 0, betrayed a cooperating coin 0 times, was betrayed 1 times."));
         answer(&mut arena, &mut w, id, "Trust me again.");
-        let saint_view = arena.get_turn_request(id).unwrap();
-        assert!(saint_view.contains("History between you two, oldest first: you COOPERATE, they DEFECT."));
+        let saint_view: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(&arena.get_turn_request(id).unwrap()).unwrap();
+        let saint_view = saint_view["messages"][1]["content"].as_str().unwrap();
+        assert!(saint_view.contains(
+            "History between you two, oldest first: you COOPERATE, they DEFECT.\n\
+             Your most recent Parley together: you chose COOPERATE, they chose DEFECT. \
+             They defected against you in 1 of the 1 Parleys listed.\nMessages so far:"
+        ));
         assert_eq!(arena.get_pair_record("snake".into(), "saint".into()).outcomes, vec![(Move::Cooperate, Move::Defect)]);
+    }
+
+    #[test]
+    fn a_first_meeting_has_no_history() {
+        let (mut arena, mut w) = two_coins();
+        w.at("owner.near", 0);
+        let id = arena.open_parley_between("saint".into(), "snake".into());
+        let request: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(&arena.get_turn_request(id).unwrap()).unwrap();
+        let user = request["messages"][1]["content"].as_str().unwrap();
+        assert!(user.contains("History between you two, oldest first: none, this is your first Parley together.\nMessages so far:"));
+    }
+
+    #[test]
+    fn the_history_summary_counts_betrayals() {
+        let (mut arena, mut w) = two_coins();
+        play(&mut arena, &mut w, "saint", "snake", "COOPERATE", "DEFECT");
+        play(&mut arena, &mut w, "saint", "snake", "DEFECT", "DEFECT");
+        play(&mut arena, &mut w, "snake", "saint", "COOPERATE", "DEFECT");
+        w.at("owner.near", 0);
+        let id = arena.open_parley_between("saint".into(), "snake".into());
+        let request: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(&arena.get_turn_request(id).unwrap()).unwrap();
+        let user = request["messages"][1]["content"].as_str().unwrap();
+        assert!(user.contains(
+            "oldest first: you COOPERATE, they DEFECT; you DEFECT, they DEFECT; you DEFECT, they COOPERATE.\n\
+             Your most recent Parley together: you chose DEFECT, they chose COOPERATE. \
+             They defected against you in 2 of the 3 Parleys listed.\n"
+        ));
     }
 
     #[test]
@@ -899,10 +1076,13 @@ mod parleys {
         let (mut arena, mut w) = two_coins();
         w.at("owner.near", 0);
         let id = arena.open_parley_between("saint".into(), "snake".into());
-        answer(&mut arena, &mut w, id, &format!("  \"line one\nline two {}\"", "x".repeat(400)));
+        answer(&mut arena, &mut w, id, &format!("  \"line one\nline two {}\"", "word ".repeat(100)));
         let text = arena.get_parley(id).unwrap().turns[0].text.clone();
-        assert!(text.starts_with("line one line two xxx"));
-        assert_eq!(text.chars().count(), 240);
+        assert!(text.starts_with("line one line two word word"));
+        assert!(text.ends_with("word…"));
+        assert_eq!(text.chars().count(), 238);
+        answer(&mut arena, &mut w, id, &"x".repeat(400));
+        assert_eq!(arena.get_parley(id).unwrap().turns[1].text, format!("{}…", "x".repeat(239)));
     }
 
     #[test]

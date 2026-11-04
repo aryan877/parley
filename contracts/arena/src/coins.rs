@@ -42,7 +42,7 @@ impl Arena {
             constitution.chars().count() <= self.config.max_constitution_len as usize,
             "constitution too long"
         );
-        require!(self.signers.contains_key(model), "model has no registered enclave signer");
+        require!(self.models.contains_key(model), "model is not registered");
     }
 
     fn insert_coin(&mut self, id: CoinId, name: String, constitution: String, model: String, deposit: u128, house: bool) {

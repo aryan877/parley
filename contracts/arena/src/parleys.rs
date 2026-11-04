@@ -57,8 +57,8 @@ impl Arena {
         let spec = prompt::turn_spec(&self.config, parley.turns.len()).unwrap_or_else(|| env::panic_str("no turn left"));
         let (a, b) = (self.coin(&parley.a), self.coin(&parley.b));
         let record = self.pairs.get(&pair_key(&a.id, &b.id)).cloned().unwrap_or_default();
-        let request = prompt::build_request(&self.config, &parley, &a, &b, &record, &spec);
         let model = if spec.side == Side::A { &parley.a_model } else { &parley.b_model };
+        let request = prompt::build_request(&self.config, model, &self.model(model), &parley, &a, &b, &record, &spec);
 
         let public_key = public_key.to_lowercase();
         require!(self.is_active_signer(model, &public_key), "not an active enclave signer for this model");
@@ -126,7 +126,8 @@ impl Arena {
         let spec = prompt::turn_spec(&self.config, parley.turns.len())?;
         let (a, b) = (self.coin(&parley.a), self.coin(&parley.b));
         let record = self.pairs.get(&pair_key(&a.id, &b.id)).cloned().unwrap_or_default();
-        Some(prompt::build_request(&self.config, parley, &a, &b, &record, &spec))
+        let model = if spec.side == Side::A { &parley.a_model } else { &parley.b_model };
+        Some(prompt::build_request(&self.config, model, &self.model(model), parley, &a, &b, &record, &spec))
     }
 
     fn start_parley(&mut self, a_id: CoinId, b_id: CoinId, mix: &[u8; 32]) -> MatchId {

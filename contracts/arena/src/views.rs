@@ -15,9 +15,12 @@ pub struct Overview {
 }
 
 #[near(serializers = [json])]
-pub struct SignerList {
-    pub model: String,
-    pub keys: Vec<EnclaveSigner>,
+pub struct ModelView {
+    pub id: String,
+    pub max_tokens_talk: u32,
+    pub max_tokens_decide: u32,
+    pub options: String,
+    pub signers: Vec<EnclaveSigner>,
 }
 
 #[near]
@@ -37,8 +40,17 @@ impl Arena {
         self.config.clone()
     }
 
-    pub fn get_signers(&self) -> Vec<SignerList> {
-        self.signers.iter().map(|(model, keys)| SignerList { model: model.clone(), keys: keys.clone() }).collect()
+    pub fn get_models(&self) -> Vec<ModelView> {
+        self.models
+            .iter()
+            .map(|(id, m)| ModelView {
+                id: id.clone(),
+                max_tokens_talk: m.max_tokens_talk,
+                max_tokens_decide: m.max_tokens_decide,
+                options: m.options.clone(),
+                signers: m.signers.clone(),
+            })
+            .collect()
     }
 
     pub fn get_coin(&self, coin: CoinId) -> Option<Coin> {

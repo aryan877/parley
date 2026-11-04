@@ -59,6 +59,8 @@ pub fn completion_text(response: &[u8]) -> Option<String> {
     Some(content.as_str().unwrap_or_default().to_string())
 }
 
+/// One line of text: whitespace collapsed, quotes stripped, and anything past
+/// `max_chars` cut at the last word that fits, marked with an ellipsis.
 pub fn clean_message(raw: &str, max_chars: usize) -> String {
     let mut text = String::new();
     let mut last_space = true;
@@ -77,7 +79,17 @@ pub fn clean_message(raw: &str, max_chars: usize) -> String {
     if text.is_empty() {
         return "(said nothing)".to_string();
     }
-    text.chars().take(max_chars).collect()
+    if text.chars().count() <= max_chars {
+        return text.to_string();
+    }
+    let keep = max_chars.saturating_sub(1);
+    let head: String = text.chars().take(keep).collect();
+    let ends_on_a_word = text.chars().nth(keep) == Some(' ');
+    let kept = match head.rfind(' ') {
+        Some(at) if !ends_on_a_word => &head[..at],
+        _ => head.as_str(),
+    };
+    format!("{}…", kept.trim_end())
 }
 
 /// The first of the two move words in the reply decides. A reply with neither
@@ -118,7 +130,11 @@ mod tests {
     #[test]
     fn cleans_messages() {
         assert_eq!(clean_message("  \"Hello\n\n  there\"  ", 280), "Hello there");
-        assert_eq!(clean_message("abcdef", 3), "abc");
+        assert_eq!(clean_message("abcdef", 3), "ab…");
+        assert_eq!(clean_message("abc", 3), "abc");
+        assert_eq!(clean_message("one two three four", 12), "one two…");
+        assert_eq!(clean_message("one two three four", 14), "one two three…");
+        assert_eq!(clean_message("héllo wörld again", 12), "héllo wörld…");
         assert_eq!(clean_message(" \n\t ", 10), "(said nothing)");
         assert_eq!(clean_message("tab\there\u{7}", 20), "tab here");
     }

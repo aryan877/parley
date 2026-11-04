@@ -2,7 +2,7 @@ use near_sdk::env;
 use near_sdk::serde::Serialize;
 use near_sdk::serde_json;
 
-use crate::types::{Coin, Config, Move, PairRecord, Parley, Side, TurnKind};
+use crate::types::{Coin, Config, Model, Move, PairRecord, Parley, Side, TurnKind};
 
 pub const PROTOCOL: &str = "parley/1";
 
@@ -72,19 +72,27 @@ fn move_word(m: Move) -> &'static str {
     }
 }
 
-fn history_line(record: &PairRecord, me_is_low: bool) -> String {
-    if record.outcomes.is_empty() {
-        return "none, this is your first Parley together".to_string();
-    }
-    record
-        .outcomes
+/// The outcomes between two coins as the reading coin sees them, with the two facts
+/// most constitutions turn on spelled out: the latest outcome and how often it was betrayed.
+fn history_lines(record: &PairRecord, me_is_low: bool) -> String {
+    let outcomes: Vec<(Move, Move)> =
+        record.outcomes.iter().map(|(low, high)| if me_is_low { (*low, *high) } else { (*high, *low) }).collect();
+    let Some((mine, theirs)) = outcomes.last() else {
+        return "none, this is your first Parley together.".to_string();
+    };
+    let listed = outcomes
         .iter()
-        .map(|(low, high)| {
-            let (mine, theirs) = if me_is_low { (*low, *high) } else { (*high, *low) };
-            format!("you {}, they {}", move_word(mine), move_word(theirs))
-        })
+        .map(|(mine, theirs)| format!("you {}, they {}", move_word(*mine), move_word(*theirs)))
         .collect::<Vec<_>>()
-        .join("; ")
+        .join("; ");
+    let betrayals = outcomes.iter().filter(|(_, theirs)| *theirs == Move::Defect).count();
+    format!(
+        "{listed}.\nYour most recent Parley together: you chose {}, they chose {}. \
+         They defected against you in {betrayals} of the {} Parleys listed.",
+        move_word(*mine),
+        move_word(*theirs),
+        outcomes.len()
+    )
 }
 
 pub fn seed(nonce: &str, index: usize) -> u32 {
@@ -94,6 +102,8 @@ pub fn seed(nonce: &str, index: usize) -> u32 {
 
 pub fn build_request(
     config: &Config,
+    model_id: &str,
+    model: &Model,
     parley: &Parley,
     a: &Coin,
     b: &Coin,
@@ -115,7 +125,7 @@ pub fn build_request(
          You are {}, treasury {}. Your record: {}.\n\
          Opponent is {}, treasury {}. Their record: {}.\n\
          Stake at risk: {} each.\n\
-         History between you two, oldest first: {}.\n\
+         History between you two, oldest first: {}\n\
          Messages so far:\n",
         parley.id,
         parley.nonce,
@@ -126,7 +136,7 @@ pub fn build_request(
         near_amount(them.treasury.0),
         record_line(them),
         near_amount(parley.stake.0),
-        history_line(record, me_is_low),
+        history_lines(record, me_is_low),
     );
     let talk: Vec<_> = parley.turns.iter().filter(|t| t.kind == TurnKind::Talk).collect();
     if talk.is_empty() {
@@ -139,19 +149,21 @@ pub fn build_request(
     let max_tokens = match spec.kind {
         TurnKind::Talk => {
             user.push_str(&format!(
-                "Write your next public message to {} in at most {} characters. Reply with the message only.",
-                them.name, config.max_message_len
+                "Write your next public message to {}: one or two short sentences, {} words at most. \
+                 Do not draft alternatives. Reply with the message only.",
+                them.name,
+                config.max_message_len / 7
             ));
-            config.max_tokens_talk
+            model.max_tokens_talk
         }
         TurnKind::Decide => {
             user.push_str("Now choose. Reply with exactly one word: COOPERATE or DEFECT.");
-            config.max_tokens_decide
+            model.max_tokens_decide
         }
     };
 
     let request = ChatRequest {
-        model: &me.model,
+        model: model_id,
         messages: [
             Message { role: "system", content: &system },
             Message { role: "user", content: &user },
@@ -161,5 +173,11 @@ pub fn build_request(
         max_tokens,
         stream: false,
     };
-    serde_json::to_string(&request).unwrap_or_else(|_| env::panic_str("request encoding failed"))
+    let mut body = serde_json::to_string(&request).unwrap_or_else(|_| env::panic_str("request encoding failed"));
+    if model.options.len() > 2 {
+        body.pop();
+        body.push(',');
+        body.push_str(&model.options[1..]);
+    }
+    body
 }

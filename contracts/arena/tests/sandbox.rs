@@ -38,16 +38,16 @@ impl Env {
                 json!({
                     "config": {
                         "stake_bps": 200, "talk_turns": 2, "max_coins": 16, "max_constitution_len": 1200,
-                        "max_message_len": 240, "max_response_bytes": 16384, "max_tokens_talk": 160, "max_tokens_decide": 16,
+                        "max_message_len": 240, "max_response_bytes": 16384,
                         "min_treasury": NearToken::from_near(1).as_yoctonear().to_string(),
                         "match_timeout_ns": (30 * MINUTE).to_string(), "order_timeout_ns": (120 * MINUTE).to_string(),
                         "vote_period_ns": (60 * MINUTE).to_string(), "timelock_ns": (60 * MINUTE).to_string(),
                         "quorum_bps": 2000, "proposer_bps": 100, "signer_delay_ns": (24 * 60 * MINUTE).to_string(),
                     },
-                    "signers": [{
-                        "model": MODEL,
-                        "public_key": to_hex(&env.enclave.verifying_key().to_bytes()),
-                        "evidence": "sandbox",
+                    "models": [{
+                        "id": MODEL, "max_tokens_talk": 160, "max_tokens_decide": 16,
+                        "options": r#"{"chat_template_kwargs":{"enable_thinking":false}}"#,
+                        "signers": [{ "public_key": to_hex(&env.enclave.verifying_key().to_bytes()), "evidence": "sandbox" }],
                     }],
                 }),
             )?
@@ -93,11 +93,19 @@ impl Env {
     }
 
     async fn answer(&self, parley: u64, content: &str) -> testresult::TestResult<bool> {
+        self.answer_after_thinking(parley, content, "").await
+    }
+
+    async fn answer_after_thinking(&self, parley: u64, content: &str, reasoning: &str) -> testresult::TestResult<bool> {
         let request = self.view("get_turn_request", json!({ "id": parley })).await?;
         let Some(request) = request.as_str().map(str::to_string) else {
             return Ok(false);
         };
-        let response = json!({ "id": "chatcmpl-sandbox", "choices": [{ "index": 0, "message": { "role": "assistant", "content": content } }] }).to_string();
+        let response = json!({
+            "id": "chatcmpl-sandbox",
+            "choices": [{ "index": 0, "message": { "role": "assistant", "content": content, "reasoning_content": reasoning } }],
+        })
+        .to_string();
         let text = signed_text(MODEL, &sha(&request), &sha(&response));
         let signature = to_hex(&self.enclave.sign(text.as_bytes()).to_bytes());
         let args = json!({
@@ -203,5 +211,23 @@ async fn redeeming_sends_real_near() -> testresult::TestResult<()> {
     let paid = env.balance("alice").await? - before;
     assert_eq!(paid, (101 * near) / 100 * 40);
     assert_eq!(env.treasury("saint").await?, 101 * near - paid);
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_long_thinking_reply_fits_in_gas() -> testresult::TestResult<()> {
+    let env = Env::start().await?;
+    env.coin("alice", "saint", 100).await?;
+    env.coin("bob", "snake", 50).await?;
+    assert!(env.call("arena", "open_parley_between", json!({ "a": "saint", "b": "snake" }), 0).await?);
+    let reasoning = "The other coin says it has changed, but its record says otherwise. ".repeat(230);
+    assert!(reasoning.len() > 15_000);
+    for line in ["Peace?", "Always.", "Good.", "Trust me.", "COOPERATE", "DEFECT"] {
+        assert!(env.answer_after_thinking(0, line, &reasoning).await?);
+    }
+    let settled = env.view("get_parley", json!({ "id": 0 })).await?;
+    assert_eq!(settled["status"], "Settled");
+    assert_eq!(settled["turns"][0]["text"], "Peace?");
+    assert_eq!(settled["b_move"], "Defect");
     Ok(())
 }
