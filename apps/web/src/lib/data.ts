@@ -1,5 +1,6 @@
 import type { LeagueManifest, LeagueStats, ParleyEvidence } from "@parley/league/src/browser.ts";
-import { useEffect, useState } from "react";
+import type { Attestation } from "@parley/relayer/src/attestation.ts";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 export interface LeagueEntry {
   name: string;
@@ -14,6 +15,8 @@ export interface League {
   manifest: LeagueManifest;
   stats: LeagueStats;
   evidence: ParleyEvidence[];
+  attestations: Attestation[];
+  all: LeagueEntry[];
 }
 
 const cache = new Map<string, Promise<unknown>>();
@@ -27,15 +30,32 @@ export async function loadLeague(name?: string): Promise<League> {
   const index = await get<LeagueEntry[]>("index.json");
   const entry = index.find((l) => l.name === name) ?? index[0];
   if (!entry) throw new Error("no recorded league");
-  const [manifest, stats, evidence] = await Promise.all([
+  const [manifest, stats, evidence, attestations] = await Promise.all([
     get<LeagueManifest>(`${entry.name}/league.json`),
     get<LeagueStats>(`${entry.name}/stats.json`),
     get<ParleyEvidence[]>(`${entry.name}/evidence.json`),
+    get<Attestation[]>(`${entry.name}/attestation.json`),
   ]);
-  return { entry, manifest, stats, evidence };
+  return { entry, manifest, stats, evidence, attestations, all: index };
 }
 
-export function useLeague(name?: string) {
+const STORED = "parley.league";
+const listeners = new Set<() => void>();
+let chosen = sessionStorage.getItem(STORED) ?? undefined;
+
+export function chooseLeague(name: string) {
+  chosen = name;
+  sessionStorage.setItem(STORED, name);
+  for (const notify of listeners) notify();
+}
+
+function subscribe(notify: () => void) {
+  listeners.add(notify);
+  return () => listeners.delete(notify);
+}
+
+export function useLeague() {
+  const name = useSyncExternalStore(subscribe, () => chosen);
   const [state, setState] = useState<{ league?: League; error?: string }>({});
   useEffect(() => {
     let live = true;
@@ -56,7 +76,7 @@ export const near = (yocto: string | bigint, digits = 2) => {
   const scaled = abs / 10n ** BigInt(24 - digits);
   const whole = scaled / 10n ** BigInt(digits);
   const frac = (scaled % 10n ** BigInt(digits)).toString().padStart(digits, "0");
-  return `${v < 0n ? "−" : ""}${whole}.${frac}`;
+  return `${v < 0n ? "−" : ""}${whole}${digits ? `.${frac}` : ""}`;
 };
 
 export const signedNear = (yocto: string) => (BigInt(yocto) > 0n ? `+${near(yocto)}` : near(yocto));

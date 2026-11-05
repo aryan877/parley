@@ -1,4 +1,4 @@
-import { type Finding, checkLeague } from "@parley/league/src/browser.ts";
+import { type Finding, attestedKeys, checkLeague } from "@parley/league/src/browser.ts";
 import { useState } from "react";
 import { Loading } from "../components/bits.tsx";
 import { useLeague } from "../lib/data.ts";
@@ -8,10 +8,11 @@ export function Verify() {
   const [result, setResult] = useState<{ findings: Finding[]; ms: number } | null>(null);
   if (!league) return <Loading error={error} />;
   const turns = league.evidence.reduce((n, e) => n + e.turns.length, 0);
+  const attested = attestedKeys(league.manifest);
 
   const run = () => {
     const start = performance.now();
-    const findings = checkLeague(league.manifest, league.evidence);
+    const findings = checkLeague(league.manifest, league.evidence, league.attestations);
     setResult({ findings, ms: Math.round(performance.now() - start) });
   };
 
@@ -35,12 +36,15 @@ export function Verify() {
             {result.findings.length ? `${result.findings.length} problems found` : `All ${turns} replies verified`}
           </h2>
           <p className="sub" style={{ margin: 0 }}>
-            Checked in {result.ms} ms on this device.
+            Checked in {result.ms} ms on this device.{" "}
+            {attested
+              ? `${attested} enclave keys traced to Intel's root certificate through their hardware quotes.`
+              : "This recording was signed by a local stand-in key, not sealed hardware."}
           </p>
           {result.findings.slice(0, 30).map((f, i) => (
             <p key={i} className="note">
-              Parley {f.parley}
-              {f.turn === undefined ? "" : `, turn ${f.turn}`}: {f.problem}
+              {f.parley === undefined ? "" : `Parley ${f.parley}${f.turn === undefined ? "" : `, turn ${f.turn}`}: `}
+              {f.problem}
             </p>
           ))}
         </div>
@@ -54,6 +58,10 @@ export function Verify() {
           </li>
           <li>
             <b>Signer.</b> The key is one the contract had registered for that model.
+          </li>
+          <li>
+            <b>Hardware.</b> For real AI, each registered key comes with an Intel TDX quote. The quote must name that key, carry this league's nonce, and
+            chain through Intel's certificates to the Intel root key pinned in the code.
           </li>
           <li>
             <b>Hashes.</b> The request and response hash to the values the chain stored for that turn.

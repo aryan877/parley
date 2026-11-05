@@ -15,6 +15,13 @@ export function TreasuryChart({ league, focus }: { league: League; focus?: strin
   const x = (i: number) => padL + (i / Math.max(1, n - 1)) * (w - padL - padR);
   const y = (v: number) => padY + (1 - (v - min) / Math.max(1e-9, max - min)) * (h - 2 * padY);
   const ticks = [min, (min + max) / 2, max];
+  const labels = series
+    .map((s) => ({ id: s.id, at: y(s.values.at(-1)!) + 4 }))
+    .sort((p, q) => p.at - q.at);
+  for (let i = 1; i < labels.length; i++) labels[i]!.at = Math.max(labels[i]!.at, labels[i - 1]!.at + 14);
+  const overflow = Math.max(0, (labels.at(-1)?.at ?? 0) - (h - 2));
+  for (const label of labels) label.at -= overflow;
+  const labelAt = new Map(labels.map((l) => [l.id, l.at]));
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", display: "block" }} role="img" aria-label="Treasury of each coin after every Parley">
@@ -32,7 +39,7 @@ export function TreasuryChart({ league, focus }: { league: League; focus?: strin
         return (
           <g key={s.id} opacity={dim ? 0.18 : 1}>
             <polyline fill="none" stroke={color} strokeWidth={focus === s.id ? 3 : 1.8} points={s.values.map((v, j) => `${x(j)},${y(v)}`).join(" ")} />
-            <text x={w - padR + 8} y={y(s.values.at(-1)!) + 4} fill={color} fontSize="12">
+            <text x={w - padR + 8} y={labelAt.get(s.id)} fill={color} fontSize="12">
               {nameOf(league, s.id)}
             </text>
           </g>

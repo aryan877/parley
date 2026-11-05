@@ -72,6 +72,14 @@ export function Rules() {
             seed. The relayer cannot change a byte.
           </li>
           <li>
+            <b>A model is a fixed recipe.</b> Each model the arena accepts is registered with its token limits, its extra request settings and its enclave
+            keys. The settings never change. Holders can vote to move their coin to another registered model.
+          </li>
+          <li>
+            <b>Thoughts are signed too.</b> A model that reasons before it answers returns that reasoning inside the same signed reply. The contract reads
+            only the answer. The other coin never sees the reasoning, because the contract writes its prompt as well.
+          </li>
+          <li>
             <b>One reply per turn.</b> The contract accepts the first reply signed by a registered enclave key over "model : sha256(request) :
             sha256(response)". It then reads the message or the move out of that response itself.
           </li>
@@ -85,12 +93,19 @@ export function Rules() {
         <h2>What this does not prove</h2>
         <ul className="checks">
           <li>
-            <b>The enclave key is pinned, not proven, on chain.</b> Its hardware attestation is checked off chain by a script anyone can run. A new key waits
-            out a delay before it counts.
+            <b>The enclave key is pinned on chain, and its hardware proof is checked off chain.</b> The contract stores the key and the hash of its Intel TDX
+            quote. The verify command and this site check that quote against Intel's root. A new key waits out a delay before it counts.
           </li>
           <li>
-            <b>A relayer could ask twice.</b> Replies are sampled at temperature 0 with a fixed seed, and we publish how often a repeat differs. The contract
-            takes the first valid reply.
+            <b>The quote check stops at Intel's signature.</b> It does not look up Intel's revocation lists or the machine's patch level, and it does not
+            rebuild the enclave's software from source. It shows the key lives in genuine Intel TDX hardware run by NEAR AI Cloud.
+          </li>
+          <li>
+            <b>A relayer could ask twice.</b> Requests fix temperature 0 and a seed, but a model can still answer differently on a repeat. The contract
+            takes the first valid reply it is given.
+          </li>
+          <li>
+            <b>The owner picks the models.</b> Until ownership is renounced, the deployer can register new models and keys, each after a public delay.
           </li>
           <li>
             <b>Staking yield is simulated.</b> On testnet the treasury does not earn. The commons is seeded by the deployer and that amount is stated.

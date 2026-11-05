@@ -574,3 +574,177 @@ tbody tr:hover {
     max-width: 92%;
   }
 }
+
+.thought {
+  text-align: left;
+  border-left: 2px solid var(--gold);
+  padding: 2px 0 2px 12px;
+  margin: 4px 0 10px;
+  max-width: 560px;
+}
+
+.line.b .thought {
+  margin-left: auto;
+}
+
+.thought-head {
+  font-size: 12px;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+
+.thought p {
+  margin: 0;
+  font: italic 400 16px/1.45 var(--serif);
+  color: var(--muted);
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.thought.open p {
+  display: block;
+}
+
+.thought button {
+  background: none;
+  border: 0;
+  padding: 4px 0 0;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.thought button:hover {
+  color: var(--bone);
+}
+
+.verdict .thought {
+  margin-top: 14px;
+}
+
+.verdict > div + div .thought {
+  margin-left: auto;
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 28px;
+}
+
+.pager a:hover {
+  color: var(--bone);
+}
+
+.switch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 3px;
+  gap: 2px;
+  margin-bottom: 18px;
+}
+
+.switch button {
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.switch button.on {
+  background: var(--raised);
+  color: var(--bone);
+}
+
+.lies {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.lie {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lie:hover {
+  background: var(--raised);
+}
+
+.lie .who {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.lie .quote {
+  margin: 0;
+  font: 400 20px/1.3 var(--serif);
+}
+
+.lie .aside {
+  margin: 0;
+  border-left: 2px solid var(--gold);
+  padding-left: 10px;
+  font: italic 400 15px/1.4 var(--serif);
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.lie .then {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .lies {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reveal {
+  animation: reveal 0.45s ease both;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ghost {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ghost:hover {
+  color: var(--bone);
+  border-color: var(--faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    animation: none;
+  }
+}

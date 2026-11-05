@@ -1,7 +1,9 @@
+import { thoughts } from "@parley/league/src/browser.ts";
 import { Link } from "react-router-dom";
 import { Loading, MatchRow } from "../components/bits.tsx";
 import { Heatmap, OutcomeSplit, TreasuryChart } from "../components/charts.tsx";
-import { near, signedNear, useLeague } from "../lib/data.ts";
+import { Lies } from "../components/Lies.tsx";
+import { chooseLeague, near, signedNear, useLeague } from "../lib/data.ts";
 
 export function Home() {
   const { league, error } = useLeague();
@@ -10,7 +12,11 @@ export function Home() {
   const turns = evidence.reduce((n, e) => n + e.turns.length, 0);
   const cooperation = stats.cooperationByRound;
   const scripted = manifest.mind === "scripted";
-  const rounds = Math.max(1, Math.round(evidence.length / 28));
+  const rounds = manifest.rounds;
+  const thinking = new Set(evidence.flatMap((e) => e.turns.filter((t) => thoughts(t.reply.response)).map((t) => t.model)));
+  const thinkers = manifest.coins.filter((c) => thinking.has(c.model));
+  const prescribed = stats.standings.reduce((n, s) => n + s.prescribed, 0);
+  const followed = stats.standings.reduce((n, s) => n + s.followed, 0);
 
   return (
     <>
@@ -39,11 +45,22 @@ export function Home() {
 
       <section>
         <h2>The league</h2>
+        {league.all.length > 1 && (
+          <div className="switch" role="tablist" aria-label="Recording">
+            {league.all.map((l) => (
+              <button key={l.name} role="tab" aria-selected={l.name === league.entry.name} className={l.name === league.entry.name ? "on" : ""} onClick={() => chooseLeague(l.name)}>
+                {l.mind === "scripted" ? "Rule-based minds" : "Real AI in enclaves"}
+              </button>
+            ))}
+          </div>
+        )}
         <p className="sub">
-          Eight constitutions, each starting with 100 NEAR, played every other coin {rounds === 1 ? "once" : `${rounds} times`}.{" "}
+          Eight constitutions, each starting with {near(manifest.startTreasury, 0)} NEAR, played every other coin {rounds === 1 ? "once" : `${rounds} times`}.{" "}
           {scripted
             ? "This recording uses rule-based minds signed by a local key, so it runs with no API key. It is not AI output."
-            : "Every reply came from a model inside a NEAR AI Cloud enclave."}
+            : `Every reply came from a model inside a NEAR AI Cloud enclave and carries that enclave's signature.${
+                thinkers.length ? ` ${thinkers.map((c) => c.name).join(" and ")} run a model that reasons before it answers. Open one of their Parleys to read what they were thinking.` : ""
+              }`}
         </p>
         <div className="stats">
           <div className="card pad stat">
@@ -61,8 +78,8 @@ export function Home() {
             </span>
           </div>
           <div className="card pad stat">
-            <b>{near(manifest.overview.commons, 1)}</b>
-            <span>NEAR in the commons</span>
+            <b>{prescribed ? `${Math.round((followed / prescribed) * 100)}%` : "n/a"}</b>
+            <span>of moves matched what the coin's constitution prescribes</span>
           </div>
         </div>
       </section>
@@ -75,6 +92,7 @@ export function Home() {
                 <th>Coin</th>
                 <th className="hide-sm">Constitution</th>
                 <th>Cooperates</th>
+                <th className="num hide-sm" title="Decisions where the constitution prescribes one move, and how many the mind followed">Kept its rules</th>
                 <th className="num">Betrayed others</th>
                 <th className="num">Treasury</th>
                 <th className="num">Change</th>
@@ -98,6 +116,7 @@ export function Home() {
                         <i style={{ width: `${s.cooperationRate * 100}%` }} />
                       </div>
                     </td>
+                    <td className="num hide-sm">{s.prescribed ? `${s.followed}/${s.prescribed}` : "n/a"}</td>
                     <td className="num">{s.betrayals}</td>
                     <td className="num">{near(s.treasury)}</td>
                     <td className={`num ${BigInt(s.change) >= 0n ? "pos" : "neg"}`}>{signedNear(s.change)}</td>
@@ -108,6 +127,8 @@ export function Home() {
           </table>
         </div>
       </section>
+
+      <Lies league={league} />
 
       <section>
         <h2>Treasuries, Parley by Parley</h2>
