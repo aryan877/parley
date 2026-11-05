@@ -1,3 +1,4 @@
+import { prescribedMove } from "@parley/relayer/src/minds/scripted.ts";
 import type { Coin, Move } from "@parley/sdk";
 import type { ParleyEvidence } from "./fixtures.ts";
 
@@ -10,6 +11,9 @@ export interface Standing {
   cooperationRate: number;
   betrayed: number;
   betrayals: number;
+  /** Decisions made, and how many of them were the move the house constitution prescribes. */
+  prescribed: number;
+  followed: number;
 }
 
 export interface LeagueStats {
@@ -31,6 +35,8 @@ export function summarize(coins: Coin[], evidence: ParleyEvidence[], startTreasu
       cooperationRate: c.stats.matches ? c.stats.cooperated / c.stats.matches : 0,
       betrayed: c.stats.was_betrayed,
       betrayals: c.stats.betrayed_other,
+      prescribed: 0,
+      followed: 0,
     }))
     .sort((x, y) => (BigInt(y.treasury) > BigInt(x.treasury) ? 1 : -1));
 
@@ -41,7 +47,17 @@ export function summarize(coins: Coin[], evidence: ParleyEvidence[], startTreasu
   const perRound = Math.max(1, Math.ceil(evidence.length / rounds));
   const byRound: { c: number; n: number }[] = Array.from({ length: rounds }, () => ({ c: 0, n: 0 }));
 
-  evidence.forEach(({ parley }, i) => {
+  evidence.forEach(({ parley, turns }, i) => {
+    turns.forEach((turn, t) => {
+      if (parley.turns[t]?.kind !== "Decide") return;
+      const expected = prescribedMove(turn.request);
+      const standing = standings.find((s) => s.id === (t % 2 === 0 ? parley.a : parley.b));
+      if (!expected || !standing) return;
+      standing.prescribed++;
+      const made = t % 2 === 0 ? parley.a_move : parley.b_move;
+      if (made?.toUpperCase() === expected) standing.followed++;
+    });
+
     const moves = [parley.a_move, parley.b_move] as Move[];
     const cooperations = moves.filter((m) => m === "Cooperate").length;
     if (cooperations === 2) outcomes.bothCooperate++;

@@ -1,7 +1,19 @@
 import { formatNear } from "@parley/sdk";
-import { NearAiMind, ROOT, ScriptedMind } from "@parley/relayer";
+import {
+  FAST_MODEL,
+  LOCAL_MODEL,
+  NearAiMind,
+  ROOT,
+  ScriptedMind,
+  THINKERS,
+  THINKING_MODEL,
+  attestedModel,
+  fetchAttestation,
+  localModels,
+} from "@parley/relayer";
+import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { join } from "node:path";
-import { DEFAULT_TREASURY, LOCAL_MODEL, runLeague, scriptedSigner } from "./run.ts";
+import { DEFAULT_TREASURY, type LeagueOptions, runLeague } from "./run.ts";
 
 function flag(name: string, fallback: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -13,19 +25,29 @@ const rounds = Number(flag("rounds", "3"));
 const name = flag("name", kind === "scripted" ? "scripted" : "near-ai");
 const out = join(ROOT, "fixtures", name);
 
-let options;
+let options: Pick<LeagueOptions, "mind" | "models" | "modelOf" | "attestations">;
 if (kind === "scripted") {
-  options = { mind: new ScriptedMind(), model: LOCAL_MODEL, signers: scriptedSigner() };
+  options = { mind: new ScriptedMind(), models: localModels(), modelOf: () => LOCAL_MODEL };
 } else {
   const key = process.env.NEAR_AI_API_KEY;
-  const model = flag("model", "z-ai/glm-5.3-flash");
-  const publicKey = flag("signer", "");
-  if (!key || !publicKey) throw new Error("near-ai leagues need NEAR_AI_API_KEY and --signer <enclave public key hex>");
+  if (!key) throw new Error("a near-ai league needs NEAR_AI_API_KEY in .env");
+  const thinkers = flag("thinkers", THINKERS).split(",").filter(Boolean);
+  const nonceText = `parley league ${name} ${new Date().toISOString()}`;
+  const ids = thinkers.length ? [FAST_MODEL, THINKING_MODEL] : [FAST_MODEL];
+  const attestations = await Promise.all(ids.map((id) => fetchAttestation(id, nonceText, process.env.NEAR_AI_BASE_URL)));
+  for (const a of attestations) console.log(`${a.model}: enclave key ${a.publicKey.slice(0, 16)}… attested by an Intel TDX quote`);
   options = {
     mind: new NearAiMind(key, process.env.NEAR_AI_BASE_URL),
-    model,
-    signers: [{ model, public_key: publicKey, evidence: flag("evidence", "see fixtures attestation") }],
+    models: attestations.map(attestedModel),
+    modelOf: (coin) => (thinkers.includes(coin) ? THINKING_MODEL : FAST_MODEL),
+    attestations,
   };
+}
+
+if (existsSync(out)) {
+  const old = join(ROOT, ".localnet", "replaced-fixtures");
+  mkdirSync(old, { recursive: true });
+  renameSync(out, join(old, `${name}-${Date.now()}`));
 }
 
 const { stats, evidence } = await runLeague({ ...options, name, rounds, treasury: DEFAULT_TREASURY, out, log: (line) => console.log(line) });
