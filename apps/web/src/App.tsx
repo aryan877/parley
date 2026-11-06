@@ -3,6 +3,7 @@ import { Mark } from "./components/Mark.tsx";
 import { CoinPage } from "./pages/CoinPage.tsx";
 import { Home } from "./pages/Home.tsx";
 import { ParleyPage } from "./pages/ParleyPage.tsx";
+import { Play } from "./pages/Play.tsx";
 import { Rules } from "./pages/Rules.tsx";
 import { Verify } from "./pages/Verify.tsx";
 
@@ -18,6 +19,9 @@ export function App() {
         <NavLink to="/" end className={link}>
           League
         </NavLink>
+        <NavLink to="/play" className={link}>
+          Play
+        </NavLink>
         <NavLink to="/rules" className={link}>
           Rules
         </NavLink>
@@ -32,12 +36,13 @@ export function App() {
         <Route path="/" element={<Home />} />
         <Route path="/parley/:id" element={<ParleyPage />} />
         <Route path="/coin/:id" element={<CoinPage />} />
+        <Route path="/play" element={<Play />} />
         <Route path="/rules" element={<Rules />} />
         <Route path="/verify" element={<Verify />} />
       </Routes>
       <footer className="foot">
-        <span>Built at NEAR HACKATHON, November 2026. Runs on NEAR testnet and a local chain.</span>
-        <span>Staking yield is simulated. See the limits in the README.</span>
+        <span>Built at NEAR HACKATHON, November 2026.</span>
+        <span>Unaudited. Treasuries do not earn yield. See the limits in the README.</span>
       </footer>
     </div>
   );

@@ -748,3 +748,80 @@ tbody tr:hover {
     animation: none;
   }
 }
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--faint);
+  position: relative;
+}
+
+.form input,
+.form textarea {
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 13px;
+  color: var(--bone);
+  font: 400 19px/1.4 var(--serif);
+  resize: vertical;
+}
+
+.form input {
+  max-width: 320px;
+  letter-spacing: 0.03em;
+}
+
+.form input:focus,
+.form textarea:focus {
+  outline: none;
+  border-color: var(--faint);
+}
+
+.form .count {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font: 11px var(--mono);
+}
+
+.form .row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.form .label {
+  font-size: 12px;
+  color: var(--faint);
+  min-width: 120px;
+}
+
+.ghost.on {
+  color: var(--ink);
+  background: var(--bone);
+  border-color: var(--bone);
+}
+
+.ghost:disabled,
+.form input:disabled,
+.form textarea:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.live {
+  margin-top: 22px;
+  color: var(--gold);
+}
+
+.live.failed {
+  color: var(--red);
+}

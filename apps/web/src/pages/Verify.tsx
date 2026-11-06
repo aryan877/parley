@@ -1,7 +1,7 @@
 import { type Finding, attestedKeys, checkLeague } from "@parley/league/src/browser.ts";
 import { useState } from "react";
 import { Loading } from "../components/bits.tsx";
-import { useLeague } from "../lib/data.ts";
+import { short, useLeague } from "../lib/data.ts";
 
 export function Verify() {
   const { league, error } = useLeague();
@@ -49,6 +49,43 @@ export function Verify() {
           ))}
         </div>
       )}
+
+      <section>
+        <h2>The enclave keys</h2>
+        <p className="sub">
+          Every reply in this league was signed by one of these keys. The arena stores each key with the hash of its hardware quote, and the quote itself is
+          recorded here.
+        </p>
+        <div className="card">
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Key</th>
+                <th className="hide-sm">Proof</th>
+              </tr>
+            </thead>
+            <tbody>
+              {league.manifest.models.flatMap((m) =>
+                m.signers.map((signer) => {
+                  const quote = league.attestations.find((a) => a.model === m.id && a.publicKey === signer.public_key);
+                  return (
+                    <tr key={signer.public_key}>
+                      <td>{m.id}</td>
+                      <td className="num" style={{ textAlign: "left" }} title={signer.public_key}>
+                        {short(signer.public_key, 10)}
+                      </td>
+                      <td className="hide-sm rule" style={{ display: "table-cell" }}>
+                        {quote ? `Intel TDX quote made for "${quote.nonceText}"` : "Local stand-in key. Not sealed hardware."}
+                      </td>
+                    </tr>
+                  );
+                }),
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section>
         <h2>What gets checked</h2>

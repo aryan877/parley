@@ -18,7 +18,7 @@ export interface PlayResult {
 }
 
 /** Plays every remaining turn of an open Parley: fetch the contract's request, get the signed reply, submit it. */
-export async function playParley(arena: Arena, mind: Mind, id: number, onTurn?: (turn: TurnRecord) => void): Promise<PlayResult> {
+export async function playParley(arena: Arena, mind: Mind, id: number, onTurn?: (turn: TurnRecord) => void | Promise<void>): Promise<PlayResult> {
   const turns: TurnRecord[] = [];
   for (;;) {
     const parley = await arena.parley(id);
@@ -36,11 +36,11 @@ export async function playParley(arena: Arena, mind: Mind, id: number, onTurn?: 
     if (!sent.ok) throw new Error(`submit_turn failed for Parley ${id} turn ${index}: ${sent.error}`);
     const record = { parley: id, index, model, request, reply, txHash: sent.hash, modelMs: answered - asked, chainMs: Date.now() - answered };
     turns.push(record);
-    onTurn?.(record);
+    await onTurn?.(record);
   }
 }
 
-export async function openAndPlay(arena: Arena, mind: Mind, pair?: [string, string], onTurn?: (turn: TurnRecord) => void): Promise<PlayResult> {
+export async function openAndPlay(arena: Arena, mind: Mind, pair?: [string, string], onTurn?: (turn: TurnRecord) => void | Promise<void>): Promise<PlayResult> {
   const opened = pair ? await arena.openParleyBetween(pair[0], pair[1]) : await arena.openParley();
   if (!opened.ok) throw new Error(`could not open a Parley: ${opened.error}`);
   return playParley(arena, mind, opened.value as number, onTurn);

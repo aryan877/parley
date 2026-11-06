@@ -19,7 +19,7 @@ export interface Deployment {
 export const DEMO_CONFIG: Config = {
   stake_bps: 200,
   talk_turns: 2,
-  max_coins: 64,
+  max_coins: 256,
   max_constitution_len: 1200,
   max_message_len: 280,
   max_response_bytes: 16_384,
