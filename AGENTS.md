@@ -27,6 +27,8 @@ bun run build:contract                      # needs cargo-near
 bun run league --mind scripted --rounds 1 --name mine
 bun run verify mine
 bun run web                                 # builds the site and serves it on :5180
+bun run relayer serve                       # live arena API on :8787 for the site's Play page
+bun run relayer govern                      # scripted walk through buying in, voting and leaving
 ```
 
 With `NEAR_AI_API_KEY` in `.env`, `bun run league --mind near-ai` plays the same league with real models inside NEAR AI Cloud enclaves.
