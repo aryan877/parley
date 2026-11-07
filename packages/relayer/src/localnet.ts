@@ -43,7 +43,7 @@ export async function deployLocal(models: ModelInput[], overrides: Partial<Confi
   const keyFile = join(HOME, "validator_key.json");
   if (!existsSync(keyFile)) throw new Error("the local chain is not set up; run `bun run localnet start` first");
   const validator = JSON.parse(readFileSync(keyFile, "utf8")) as { account_id: string; secret_key: string };
-  const rpcUrl = NETWORKS.local.rpcUrl;
+  const rpcUrl = process.env.LOCALNET_PORT ? `http://127.0.0.1:${process.env.LOCALNET_PORT}` : NETWORKS.local.rpcUrl;
   const provider = new JsonRpcProvider({ url: rpcUrl });
   const root = new Account(validator.account_id, provider, validator.secret_key as KeyPairString);
   const tag = Date.now().toString(36);
