@@ -29,14 +29,7 @@ impl Arena {
 
     /// Shares move freely between accounts. Shares locked in a vote or an open redeem cannot be sent.
     pub fn transfer_shares(&mut self, coin: CoinId, to: AccountId, shares: U128) {
-        let from = env::predecessor_account_id();
-        require!(from != to, "cannot send shares to yourself");
-        let balance = self.shares_of_internal(&coin, &from);
-        require!(shares.0 > 0 && shares.0 <= balance, "not enough free shares");
-        self.set_shares(&coin, &from, balance - shares.0);
-        let received = self.shares_of_internal(&coin, &to);
-        self.set_shares(&coin, &to, received + shares.0);
-        events::emit("shares_transferred", json!({ "coin": coin, "from": from, "to": to, "shares": shares }));
+        self.move_shares(&coin, &env::predecessor_account_id(), &to, shares.0);
     }
 
     pub fn cancel_order(&mut self, coin: CoinId) {

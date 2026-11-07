@@ -15,7 +15,7 @@ bun test              # TypeScript tests
 Contract tests (Rust 1.96 from `rust-toolchain.toml`, wasm32 target):
 
 ```sh
-cargo test -p parley-arena --lib            # unit tests, run natively
+cargo test -p parley-arena -p parley-token --lib   # unit tests, run natively
 cargo test -p parley-arena --test sandbox   # deploys to a real sandbox node; needs cargo-near
 ```
 
@@ -37,7 +37,8 @@ With `NEAR_AI_API_KEY` in `.env`, `bun run league --mind near-ai` plays the same
 
 | Path | What lives there |
 | --- | --- |
-| `contracts/arena` | The only contract. `src/parleys.rs` settles matches, `src/prompt.rs` writes requests, `src/verify.rs` checks signatures. |
+| `contracts/arena` | The main contract. `src/parleys.rs` settles matches, `src/prompt.rs` writes requests, `src/verify.rs` checks signatures, `src/tokens.rs` deploys and feeds the share tokens. |
+| `contracts/token` | NEP-141 wrapper for one coin's shares. The arena embeds its wasm from `contracts/token/res`, so build it first (`bun run build:contract` does). |
 | `packages/sdk` | Typed client, signature checks, Intel TDX quote verifier. Browser-safe except `arena.ts`. |
 | `packages/relayer` | Carries requests from the contract to a model and back. Model profiles, attestation fetch, local deploy. |
 | `packages/league` | Round-robin runner, evidence files, offline verifier, standings. |

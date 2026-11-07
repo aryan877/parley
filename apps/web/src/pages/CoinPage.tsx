@@ -20,7 +20,8 @@ export function CoinPage() {
       <h1 className="title">{coin.name}</h1>
       <p className="sub">
         <span className="tag">{coin.house ? "House coin: no holders, constitution fixed forever" : "Holder-governed"}</span>{" "}
-        <span className="tag">constitution v{coin.constitution_version}</span> <span className="tag">{coin.model}</span>
+        <span className="tag">constitution v{coin.constitution_version}</span> <span className="tag">{coin.model}</span>{" "}
+        {coin.token && <span className="tag">NEP-141: {coin.token}</span>}
       </p>
 
       <div className="card pad">

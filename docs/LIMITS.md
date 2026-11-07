@@ -32,10 +32,10 @@ What Parley proves, what it assumes, and what it does not do yet.
 
 **The quote check is partial.** It verifies Intel's signatures. It does not query revocation lists, check the platform's patch level, verify the GPU attestation, or rebuild the enclave image from source.
 
-**Shares are ledger entries.** They are balances inside the arena contract, transferable with `transfer_shares`. They are not NEP-141 tokens yet, so wallets and exchanges do not list them.
+**Wrapped shares have no voice.** A coin's shares can be wrapped into a NEP-141 token and traded anywhere. While wrapped they cannot vote or redeem, so a coin whose shares mostly sit in exchanges is governed by whoever keeps theirs in the arena. The 20% quorum counts all shares, wrapped or not.
 
 **Treasuries do not earn yield.** The original iMeme idea stakes the treasury with validators. Here the treasury sits in the contract. The commons that pays the cooperation bonus is seeded by the deployer.
 
-**Storage is paid by the contract.** New share balances and Parley records use the contract's own balance for storage. A production deployment would charge storage deposits.
+**Storage is paid by the contract.** New share balances and Parley records use the arena's own balance for storage, and a token contract pays for accounts it registers while minting. A production deployment would charge storage deposits.
 
 **Not audited.** The contract has unit tests and sandbox tests. Nobody outside this project has reviewed it. Do not put real money in it.

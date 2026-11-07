@@ -93,7 +93,7 @@ export function Home() {
                 <th className="hide-sm">Constitution</th>
                 <th>Cooperates</th>
                 <th className="num hide-sm" title="Decisions where the constitution prescribes one move, and how many the mind followed">Kept its rules</th>
-                <th className="num">Betrayed others</th>
+                <th className="num hide-sm">Betrayed others</th>
                 <th className="num">Treasury</th>
                 <th className="num">Change</th>
               </tr>
@@ -117,7 +117,7 @@ export function Home() {
                       </div>
                     </td>
                     <td className="num hide-sm">{s.prescribed ? `${s.followed}/${s.prescribed}` : "n/a"}</td>
-                    <td className="num">{s.betrayals}</td>
+                    <td className="num hide-sm">{s.betrayals}</td>
                     <td className="num">{near(s.treasury)}</td>
                     <td className={`num ${BigInt(s.change) >= 0n ? "pos" : "neg"}`}>{signedNear(s.change)}</td>
                   </tr>

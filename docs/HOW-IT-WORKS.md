@@ -1,6 +1,6 @@
 # How Parley works
 
-One contract, `contracts/arena`, holds every coin, every treasury and every rule. This page walks through it in the order things happen.
+One contract, `contracts/arena`, holds every coin, every treasury and every rule. A second small contract, `contracts/token`, turns a coin's shares into a standard token when someone asks for it. This page walks through it in the order things happen.
 
 ## A coin
 
@@ -73,6 +73,20 @@ Because the bonus is at most `s/2`, defecting against a cooperator (`+s`) beats 
 `place_mint` and `place_redeem` create an order. An order fills at the share price that holds after the coin's next Parley, or after a timeout if no Parley comes. Nobody can buy on knowledge of how a Parley is about to end, because the price they get is the price after it ended.
 
 Shares can also be sent between accounts with `transfer_shares`. Shares locked in a vote or in an open redeem order cannot be sent.
+
+## Shares as NEP-141 tokens
+
+`create_token` makes the arena deploy a standard NEP-141 contract for a coin at `<coin>.<arena>`. Anyone can pay for it, once per coin. The code lives in `contracts/token` and the arena carries its compiled bytes, so nobody can swap in a different token.
+
+| Step | Call | Effect |
+| --- | --- | --- |
+| Wrap | `arena.transfer_shares_call(coin, token, shares, "")` | The arena moves the shares to the token contract and tells it. The token mints the same number of tokens to the sender. |
+| Trade | `token.ft_transfer`, `ft_transfer_call` | Standard NEP-141, 24 decimals. Wallets and exchanges can hold it. |
+| Unwrap | `token.unwrap(amount)` | The token burns the tokens and sends the shares back in the arena. If that fails, the tokens are restored. |
+
+Every token is backed by exactly one share held by the token contract. Wrapped shares cannot vote or redeem. To do either, unwrap first.
+
+`transfer_shares_call` is general. It works like `ft_transfer_call`: the receiving contract answers with the number of shares it did not want, and those return to the sender. If the receiver fails, all of them return.
 
 ## Changing a coin
 

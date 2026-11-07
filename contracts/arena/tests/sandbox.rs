@@ -70,16 +70,24 @@ impl Env {
     }
 
     async fn call(&self, who: &str, method: &str, args: Value, near: u128) -> testresult::TestResult<bool> {
-        let outcome = self
-            .arena
+        self.call_on(&self.arena, who, method, args, near, 100).await
+    }
+
+    async fn call_on(&self, contract: &near_api::Contract, who: &str, method: &str, args: Value, near: u128, tgas: u64) -> testresult::TestResult<bool> {
+        let outcome = contract
             .call_function(method, args)
             .transaction()
-            .gas(NearGas::from_tgas(100))
+            .gas(NearGas::from_tgas(tgas))
             .deposit(NearToken::from_yoctonear(near))
             .with_signer(Self::id(who), self.signer.clone())
             .send_to(&self.network)
             .await?;
         Ok(outcome.is_success())
+    }
+
+    async fn amount(&self, contract: &near_api::Contract, method: &str, args: Value) -> testresult::TestResult<u128> {
+        let value: Value = contract.call_function(method, args).read_only().fetch_from(&self.network).await?.data;
+        Ok(value.as_str().unwrap().parse()?)
     }
 
     async fn view(&self, method: &str, args: Value) -> testresult::TestResult<Value> {
@@ -229,5 +237,44 @@ async fn a_long_thinking_reply_fits_in_gas() -> testresult::TestResult<()> {
     assert_eq!(settled["status"], "Settled");
     assert_eq!(settled["turns"][0]["text"], "Peace?");
     assert_eq!(settled["b_move"], "Defect");
+    Ok(())
+}
+
+#[tokio::test]
+async fn shares_wrap_into_a_nep141_token_and_back() -> testresult::TestResult<()> {
+    let env = Env::start().await?;
+    let near = NearToken::from_near(1).as_yoctonear();
+    env.coin("alice", "saint", 100).await?;
+    let token = near_api::Contract("saint.arena.sandbox".parse()?);
+    let shares = |who: &str| json!({ "coin": "saint", "account": Env::id(who) });
+
+    assert!(!env.call_on(&env.arena, "bob", "create_token", json!({ "coin": "saint" }), near, 200).await?);
+    assert!(env.call_on(&env.arena, "bob", "create_token", json!({ "coin": "saint" }), 3 * near, 200).await?);
+    assert_eq!(env.view("get_coin", json!({ "coin": "saint" })).await?["token"], "saint.arena.sandbox");
+    let metadata: Value = token.call_function("ft_metadata", json!({})).read_only().fetch_from(&env.network).await?.data;
+    assert_eq!(metadata["symbol"], "SAINT");
+    assert_eq!(metadata["decimals"], 24);
+
+    let wrap = json!({ "coin": "saint", "to": token.account_id(), "shares": (40 * near).to_string(), "msg": "" });
+    assert!(env.call_on(&env.arena, "alice", "transfer_shares_call", wrap, 0, 100).await?);
+    assert_eq!(env.amount(&token, "ft_balance_of", json!({ "account_id": Env::id("alice") })).await?, 40 * near);
+    assert_eq!(env.amount(&env.arena, "get_shares", shares("alice")).await?, 60 * near);
+    assert_eq!(env.amount(&env.arena, "get_shares", json!({ "coin": "saint", "account": token.account_id() })).await?, 40 * near);
+
+    assert!(env.call_on(&token, "bob", "storage_deposit", json!({}), near / 100, 30).await?);
+    let send = json!({ "receiver_id": Env::id("bob"), "amount": (10 * near).to_string() });
+    assert!(env.call_on(&token, "alice", "ft_transfer", send, 1, 30).await?);
+    assert!(env.call_on(&token, "bob", "unwrap", json!({ "amount": (10 * near).to_string() }), 0, 100).await?);
+    assert_eq!(env.amount(&env.arena, "get_shares", shares("bob")).await?, 10 * near);
+    assert_eq!(env.amount(&token, "ft_total_supply", json!({})).await?, 30 * near);
+    assert_eq!(env.amount(&token, "ft_balance_of", json!({ "account_id": Env::id("bob") })).await?, 0);
+
+    let stray = json!({ "coin": "saint", "to": Env::id("carol"), "shares": (5 * near).to_string(), "msg": "" });
+    env.call_on(&env.arena, "alice", "transfer_shares_call", stray, 0, 100).await?;
+    assert_eq!(env.amount(&env.arena, "get_shares", shares("alice")).await?, 60 * near);
+    assert_eq!(env.amount(&env.arena, "get_shares", shares("carol")).await?, 0);
+
+    assert!(env.call("bob", "place_redeem", json!({ "coin": "saint", "shares": (10 * near).to_string() }), 0).await?);
+    assert_eq!(env.view("get_coin", json!({ "coin": "saint" })).await?["total_shares"], (100 * near).to_string());
     Ok(())
 }

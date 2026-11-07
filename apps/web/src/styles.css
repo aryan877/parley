@@ -556,9 +556,24 @@ tbody tr:hover {
 
 @media (max-width: 760px) {
   .steps,
-  .grid2,
-  .stats {
+  .grid2 {
     grid-template-columns: 1fr;
+  }
+  .stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .shell {
+    padding: 0 18px 72px;
+  }
+  .nav {
+    gap: 16px;
+  }
+  th,
+  td {
+    padding: 12px 12px;
+  }
+  .meter {
+    width: 84px;
   }
   .match {
     grid-template-columns: 1fr auto 1fr;

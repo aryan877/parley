@@ -42,6 +42,7 @@ export interface Coin {
   matches_played: number;
   stats: Stats;
   created_at: string;
+  token: string | null;
 }
 
 export interface Turn {

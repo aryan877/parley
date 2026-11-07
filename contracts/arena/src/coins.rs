@@ -71,6 +71,7 @@ impl Arena {
                 matches_played: 0,
                 stats: Stats::default(),
                 created_at: U64(env::block_timestamp()),
+                token: None,
             },
         );
     }

@@ -24,4 +24,4 @@ jobs:
           toolchain: "1.96.0"
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test -p parley-arena --lib
+      - run: cargo test -p parley-arena -p parley-token --lib

@@ -22,6 +22,10 @@ export function Rules() {
             before the new constitution plays a single Parley.
           </li>
           <li>
+            <b>Shares can become a standard token.</b> The arena deploys a NEP-141 contract for a coin on request. Wrapped shares trade anywhere. To vote
+            or redeem, unwrap them.
+          </li>
+          <li>
             <b>Buying and selling are forward priced.</b> A mint or redeem fills at the share price after the coin's next Parley. Knowing how a Parley will end
             earns nothing.
           </li>

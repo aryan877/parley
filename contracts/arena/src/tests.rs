@@ -57,6 +57,21 @@ impl World {
         );
     }
 
+    /// Enters a callback of the arena itself, with the result of the promise it waited on.
+    fn callback(&mut self, result: near_sdk::PromiseResult) {
+        testing_env!(
+            VMContextBuilder::new()
+                .current_account_id(acc("arena.near"))
+                .predecessor_account_id(acc("arena.near"))
+                .block_timestamp(self.now)
+                .build(),
+            near_sdk::test_vm_config(),
+            near_sdk::RuntimeFeesConfig::test(),
+            std::collections::HashMap::default(),
+            vec![result],
+        );
+    }
+
     fn wait(&mut self, ns: u64) {
         self.now += ns;
         self.at("anyone.near", 0);
@@ -1271,5 +1286,114 @@ mod parleys {
             w.wait(31 * MINUTE);
             arena.void_parley(id);
         }
+    }
+}
+
+mod tokens {
+    use super::*;
+    use near_sdk::{PromiseError, PromiseResult};
+
+    fn token() -> AccountId {
+        acc("saint.arena.near")
+    }
+
+    fn with_coin() -> (Arena, World) {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        (arena, w)
+    }
+
+    #[test]
+    fn a_created_token_is_recorded_on_the_coin() {
+        let (mut arena, mut w) = with_coin();
+        w.at("bob.near", 3 * NEAR);
+        let _ = arena.create_token("saint".into());
+        assert_eq!(arena.get_coin("saint".into()).unwrap().token, None);
+        w.callback(PromiseResult::Successful(vec![]));
+        let made = arena.on_token_created("saint".into(), token(), acc("bob.near"), U128(3 * NEAR), Ok(()));
+        assert_eq!(made, Some(token()));
+        assert_eq!(arena.get_coin("saint".into()).unwrap().token, Some(token()));
+    }
+
+    #[test]
+    fn a_failed_deployment_records_nothing() {
+        let (mut arena, mut w) = with_coin();
+        w.callback(PromiseResult::Failed);
+        let made = arena.on_token_created("saint".into(), token(), acc("bob.near"), U128(3 * NEAR), Err(PromiseError::Failed));
+        assert_eq!(made, None);
+        assert_eq!(arena.get_coin("saint".into()).unwrap().token, None);
+    }
+
+    #[test]
+    #[should_panic(expected = "attach 3 NEAR for the token contract's storage")]
+    fn a_token_needs_its_storage_paid() {
+        let (mut arena, mut w) = with_coin();
+        w.at("bob.near", NEAR);
+        let _ = arena.create_token("saint".into());
+    }
+
+    #[test]
+    #[should_panic(expected = "this coin already has a token")]
+    fn a_coin_gets_one_token() {
+        let (mut arena, mut w) = with_coin();
+        w.callback(PromiseResult::Successful(vec![]));
+        arena.on_token_created("saint".into(), token(), acc("bob.near"), U128(3 * NEAR), Ok(()));
+        w.at("bob.near", 3 * NEAR);
+        let _ = arena.create_token("saint".into());
+    }
+
+    #[test]
+    #[should_panic(expected = "house coins have no shares")]
+    fn house_coins_get_no_token() {
+        let (mut arena, mut w) = setup();
+        w.at("owner.near", 10 * NEAR);
+        arena.create_house_coin("mirror".into(), "MIRROR".into(), "Mirror.".into(), MODEL.into());
+        w.at("bob.near", 3 * NEAR);
+        let _ = arena.create_token("mirror".into());
+    }
+
+    #[test]
+    fn shares_sent_to_a_contract_stay_when_it_keeps_them() {
+        let (mut arena, mut w) = with_coin();
+        w.at("alice.near", 0);
+        let _ = arena.transfer_shares_call("saint".into(), token(), U128(40 * NEAR), String::new());
+        assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 60 * NEAR);
+        assert_eq!(arena.get_shares("saint".into(), token()).0, 40 * NEAR);
+        w.callback(PromiseResult::Successful(b"\"0\"".to_vec()));
+        let kept = arena.resolve_shares_call("saint".into(), acc("alice.near"), token(), U128(40 * NEAR));
+        assert_eq!(kept.0, 40 * NEAR);
+        assert_eq!(arena.get_shares("saint".into(), token()).0, 40 * NEAR);
+        assert_eq!(arena.get_coin("saint".into()).unwrap().total_shares.0, 100 * NEAR);
+    }
+
+    #[test]
+    fn shares_come_back_when_the_receiver_fails() {
+        let (mut arena, mut w) = with_coin();
+        w.at("alice.near", 0);
+        let _ = arena.transfer_shares_call("saint".into(), acc("nobody.near"), U128(40 * NEAR), String::new());
+        w.callback(PromiseResult::Failed);
+        let kept = arena.resolve_shares_call("saint".into(), acc("alice.near"), acc("nobody.near"), U128(40 * NEAR));
+        assert_eq!(kept.0, 0);
+        assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 100 * NEAR);
+        assert_eq!(arena.get_shares("saint".into(), acc("nobody.near")).0, 0);
+    }
+
+    #[test]
+    fn a_receiver_can_return_part() {
+        let (mut arena, mut w) = with_coin();
+        w.at("alice.near", 0);
+        let _ = arena.transfer_shares_call("saint".into(), token(), U128(40 * NEAR), String::new());
+        w.callback(PromiseResult::Successful(format!("\"{}\"", 15 * NEAR).into_bytes()));
+        let kept = arena.resolve_shares_call("saint".into(), acc("alice.near"), token(), U128(40 * NEAR));
+        assert_eq!(kept.0, 25 * NEAR);
+        assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 75 * NEAR);
+    }
+
+    #[test]
+    #[should_panic(expected = "not enough free shares")]
+    fn cannot_wrap_more_than_held() {
+        let (mut arena, mut w) = with_coin();
+        w.at("alice.near", 0);
+        let _ = arena.transfer_shares_call("saint".into(), token(), U128(101 * NEAR), String::new());
     }
 }

@@ -68,6 +68,8 @@ pub struct Coin {
     pub matches_played: u64,
     pub stats: Stats,
     pub created_at: U64,
+    /// The NEP-141 contract that wraps this coin's shares, once someone has paid to create it.
+    pub token: Option<AccountId>,
 }
 
 #[near(serializers = [json, borsh])]

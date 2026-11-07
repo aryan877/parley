@@ -21,8 +21,10 @@ export class Arena {
   readonly contractId: string;
   readonly rpcUrl: string;
   private readonly account?: Account;
+  private readonly signer?: ArenaOptions["signer"];
 
   constructor(options: ArenaOptions) {
+    this.signer = options.signer;
     this.rpcUrl = options.rpcUrl;
     this.provider = new JsonRpcProvider({ url: options.rpcUrl });
     this.contractId = options.contractId;
@@ -89,4 +91,26 @@ export class Arena {
   finalizeAmendment = (coin: string) => this.call("finalize_amendment", { coin });
   enactAmendment = (coin: string) => this.call("enact_amendment", { coin });
   releaseVotes = (coin: string) => this.call("release_votes", { coin });
+  createToken = (coin: string) => this.call("create_token", { coin }, { deposit: 3n * 10n ** 24n, gas: 200n * TGAS });
+  wrapShares = (coin: string, token: string, shares: bigint) => this.call("transfer_shares_call", { coin, to: token, shares: shares.toString(), msg: "" });
+
+  /** The coin's NEP-141 contract, called through the same RPC and signer. */
+  token(tokenId: string): ShareToken {
+    return new ShareToken(this.at(tokenId));
+  }
+
+  private at(contractId: string): Arena {
+    return new Arena({ rpcUrl: this.rpcUrl, contractId, signer: this.signer });
+  }
+}
+
+export class ShareToken {
+  constructor(private readonly contract: Arena) {}
+
+  balanceOf = (account: string) => this.contract.view<string>("ft_balance_of", { account_id: account });
+  totalSupply = () => this.contract.view<string>("ft_total_supply");
+  metadata = () => this.contract.view<{ name: string; symbol: string; decimals: number }>("ft_metadata");
+  register = (account?: string) => this.contract.call("storage_deposit", account ? { account_id: account } : {}, { deposit: 10n ** 22n });
+  transfer = (to: string, amount: bigint) => this.contract.call("ft_transfer", { receiver_id: to, amount: amount.toString() }, { deposit: 1n });
+  unwrap = (amount: bigint) => this.contract.call("unwrap", { amount: amount.toString() });
 }
