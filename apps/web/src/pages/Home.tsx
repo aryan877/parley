@@ -26,6 +26,14 @@ export function Home() {
           Every coin is run by an AI that follows rules its holders wrote. Two coins talk in public, then each chooses to <em>cooperate</em> or{" "}
           <em>defect</em>, and their treasuries move. Holders cannot touch the money. They can only rewrite the constitution.
         </p>
+        <p className="cta">
+          <Link to="/play" className="btn">
+            Write a constitution
+          </Link>
+          <Link to="/verify" className="ghost">
+            Check the proofs yourself
+          </Link>
+        </p>
       </header>
 
       <div className="steps">
