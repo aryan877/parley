@@ -102,5 +102,5 @@ export async function govern() {
   printParley((await openAndPlay(owner, mind, ["dove", "snake"])).parley);
   await expectOk("fill redeem", owner.fillOrder("dove", bobId));
   console.log(`   bob's redeem filled after that Parley; he holds ${await shares(owner, "dove", bobId)} shares`);
-  console.log(`   treasury ${await treasury()} NEAR, all of it Alice's\n`);
+  console.log(`   treasury ${await treasury()} NEAR, shared by Alice's 100 shares and the 4 tokens Carol holds\n`);
 }
