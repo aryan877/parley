@@ -67,7 +67,7 @@ impl Arena {
     }
 
     pub fn get_parley(&self, id: MatchId) -> Option<Parley> {
-        self.parleys.get(id as u32).cloned()
+        self.parleys.get(u32::try_from(id).ok()?).cloned()
     }
 
     /// Newest first.
@@ -91,8 +91,13 @@ impl Arena {
         self.orders.get(&(coin, account)).cloned()
     }
 
-    pub fn get_amendment(&self, coin: CoinId) -> Option<Amendment> {
-        self.amendments.get(&coin).cloned()
+    pub fn get_amendment(&self, id: u32) -> Option<Amendment> {
+        self.amendments.get(&id).cloned()
+    }
+
+    /// The coin's amendments that are being voted on or waiting out their timelock.
+    pub fn get_amendments(&self, coin: CoinId) -> Vec<Amendment> {
+        self.coin(&coin).amendments.iter().filter_map(|id| self.amendments.get(id).cloned()).collect()
     }
 
     pub fn get_vote(&self, coin: CoinId, account: AccountId) -> Option<VoteLock> {

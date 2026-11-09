@@ -15,14 +15,17 @@ fn valid_name(name: &str) -> bool {
 
 #[near]
 impl Arena {
-    /// Launches a coin. The deposit becomes its treasury and the creator gets the first shares, one per yoctoNEAR.
+    /// Launches a coin. The creation fee goes to the commons, the rest of the deposit becomes the
+    /// treasury, and the creator gets the first shares, one per yoctoNEAR of treasury.
     #[payable]
     pub fn create_coin(&mut self, id: CoinId, name: String, constitution: String, model: String) {
+        let fee = self.config.creation_fee.0;
         let deposit = env::attached_deposit().as_yoctonear();
-        require!(deposit >= self.config.min_treasury.0, "deposit below min_treasury");
+        require!(deposit >= self.config.min_treasury.0 + fee, "deposit below min_treasury plus the creation fee");
         let creator = env::predecessor_account_id();
-        self.insert_coin(id.clone(), name, constitution, model, deposit, false);
-        self.set_shares(&id, &creator, deposit);
+        self.insert_coin(id.clone(), name, constitution, model, deposit - fee, false);
+        self.set_shares(&id, &creator, deposit - fee);
+        self.commons += fee;
     }
 
     /// A house coin has no holders and a constitution that can never change. It gives every coin a fixed opponent.
@@ -42,13 +45,15 @@ impl Arena {
             constitution.chars().count() <= self.config.max_constitution_len as usize,
             "constitution too long"
         );
-        require!(self.models.contains_key(model), "model is not registered");
+        let now = env::block_timestamp();
+        require!(self.model(model).signers.iter().any(|k| k.is_active(now)), "model has no active enclave key yet");
     }
 
     fn insert_coin(&mut self, id: CoinId, name: String, constitution: String, model: String, deposit: u128, house: bool) {
         require!(valid_id(&id), "id must be 2-20 characters of a-z and 0-9");
         require!(valid_name(&name), "name must be 1-24 printable ASCII characters");
         require!(self.coins.get(&id).is_none(), "coin id taken");
+        require!(self.names.insert(name.to_uppercase()), "coin name taken");
         require!(self.coins.len() < self.config.max_coins as u32, "arena is full");
         self.assert_constitution(&constitution, &model);
         events::emit(
@@ -72,6 +77,8 @@ impl Arena {
                 stats: Stats::default(),
                 created_at: U64(env::block_timestamp()),
                 token: None,
+                idle_since: U64(env::block_timestamp()),
+                amendments: Vec::new(),
             },
         );
     }

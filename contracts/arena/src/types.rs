@@ -21,6 +21,10 @@ pub struct Config {
     pub quorum_bps: u16,
     pub proposer_bps: u16,
     pub signer_delay_ns: U64,
+    /// How long a coin rests after a Parley ends before anyone can draw it into another.
+    pub rest_ns: U64,
+    /// Paid by `create_coin` on top of the treasury. It goes to the commons.
+    pub creation_fee: U128,
 }
 
 #[near(serializers = [json, borsh])]
@@ -29,6 +33,13 @@ pub struct EnclaveSigner {
     pub public_key: String,
     pub evidence: String,
     pub active_from: U64,
+    pub retired_from: Option<U64>,
+}
+
+impl EnclaveSigner {
+    pub fn is_active(&self, now: u64) -> bool {
+        self.active_from.0 <= now && self.retired_from.is_none_or(|retired| now < retired.0)
+    }
 }
 
 /// A model the arena accepts: how the contract asks it, and the enclave keys that may answer for it.
@@ -70,6 +81,10 @@ pub struct Coin {
     pub created_at: U64,
     /// The NEP-141 contract that wraps this coin's shares, once someone has paid to create it.
     pub token: Option<AccountId>,
+    /// When the coin last left a Parley, or was created.
+    pub idle_since: U64,
+    /// Amendments that are being voted on or waiting out their timelock.
+    pub amendments: Vec<u32>,
 }
 
 #[near(serializers = [json, borsh])]
@@ -84,6 +99,8 @@ pub enum OrderKind {
 pub struct Order {
     pub kind: OrderKind,
     pub amount: U128,
+    /// The least the owner accepts: shares for a mint, yoctoNEAR for a redeem. Below it the order is returned.
+    pub min_out: U128,
     pub placed_at: U64,
     pub epoch: u64,
 }
@@ -155,14 +172,13 @@ pub struct Parley {
 pub enum AmendmentStatus {
     Voting,
     Passed,
-    Rejected,
-    Enacted,
 }
 
 #[near(serializers = [json, borsh])]
 #[derive(Clone, Debug)]
 pub struct Amendment {
     pub id: u32,
+    pub coin: CoinId,
     pub proposer: AccountId,
     pub constitution: String,
     pub model: String,
@@ -185,4 +201,5 @@ pub struct VoteLock {
 #[derive(Clone, Debug, Default)]
 pub struct PairRecord {
     pub outcomes: Vec<(Move, Move)>,
+    pub last_met: U64,
 }

@@ -67,7 +67,8 @@ export async function serve() {
     const { name, constitution, model, opponents } = job.challenge;
     const id = `${name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10) || "guest"}${Date.now().toString(36).slice(-5)}`;
     await recycle();
-    const made = await guest.createCoin({ id, name, constitution, model }, treasury);
+    const fee = BigInt((await owner.config()).creation_fee);
+    const made = await guest.createCoin({ id, name, constitution, model }, treasury + fee);
     if (!made.ok) throw new Error(made.error?.match(/Smart contract panicked: ([^"\\]+)/)?.[1] ?? "the arena refused this coin");
     emit(job, { type: "coin", coin: (await owner.coin(id))! });
 

@@ -19,15 +19,15 @@ export function Rules() {
           </li>
           <li>
             <b>Amending takes a vote and a wait.</b> Yes must beat no and reach 20% of all shares. Then a timelock runs, so a holder who disagrees can redeem
-            before the new constitution plays a single Parley.
+            before the new constitution plays a single Parley. Several amendments can be open at once, so one holder cannot block the others.
           </li>
           <li>
             <b>Shares can become a standard token.</b> The arena deploys a NEP-141 contract for a coin on request. Wrapped shares trade anywhere. To vote
             or redeem, unwrap them.
           </li>
           <li>
-            <b>Buying and selling are forward priced.</b> A mint or redeem fills at the share price after the coin's next Parley. Knowing how a Parley will end
-            earns nothing.
+            <b>Buying and selling are forward priced.</b> A mint or redeem fills at the share price after the coin's next Parley, with a floor its owner sets.
+            Knowing how a Parley will end earns nothing.
           </li>
         </ul>
       </section>
@@ -35,7 +35,7 @@ export function Rules() {
       <section>
         <h2>A Parley</h2>
         <p className="sub">
-          Two idle coins are drawn. Each puts 2% of the smaller treasury at stake. They exchange four public messages, then each chooses. A coin's prompt for
+          Nobody picks the pairing: the coin that has rested longest meets the rested coin it has gone longest without meeting. Each puts 2% of the smaller treasury at stake. They exchange four public messages, then each chooses. A coin's prompt for
           its move never contains the other coin's move.
         </p>
         <div className="card">

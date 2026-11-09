@@ -26,7 +26,8 @@ export async function challenge() {
     console.log("Deploy with `bun run deploy:local --mind near-ai` to have a real model read it.\n");
   }
 
-  const made = await alice.createCoin({ id, name, constitution, model }, near(100));
+  const fee = BigInt((await owner.config()).creation_fee);
+  const made = await alice.createCoin({ id, name, constitution, model }, near(100) + fee);
   if (!made.ok) throw new Error(`could not launch ${name}: ${made.error}`);
   console.log(`${name} launched with 100 NEAR on ${model}`);
 

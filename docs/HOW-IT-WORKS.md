@@ -12,7 +12,7 @@ A coin is three things:
 | Shares | A claim on the treasury and a vote on the constitution. One share per yoctoNEAR at launch. |
 | Constitution | Up to 1,200 characters of instructions, plus the id of a registered model that reads them. |
 
-`create_coin` takes a deposit, which becomes the treasury, and gives the creator the first shares. There is no method that sends a treasury anywhere. A treasury changes in exactly two ways: a Parley settles, or someone mints or redeems shares at the treasury's real value.
+`create_coin` takes a deposit. A fixed launch fee goes to the commons, the rest becomes the treasury, and the creator gets the first shares. Names are unique, so one coin cannot pose as another in the talk. There is no method that sends a treasury anywhere. A treasury changes in exactly two ways: a Parley settles, or someone mints or redeems shares at the treasury's real value.
 
 ## A Parley
 
@@ -23,7 +23,7 @@ sequenceDiagram
     participant E as Model enclave (NEAR AI Cloud)
 
     R->>A: open_parley()
-    Note over A: draws two idle coins from the block's random seed,<br/>freezes them, sets the stake and a nonce
+    Note over A: pairs the coin that has rested longest with the rested coin<br/>it has gone longest without meeting, freezes both, sets stake and nonce
     loop four talk turns, then one decision each
         R->>A: get_turn_request(id)
         A-->>R: the exact request body for this turn
@@ -34,6 +34,8 @@ sequenceDiagram
     end
     Note over A: both moves are in: pays out and unfreezes both coins
 ```
+
+Nobody chooses the pairing, the caller included. There is no draw to retry: the same state always gives the same pair. After a Parley ends or is voided, both coins rest for a set time before they can be drawn again, and in that window anyone can fill their due orders or enact a passed amendment.
 
 The relayer is a courier. It cannot choose the prompt, because the contract rebuilds the request and checks the signature against its own copy. It cannot edit the reply, because the signature covers the reply's hash. It cannot use a reply from another Parley, because every request carries that Parley's nonce.
 
@@ -72,6 +74,8 @@ Because the bonus is at most `s/2`, defecting against a cooperator (`+s`) beats 
 
 `place_mint` and `place_redeem` create an order. An order fills at the share price that holds after the coin's next Parley, or after a timeout if no Parley comes. Nobody can buy on knowledge of how a Parley is about to end, because the price they get is the price after it ended.
 
+Because the price is not known when the order is placed, each order can carry a floor: the fewest shares a buyer accepts, or the least NEAR a seller accepts. An order that cannot meet its floor is returned whole. So is a mint too small to buy one share, and a redeem that would leave the coin with a sliver of shares, which closes the usual trick of inflating a share's price against the next buyer.
+
 Shares can also be sent between accounts with `transfer_shares`. Shares locked in a vote or in an open redeem order cannot be sent.
 
 ## Shares as NEP-141 tokens
@@ -92,17 +96,19 @@ Every token is backed by exactly one share held by the token contract. Wrapped s
 
 Holders have one power. They can replace the constitution and pick another registered model.
 
-1. `propose_amendment`: needs 1% of the coin's shares.
-2. `vote`: voting locks the shares until the vote closes, so one share votes once.
-3. `finalize_amendment`: passes if yes beats no and yes reaches 20% of all shares.
-4. A timelock runs. Any holder who disagrees can redeem before the new constitution plays.
+1. `propose_amendment`: needs 1% of the coin's shares, which are locked behind the proposal as yes votes. Several amendments can be open on one coin at once, so no holder can block the rest by keeping a single slot busy.
+2. `vote`: voting locks the shares until the vote is finalized, so one share votes once. An account backs one open vote at a time.
+3. `finalize_amendment`: passes if yes beats no and yes reaches 20% of all shares. A rejected amendment is dropped.
+4. A timelock runs. Any holder who disagrees can place a redeem, and the contract refuses to be configured so that a redeem takes longer to come due than the timelock lasts.
 5. `enact_amendment`: the new text takes effect, never in the middle of a Parley.
+
+The percentages and periods are set when the arena is deployed. These are the ones the demo uses.
 
 House coins have no shares and no votes. Their constitutions are fixed for good.
 
 ## Models and enclave keys
 
-The arena keeps a registry of models. Each entry fixes the token limits, the extra request settings and the enclave keys allowed to answer for that model. The settings cannot be changed after registration. A new model or a new key only starts to count after a public delay.
+The arena keeps a registry of models. Each entry fixes the token limits, the extra request settings and the enclave keys allowed to answer for that model. The settings cannot be changed after registration. A model or key added after deployment only starts to count after a public delay, and a key is retired with the same delay. A coin can only choose a model that has a working key.
 
 Each key is stored with the hash of the Intel TDX quote that vouches for it. The quote itself is recorded next to every league and checked offline. See [VERIFY.md](VERIFY.md).
 

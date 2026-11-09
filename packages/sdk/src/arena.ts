@@ -72,7 +72,8 @@ export class Arena {
   turnRequest = (id: number) => this.view<string | null>("get_turn_request", { id });
   shares = (coin: string, account: string) => this.view<string>("get_shares", { coin, account });
   order = (coin: string, account: string) => this.view<Order | null>("get_order", { coin, account });
-  amendment = (coin: string) => this.view<Amendment | null>("get_amendment", { coin });
+  amendment = (id: number) => this.view<Amendment | null>("get_amendment", { id });
+  amendments = (coin: string) => this.view<Amendment[]>("get_amendments", { coin });
 
   createCoin = (coin: { id: string; name: string; constitution: string; model: string }, deposit: bigint, house = false) =>
     this.call(house ? "create_house_coin" : "create_coin", coin, { deposit });
@@ -81,15 +82,16 @@ export class Arena {
   submitTurn = (id: number, reply: SignedReply) =>
     this.call("submit_turn", { id, response: reply.response, signature: reply.signature, public_key: reply.publicKey }, { gas: 150n * TGAS });
   voidParley = (id: number) => this.call("void_parley", { id });
-  placeMint = (coin: string, deposit: bigint) => this.call("place_mint", { coin }, { deposit });
-  placeRedeem = (coin: string, shares: bigint) => this.call("place_redeem", { coin, shares: shares.toString() });
+  placeMint = (coin: string, deposit: bigint, minShares?: bigint) => this.call("place_mint", { coin, min_shares: minShares?.toString() ?? null }, { deposit });
+  placeRedeem = (coin: string, shares: bigint, minNear?: bigint) =>
+    this.call("place_redeem", { coin, shares: shares.toString(), min_near: minNear?.toString() ?? null });
   fillOrder = (coin: string, account: string) => this.call("fill_order", { coin, account });
   cancelOrder = (coin: string) => this.call("cancel_order", { coin });
   transferShares = (coin: string, to: string, shares: bigint) => this.call("transfer_shares", { coin, to, shares: shares.toString() });
   proposeAmendment = (coin: string, constitution: string, model: string) => this.call("propose_amendment", { coin, constitution, model });
-  vote = (coin: string, support: boolean, shares: bigint) => this.call("vote", { coin, support, shares: shares.toString() });
-  finalizeAmendment = (coin: string) => this.call("finalize_amendment", { coin });
-  enactAmendment = (coin: string) => this.call("enact_amendment", { coin });
+  vote = (id: number, support: boolean, shares: bigint) => this.call("vote", { id, support, shares: shares.toString() });
+  finalizeAmendment = (id: number) => this.call("finalize_amendment", { id });
+  enactAmendment = (id: number) => this.call("enact_amendment", { id });
   releaseVotes = (coin: string) => this.call("release_votes", { coin });
   createToken = (coin: string) => this.call("create_token", { coin }, { deposit: 3n * 10n ** 24n, gas: 200n * TGAS });
   wrapShares = (coin: string, token: string, shares: bigint) => this.call("transfer_shares_call", { coin, to: token, shares: shares.toString(), msg: "" });

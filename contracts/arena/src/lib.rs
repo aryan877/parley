@@ -1,5 +1,5 @@
 use near_sdk::json_types::U64;
-use near_sdk::store::{IterableMap, LookupMap, Vector};
+use near_sdk::store::{IterableMap, LookupMap, LookupSet, Vector};
 use near_sdk::{AccountId, NearToken, PanicOnDefault, Promise, env, near, require};
 
 mod coins;
@@ -33,6 +33,10 @@ pub struct ModelInput {
 
 const RESERVED_FIELDS: [&str; 6] = ["model", "messages", "temperature", "seed", "max_tokens", "stream"];
 
+/// A coin never has fewer shares than this unless it has none. It keeps the share price
+/// from being pushed so high that a buyer's deposit rounds down to nothing.
+pub(crate) const MIN_SHARES: u128 = 1_000_000_000_000_000_000;
+
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
 pub struct Arena {
@@ -40,9 +44,10 @@ pub struct Arena {
     config: Config,
     models: IterableMap<String, Model>,
     coins: IterableMap<CoinId, Coin>,
+    names: LookupSet<String>,
     shares: LookupMap<(CoinId, AccountId), u128>,
     orders: LookupMap<(CoinId, AccountId), Order>,
-    amendments: LookupMap<CoinId, Amendment>,
+    amendments: LookupMap<u32, Amendment>,
     amendment_count: u32,
     votes: LookupMap<(CoinId, AccountId), VoteLock>,
     parleys: Vector<Parley>,
@@ -61,11 +66,17 @@ impl Arena {
         require!(config.talk_turns >= 1 && config.talk_turns <= 4, "talk_turns must be 1..=4");
         require!(config.max_coins >= 2 && config.max_coins <= 256, "max_coins must be 2..=256");
         require!(config.quorum_bps <= 10_000 && config.proposer_bps <= 10_000, "bps above 10000");
+        require!(config.min_treasury.0 >= MIN_SHARES, "min_treasury is too small");
+        require!(
+            config.order_timeout_ns.0 <= config.timelock_ns.0,
+            "order_timeout_ns must not exceed timelock_ns, or a dissenter could not leave in time"
+        );
         let mut arena = Self {
             owner: Some(env::predecessor_account_id()),
             config,
             models: IterableMap::new(b"m"),
             coins: IterableMap::new(b"c"),
+            names: LookupSet::new(b"n"),
             shares: LookupMap::new(b"h"),
             orders: LookupMap::new(b"o"),
             amendments: LookupMap::new(b"a"),
@@ -94,6 +105,25 @@ impl Arena {
         self.assert_owner();
         let active_from = env::block_timestamp() + self.config.signer_delay_ns.0;
         self.add_signer(&model, signer, active_from);
+    }
+
+    /// Stops an enclave key from counting, after the same delay a new key waits.
+    pub fn retire_signer(&mut self, model: String, public_key: String) {
+        self.assert_owner();
+        let retired_from = env::block_timestamp() + self.config.signer_delay_ns.0;
+        let mut entry = self.model(&model);
+        let public_key = public_key.to_lowercase();
+        let signer = entry
+            .signers
+            .iter_mut()
+            .find(|k| k.public_key == public_key && k.retired_from.is_none())
+            .unwrap_or_else(|| env::panic_str("no such active signer"));
+        signer.retired_from = Some(U64(retired_from));
+        events::emit(
+            "signer_retired",
+            near_sdk::serde_json::json!({ "model": model, "public_key": public_key, "retired_from": U64(retired_from) }),
+        );
+        self.models.insert(model, entry);
     }
 
     /// Gives up the owner role for good: no new enclave keys, no house coins, no scheduled pairings.
@@ -153,6 +183,8 @@ impl Arena {
         require!(signer.evidence.len() <= 256, "evidence too long");
         let public_key = verify::to_hex(&key);
         let mut model = self.model(model_id);
+        let now = env::block_timestamp();
+        model.signers.retain(|k| k.retired_from.is_none_or(|retired| now < retired.0));
         require!(model.signers.iter().all(|k| k.public_key != public_key), "signer already registered");
         require!(model.signers.len() < 8, "too many signers for this model");
         events::emit(
@@ -162,7 +194,7 @@ impl Arena {
                 "evidence": signer.evidence, "active_from": U64(active_from),
             }),
         );
-        model.signers.push(EnclaveSigner { public_key, evidence: signer.evidence, active_from: U64(active_from) });
+        model.signers.push(EnclaveSigner { public_key, evidence: signer.evidence, active_from: U64(active_from), retired_from: None });
         self.models.insert(model_id.to_string(), model);
     }
 
@@ -174,7 +206,7 @@ impl Arena {
         let now = env::block_timestamp();
         self.models
             .get(model)
-            .is_some_and(|m| m.signers.iter().any(|k| k.public_key == public_key && k.active_from.0 <= now))
+            .is_some_and(|m| m.signers.iter().any(|k| k.public_key == public_key && k.is_active(now)))
     }
 
     pub(crate) fn coin(&self, id: &CoinId) -> Coin {

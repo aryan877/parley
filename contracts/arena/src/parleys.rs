@@ -18,21 +18,29 @@ fn signed(delta: i128) -> String {
 
 #[near]
 impl Arena {
-    /// Opens a Parley between two idle coins drawn from the block's random seed. Anyone may call it.
+    /// Opens the next Parley. Anyone may call it, and nobody chooses the pairing: the coin that has
+    /// rested longest goes first and meets the rested coin it has gone longest without meeting.
     pub fn open_parley(&mut self) -> MatchId {
-        let idle: Vec<CoinId> = self
+        let rested_by = env::block_timestamp().saturating_sub(self.config.rest_ns.0);
+        let rested: Vec<&Coin> = self
             .coins
             .values()
-            .filter(|c| c.in_match.is_none() && c.treasury.0 >= self.config.min_treasury.0)
-            .map(|c| c.id.clone())
+            .filter(|c| c.in_match.is_none() && c.treasury.0 >= self.config.min_treasury.0 && c.idle_since.0 <= rested_by)
             .collect();
-        require!(idle.len() >= 2, "fewer than two idle coins");
+        require!(rested.len() >= 2, "fewer than two rested coins");
+        let first = rested.iter().min_by_key(|c| (c.idle_since.0, &c.id)).map(|c| c.id.clone()).unwrap();
+        let second = rested
+            .iter()
+            .filter(|c| c.id != first)
+            .min_by_key(|c| {
+                let last_met = self.pairs.get(&pair_key(&first, &c.id)).map_or(0, |pair| pair.last_met.0);
+                (last_met, c.idle_since.0, &c.id)
+            })
+            .map(|c| c.id.clone())
+            .unwrap();
         let seed = env::random_seed_array();
         let mix = env::sha256_array([&seed[..], &self.parleys.len().to_le_bytes()[..]].concat());
-        let n = idle.len() as u64;
-        let i = u64::from_le_bytes(mix[0..8].try_into().unwrap()) % n;
-        let j = (i + 1 + u64::from_le_bytes(mix[8..16].try_into().unwrap()) % (n - 1)) % n;
-        self.start_parley(idle[i as usize].clone(), idle[j as usize].clone(), &mix)
+        self.start_parley(first, second, &mix)
     }
 
     /// League scheduling: the owner names both coins. Gone once ownership is renounced.
@@ -106,6 +114,7 @@ impl Arena {
         for coin_id in [&parley.a, &parley.b] {
             let mut coin = self.coin(coin_id);
             coin.in_match = None;
+            coin.idle_since = U64(env::block_timestamp());
             self.save_coin(coin);
         }
         events::emit("parley_voided", json!({ "parley": id }));
@@ -115,11 +124,12 @@ impl Arena {
 
 impl Arena {
     pub(crate) fn parley(&self, id: MatchId) -> Parley {
+        require!(id < self.parleys.len() as u64, "no such Parley");
         self.parleys.get(id as u32).cloned().unwrap_or_else(|| env::panic_str("no such Parley"))
     }
 
     pub(crate) fn next_request(&self, id: MatchId) -> Option<String> {
-        let parley = self.parleys.get(id as u32)?;
+        let parley = self.parleys.get(u32::try_from(id).ok()?)?;
         if parley.status != MatchStatus::Open {
             return None;
         }
@@ -191,6 +201,7 @@ impl Arena {
 
         for (coin, mine, theirs) in [(&mut a, a_move, b_move), (&mut b, b_move, a_move)] {
             coin.in_match = None;
+            coin.idle_since = U64(env::block_timestamp());
             coin.matches_played += 1;
             coin.stats.matches += 1;
             match mine {
@@ -211,6 +222,7 @@ impl Arena {
         if record.outcomes.len() > HISTORY_LEN {
             record.outcomes.remove(0);
         }
+        record.last_met = U64(env::block_timestamp());
         self.pairs.insert(key, record);
 
         parley.status = MatchStatus::Settled;

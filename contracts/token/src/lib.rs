@@ -3,6 +3,7 @@ use near_contract_standards::fungible_token::metadata::{FT_METADATA_SPEC, Fungib
 use near_contract_standards::fungible_token::{FungibleToken, FungibleTokenCore, FungibleTokenResolver};
 use near_contract_standards::storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement};
 use near_sdk::json_types::U128;
+use near_sdk::store::LookupSet;
 use near_sdk::{AccountId, Gas, NearToken, PanicOnDefault, Promise, PromiseError, PromiseOrValue, env, ext_contract, near, require};
 
 const GAS_FOR_RELEASE: Gas = Gas::from_tgas(15);
@@ -20,6 +21,8 @@ trait Arena {
 #[derive(PanicOnDefault)]
 pub struct ShareToken {
     token: FungibleToken,
+    /// Accounts this contract registered itself while wrapping. They paid no storage deposit, so closing them refunds none.
+    sponsored: LookupSet<AccountId>,
     arena: AccountId,
     coin: String,
     name: String,
@@ -30,7 +33,7 @@ pub struct ShareToken {
 impl ShareToken {
     #[init]
     pub fn new(arena: AccountId, coin: String, name: String, symbol: String) -> Self {
-        Self { token: FungibleToken::new(b"t"), arena, coin, name, symbol }
+        Self { token: FungibleToken::new(b"t"), sponsored: LookupSet::new(b"s"), arena, coin, name, symbol }
     }
 
     /// The arena calls this after it has moved `shares` of the coin to this contract. The sender gets the same number of tokens.
@@ -40,6 +43,7 @@ impl ShareToken {
         require!(coin == self.coin, "these are another coin's shares");
         if !self.token.accounts.contains_key(&from) {
             self.token.internal_register_account(&from);
+            self.sponsored.insert(from.clone());
         }
         self.token.internal_deposit(&from, shares.0);
         FtMint { owner_id: &from, amount: shares, memo: Some("wrap") }.emit();
@@ -121,7 +125,14 @@ impl StorageManagement for ShareToken {
     #[payable]
     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
         require!(force != Some(true), "unwrap or send your tokens before closing the account");
-        self.token.internal_storage_unregister(force).is_some()
+        let account = env::predecessor_account_id();
+        if !self.sponsored.remove(&account) {
+            return self.token.internal_storage_unregister(force).is_some();
+        }
+        near_sdk::assert_one_yocto();
+        require!(self.token.ft_balance_of(account.clone()).0 == 0, "unwrap or send your tokens before closing the account");
+        self.token.accounts.remove(&account);
+        true
     }
 
     fn storage_balance_bounds(&self) -> StorageBalanceBounds {
@@ -224,6 +235,23 @@ mod tests {
         assert_eq!(t.ft_balance_of(acc("alice.near")).0, 40);
         assert!(t.on_unwrapped(acc("alice.near"), U128(30), Ok(())));
         assert_eq!(t.ft_total_supply().0, 40);
+    }
+
+    #[test]
+    fn closing_a_sponsored_account_refunds_nothing() {
+        let mut t = token();
+        t.on_shares_received("saint".into(), acc("alice.near"), U128(40), String::new());
+        at("alice.near", 0);
+        let _ = t.unwrap(U128(40));
+        at("alice.near", 1);
+        assert!(t.storage_unregister(None));
+        assert!(near_sdk::test_utils::get_created_receipts().is_empty());
+        assert!(t.storage_balance_of(acc("alice.near")).is_none());
+        at("bob.near", t.storage_balance_bounds().min.as_yoctonear());
+        t.storage_deposit(None, None);
+        at("bob.near", 1);
+        assert!(t.storage_unregister(None));
+        assert_eq!(near_sdk::test_utils::get_created_receipts().len(), 1);
     }
 
     #[test]

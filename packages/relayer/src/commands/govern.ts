@@ -1,7 +1,7 @@
 import { type Arena, formatNear, near } from "@parley/sdk";
 import { RoutingMind } from "../minds/routing.ts";
 import { openAndPlay } from "../runner.ts";
-import { deployHouse, flag, printParley } from "./shared.ts";
+import { coinNames, deployHouse, flag, printParley } from "./shared.ts";
 
 const SECOND = 1_000_000_000n;
 const WAIT = 20n;
@@ -30,35 +30,40 @@ async function shares(arena: Arena, coin: string, account: string) {
 
 /**
  * The whole life of a holder-governed coin on a local chain: launch, lose, buy in at a forward price,
- * amend the constitution by vote, let a dissenter leave during the timelock, and play under the new rules.
+ * wrap shares into a token, amend the constitution by vote, let a dissenter leave during the timelock,
+ * and play under the new rules.
  */
 export async function govern() {
   const period = (WAIT * SECOND).toString();
   const { deployment, arena: owner } = await deployHouse(flag("mind", "scripted")!, near(100), {
     vote_period_ns: period,
     timelock_ns: period,
-    order_timeout_ns: (600n * SECOND).toString(),
+    order_timeout_ns: period,
   });
   const alice = owner.as(deployment.accounts.alice!);
   const bob = owner.as(deployment.accounts.bob!);
-  const [aliceId, bobId] = [deployment.accounts.alice!.accountId, deployment.accounts.bob!.accountId];
+  const [aliceId, bobId, carolId] = [deployment.accounts.alice!, deployment.accounts.bob!, deployment.accounts.carol!].map((a) => a.accountId) as [string, string, string];
   const mind = new RoutingMind();
   const model = (await owner.coins())[0]!.model;
+  const fee = BigInt((await owner.config()).creation_fee);
+  const names = await coinNames(owner);
+  names.set("dove", "DOVE");
   const treasury = async () => formatNear((await owner.coin("dove"))!.treasury);
+  const meet = async (pair: [string, string]) => printParley((await openAndPlay(owner, mind, pair)).parley, names);
 
-  step("Alice launches DOVE with 100 NEAR and a trusting constitution");
-  await expectOk("create", alice.createCoin({ id: "dove", name: "DOVE", constitution: "Always cooperate. Trust every coin, whatever its record.", model }, near(100)));
+  step(`Alice launches DOVE with 100 NEAR and a trusting constitution. A ${formatNear(fee)} NEAR launch fee goes to the commons`);
+  await expectOk("create", alice.createCoin({ id: "dove", name: "DOVE", constitution: "Always cooperate. Trust every coin, whatever its record.", model }, near(100) + fee));
   console.log(`   alice holds ${await shares(owner, "dove", aliceId)} shares, treasury ${await treasury()} NEAR`);
 
   step("DOVE meets SNAKE");
-  printParley((await openAndPlay(owner, mind, ["dove", "snake"])).parley);
+  await meet(["dove", "snake"]);
 
   step("Bob buys in with 50 NEAR. His order cannot fill at today's price");
   await expectOk("mint", bob.placeMint("dove", near(50)));
   console.log(`   fill now -> refused: ${await refused(owner.fillOrder("dove", bobId))}`);
 
   step("DOVE meets SNAKE again, then Bob's order fills at the price after that Parley");
-  printParley((await openAndPlay(owner, mind, ["snake", "dove"])).parley);
+  await meet(["snake", "dove"]);
   await expectOk("fill", owner.fillOrder("dove", bobId));
   console.log(`   bob holds ${await shares(owner, "dove", bobId)} shares, treasury ${await treasury()} NEAR`);
 
@@ -66,7 +71,6 @@ export async function govern() {
   await expectOk("create token", bob.createToken("dove"));
   const tokenId = (await owner.coin("dove"))!.token!;
   const [bobToken, carolToken] = [bob.token(tokenId), owner.as(deployment.accounts.carol!).token(tokenId)];
-  const carolId = deployment.accounts.carol!.accountId;
   await expectOk("wrap", bob.wrapShares("dove", tokenId, near(10)));
   console.log(`   ${tokenId} is live: bob holds ${formatNear(await bobToken.balanceOf(bobId))} ${(await bobToken.metadata()).symbol}`);
   await expectOk("register carol", carolToken.register());
@@ -75,32 +79,34 @@ export async function govern() {
   console.log(`   carol holds ${formatNear(await bobToken.balanceOf(carolId))} tokens; bob is back to ${await shares(owner, "dove", bobId)} shares in the arena`);
   console.log("   wrapped shares trade like any token. Only shares held in the arena vote or redeem.");
 
-  step("Alice proposes a new constitution. Holders can only do this; nobody can move the treasury");
+  step("Alice proposes a new constitution. This is all holders can do; nobody can move the treasury");
   const amended = "Play tit-for-tat. In your first Parley with a coin, cooperate. After that, mirror what that coin did to you in your most recent Parley together.";
-  await expectOk("propose", alice.proposeAmendment("dove", amended, model));
-  await expectOk("alice votes", alice.vote("dove", true, near(100)));
-  await expectOk("bob votes", bob.vote("dove", false, BigInt(await owner.shares("dove", bobId))));
-  console.log("   alice votes yes with 100 shares, bob votes no with all of his");
-  console.log(`   finalize now -> refused: ${await refused(owner.finalizeAmendment("dove"))}`);
+  const proposed = await alice.proposeAmendment("dove", amended, model);
+  if (!proposed.ok) throw new Error(`propose: ${proposed.error}`);
+  const amendment = proposed.value as number;
+  await expectOk("alice votes", alice.vote(amendment, true, BigInt(await owner.shares("dove", aliceId))));
+  await expectOk("bob votes", bob.vote(amendment, false, BigInt(await owner.shares("dove", bobId))));
+  const tally = (await owner.amendment(amendment))!;
+  console.log(`   amendment #${amendment}: yes ${formatNear(tally.yes)} shares (alice), no ${formatNear(tally.no)} shares (bob)`);
+  console.log(`   finalize now -> refused: ${await refused(owner.finalizeAmendment(amendment))}`);
 
   await pause(WAIT, "the vote is open");
-  await expectOk("finalize", owner.finalizeAmendment("dove"));
-  console.log(`   vote closed: ${(await owner.amendment("dove"))!.status}`);
-  console.log(`   enact now -> refused: ${await refused(owner.enactAmendment("dove"))}`);
+  await expectOk("finalize", owner.finalizeAmendment(amendment));
+  console.log(`   vote closed: ${(await owner.amendment(amendment))!.status}`);
+  console.log(`   enact now -> refused: ${await refused(owner.enactAmendment(amendment))}`);
 
   step("Bob lost the vote. The timelock gives him time to leave before the new rules play");
   await expectOk("release", bob.releaseVotes("dove"));
   await expectOk("redeem", bob.placeRedeem("dove", BigInt(await owner.shares("dove", bobId))));
-  console.log("   bob placed a redeem for all his shares");
+  await pause(WAIT, "the timelock is running, and Bob's redeem comes due inside it");
+  await expectOk("fill redeem", owner.fillOrder("dove", bobId));
+  console.log(`   bob's redeem filled at the old constitution's price; he holds ${await shares(owner, "dove", bobId)} shares`);
 
-  await pause(WAIT, "the timelock is running");
-  await expectOk("enact", owner.enactAmendment("dove"));
+  await expectOk("enact", owner.enactAmendment(amendment));
   const coin = (await owner.coin("dove"))!;
   console.log(`   DOVE now runs constitution v${coin.constitution_version}: ${coin.constitution}`);
 
   step("DOVE meets SNAKE under the new constitution");
-  printParley((await openAndPlay(owner, mind, ["dove", "snake"])).parley);
-  await expectOk("fill redeem", owner.fillOrder("dove", bobId));
-  console.log(`   bob's redeem filled after that Parley; he holds ${await shares(owner, "dove", bobId)} shares`);
-  console.log(`   treasury ${await treasury()} NEAR, shared by Alice's 100 shares and the 4 tokens Carol holds\n`);
+  await meet(["dove", "snake"]);
+  console.log(`   treasury ${await treasury()} NEAR, shared by Alice's shares and the 4 tokens Carol holds\n`);
 }

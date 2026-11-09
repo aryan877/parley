@@ -18,6 +18,8 @@ export interface Config {
   quorum_bps: number;
   proposer_bps: number;
   signer_delay_ns: string;
+  rest_ns: string;
+  creation_fee: string;
 }
 
 export interface Stats {
@@ -43,6 +45,8 @@ export interface Coin {
   stats: Stats;
   created_at: string;
   token: string | null;
+  idle_since: string;
+  amendments: number[];
 }
 
 export interface Turn {
@@ -87,6 +91,7 @@ export interface EnclaveSigner {
   public_key: string;
   evidence: string;
   active_from: string;
+  retired_from: string | null;
 }
 
 /** A model the arena accepts: how the contract asks it, and the enclave keys that may answer for it. */
@@ -109,12 +114,14 @@ export interface ModelInput {
 export interface Order {
   kind: "Mint" | "Redeem";
   amount: string;
+  min_out: string;
   placed_at: string;
   epoch: number;
 }
 
 export interface Amendment {
   id: number;
+  coin: string;
   proposer: string;
   constitution: string;
   model: string;
@@ -122,7 +129,7 @@ export interface Amendment {
   no: string;
   ends_at: string;
   enact_after: string;
-  status: "Voting" | "Passed" | "Rejected" | "Enacted";
+  status: "Voting" | "Passed";
 }
 
 /** One signed reply from a mind: the exact response body and the enclave's signature over it. */

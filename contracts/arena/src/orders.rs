@@ -4,27 +4,29 @@ use near_sdk::{AccountId, env, near, require};
 
 use crate::math::mul_div;
 use crate::types::*;
-use crate::{Arena, ArenaExt, events};
+use crate::{Arena, ArenaExt, MIN_SHARES, events};
 
 /// Orders are forward priced: a mint or redeem fills at the share price that
 /// holds after the coin's next Parley, never the price at the time it is placed.
 /// Knowing how a Parley will end therefore gives a buyer or seller no edge.
 #[near]
 impl Arena {
+    /// `min_shares` is the fewest shares the buyer accepts. If the price moves past it, the NEAR comes back.
     #[payable]
-    pub fn place_mint(&mut self, coin: CoinId) {
+    pub fn place_mint(&mut self, coin: CoinId, min_shares: Option<U128>) {
         let amount = env::attached_deposit().as_yoctonear();
         require!(amount > 0, "attach NEAR to mint");
-        self.place_order(coin, OrderKind::Mint, amount);
+        self.place_order(coin, OrderKind::Mint, amount, min_shares);
         self.escrow += amount;
     }
 
-    pub fn place_redeem(&mut self, coin: CoinId, shares: U128) {
+    /// `min_near` is the least yoctoNEAR the seller accepts. If the price moves past it, the shares come back.
+    pub fn place_redeem(&mut self, coin: CoinId, shares: U128, min_near: Option<U128>) {
         let account = env::predecessor_account_id();
         let balance = self.shares_of_internal(&coin, &account);
         require!(shares.0 > 0 && shares.0 <= balance, "not enough free shares");
         self.set_shares(&coin, &account, balance - shares.0);
-        self.place_order(coin, OrderKind::Redeem, shares.0);
+        self.place_order(coin, OrderKind::Redeem, shares.0, min_near);
     }
 
     /// Shares move freely between accounts. Shares locked in a vote or an open redeem cannot be sent.
@@ -52,12 +54,14 @@ impl Arena {
         let (treasury, total) = (c.treasury.0, c.total_shares.0);
         match order.kind {
             OrderKind::Mint => {
-                if total > 0 && treasury == 0 {
-                    self.refund_order(&coin, &account, &order);
-                    events::emit("order_refunded", json!({ "coin": coin, "account": account }));
-                    return;
+                let minted = match (total, treasury) {
+                    (0, _) => order.amount.0,
+                    (_, 0) => 0,
+                    _ => mul_div(order.amount.0, total, treasury),
+                };
+                if minted == 0 || minted < order.min_out.0 || total + minted < MIN_SHARES {
+                    return self.return_order(&coin, &account, &order);
                 }
-                let minted = if total == 0 { order.amount.0 } else { mul_div(order.amount.0, total, treasury) };
                 self.escrow -= order.amount.0;
                 c.treasury = U128(treasury + order.amount.0);
                 c.total_shares = U128(total + minted);
@@ -70,8 +74,12 @@ impl Arena {
             }
             OrderKind::Redeem => {
                 let payout = mul_div(order.amount.0, treasury, total);
+                let left = total - order.amount.0;
+                if payout < order.min_out.0 || (left > 0 && left < MIN_SHARES) {
+                    return self.return_order(&coin, &account, &order);
+                }
                 c.treasury = U128(treasury - payout);
-                c.total_shares = U128(total - order.amount.0);
+                c.total_shares = U128(left);
                 Self::pay(account.clone(), payout);
                 events::emit(
                     "order_filled",
@@ -84,7 +92,7 @@ impl Arena {
 }
 
 impl Arena {
-    fn place_order(&mut self, coin: CoinId, kind: OrderKind, amount: u128) {
+    fn place_order(&mut self, coin: CoinId, kind: OrderKind, amount: u128, min_out: Option<U128>) {
         let c = self.coin(&coin);
         require!(!c.house, "house coins have no shares");
         let account = env::predecessor_account_id();
@@ -96,7 +104,13 @@ impl Arena {
         );
         self.orders.insert(
             key,
-            Order { kind, amount: U128(amount), placed_at: U64(env::block_timestamp()), epoch: c.matches_played },
+            Order {
+                kind,
+                amount: U128(amount),
+                min_out: min_out.unwrap_or(U128(0)),
+                placed_at: U64(env::block_timestamp()),
+                epoch: c.matches_played,
+            },
         );
     }
 
@@ -104,6 +118,12 @@ impl Arena {
         self.orders
             .remove(&(coin.clone(), account.clone()))
             .unwrap_or_else(|| env::panic_str("no open order"))
+    }
+
+    /// A due order that cannot fill on its owner's terms goes back untouched.
+    fn return_order(&mut self, coin: &CoinId, account: &AccountId, order: &Order) {
+        self.refund_order(coin, account, order);
+        events::emit("order_returned", json!({ "coin": coin, "account": account }));
     }
 
     fn refund_order(&mut self, coin: &CoinId, account: &AccountId, order: &Order) {

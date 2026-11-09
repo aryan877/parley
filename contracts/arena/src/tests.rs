@@ -88,12 +88,14 @@ fn config() -> Config {
         max_response_bytes: 16_384,
         min_treasury: U128(NEAR),
         match_timeout_ns: U64(30 * MINUTE),
-        order_timeout_ns: U64(120 * MINUTE),
+        order_timeout_ns: U64(60 * MINUTE),
         vote_period_ns: U64(60 * MINUTE),
         timelock_ns: U64(60 * MINUTE),
         quorum_bps: 2_000,
         proposer_bps: 100,
         signer_delay_ns: U64(24 * 60 * MINUTE),
+        rest_ns: U64(0),
+        creation_fee: U128(0),
     }
 }
 
@@ -109,6 +111,13 @@ fn setup() -> (Arena, World) {
     let mut w = World { now: 1_000 * MINUTE, seed: 0, enclave: Enclave::new(7) };
     w.at("owner.near", 40 * NEAR);
     let arena = Arena::new(config(), vec![model(MODEL, w.enclave.public_key())]);
+    (arena, w)
+}
+
+fn two_coins_anywhere() -> (Arena, World) {
+    let (mut arena, mut w) = setup();
+    coin(&mut arena, &mut w, "alice.near", "saint", 100);
+    coin(&mut arena, &mut w, "bob.near", "snake", 50);
     (arena, w)
 }
 
@@ -290,12 +299,22 @@ mod setup_and_signers {
     }
 
     #[test]
-    #[should_panic(expected = "not an active enclave signer for this model")]
+    #[should_panic(expected = "model has no active enclave key yet")]
     fn a_new_model_waits_out_the_delay() {
+        let (mut arena, mut w) = setup();
+        w.at("owner.near", 0);
+        arena.propose_model(model("some/other-model", Enclave::new(9).public_key()));
+        w.at("alice.near", 100 * NEAR);
+        arena.create_coin("saint".into(), "SAINT".into(), "Be kind.".into(), "some/other-model".into());
+    }
+
+    #[test]
+    fn a_new_model_counts_after_the_delay() {
         let (mut arena, mut w) = setup();
         let other = Enclave::new(9);
         w.at("owner.near", 0);
         arena.propose_model(model("some/other-model", other.public_key()));
+        w.wait(24 * 60 * MINUTE);
         w.at("alice.near", 100 * NEAR);
         arena.create_coin("saint".into(), "SAINT".into(), "Be kind.".into(), "some/other-model".into());
         coin(&mut arena, &mut w, "bob.near", "snake", 100);
@@ -306,6 +325,39 @@ mod setup_and_signers {
         let response = completion("hello");
         let signature = other.sign("some/other-model", &request, &response);
         arena.submit_turn(id, response, signature, other.public_key());
+        assert_eq!(arena.get_parley(id).unwrap().turns.len(), 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "not an active enclave signer for this model")]
+    fn a_retired_key_stops_counting_after_the_delay() {
+        let (mut arena, mut w) = two_coins_anywhere();
+        w.at("owner.near", 0);
+        arena.retire_signer(MODEL.into(), w.enclave.public_key());
+        let id = arena.open_parley_between("saint".into(), "snake".into());
+        answer(&mut arena, &mut w, id, "still counts during the delay");
+        assert_eq!(arena.get_parley(id).unwrap().turns.len(), 1);
+        w.wait(24 * 60 * MINUTE);
+        w.at("owner.near", 0);
+        arena.void_parley(id);
+        let id = arena.open_parley_between("saint".into(), "snake".into());
+        answer(&mut arena, &mut w, id, "too late");
+    }
+
+    #[test]
+    #[should_panic(expected = "owner only")]
+    fn only_the_owner_retires_signers() {
+        let (mut arena, mut w) = setup();
+        w.at("mallory.near", 0);
+        arena.retire_signer(MODEL.into(), w.enclave.public_key());
+    }
+
+    #[test]
+    #[should_panic(expected = "order_timeout_ns must not exceed timelock_ns")]
+    fn the_exit_window_must_fit_inside_the_timelock() {
+        let mut w = World { now: 0, seed: 0, enclave: Enclave::new(1) };
+        w.at("owner.near", 0);
+        Arena::new(Config { order_timeout_ns: U64(61 * MINUTE), ..config() }, vec![]);
     }
 
     #[test]
@@ -404,6 +456,38 @@ mod coins {
     }
 
     #[test]
+    #[should_panic(expected = "coin name taken")]
+    fn names_are_unique_whatever_the_case() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 10);
+        w.at("mallory.near", 10 * NEAR);
+        arena.create_coin("saint2".into(), "Saint".into(), "Pretend to be the other coin.".into(), MODEL.into());
+    }
+
+    #[test]
+    fn the_creation_fee_goes_to_the_commons() {
+        let mut w = World { now: 0, seed: 0, enclave: Enclave::new(7) };
+        w.at("owner.near", 40 * NEAR);
+        let mut arena = Arena::new(Config { creation_fee: U128(2 * NEAR), ..config() }, vec![model(MODEL, w.enclave.public_key())]);
+        coin(&mut arena, &mut w, "alice.near", "saint", 12);
+        let c = arena.get_coin("saint".into()).unwrap();
+        assert_eq!(c.treasury.0, 10 * NEAR);
+        assert_eq!(c.total_shares.0, 10 * NEAR);
+        assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 10 * NEAR);
+        assert_eq!(arena.get_overview().commons.0, 42 * NEAR);
+        assert_eq!(total_value(&arena), 52 * NEAR);
+    }
+
+    #[test]
+    #[should_panic(expected = "deposit below min_treasury plus the creation fee")]
+    fn the_fee_comes_on_top_of_the_minimum_treasury() {
+        let mut w = World { now: 0, seed: 0, enclave: Enclave::new(7) };
+        w.at("owner.near", 0);
+        let mut arena = Arena::new(Config { creation_fee: U128(2 * NEAR), ..config() }, vec![model(MODEL, w.enclave.public_key())]);
+        coin(&mut arena, &mut w, "alice.near", "saint", 2);
+    }
+
+    #[test]
     #[should_panic(expected = "owner only")]
     fn house_coins_are_the_owners() {
         let (mut arena, mut w) = setup();
@@ -446,7 +530,7 @@ mod orders {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         w.at("carol.near", 10 * NEAR);
-        arena.place_mint("saint".into());
+        arena.place_mint("saint".into(), None);
         arena.fill_order("saint".into(), acc("carol.near"));
     }
 
@@ -456,7 +540,7 @@ mod orders {
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         coin(&mut arena, &mut w, "bob.near", "snake", 100);
         w.at("carol.near", 10 * NEAR);
-        arena.place_mint("saint".into());
+        arena.place_mint("saint".into(), None);
         assert_eq!(arena.get_overview().escrow.0, 10 * NEAR);
 
         play(&mut arena, &mut w, "saint", "snake", "COOPERATE", "DEFECT");
@@ -477,7 +561,7 @@ mod orders {
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         coin(&mut arena, &mut w, "bob.near", "snake", 100);
         w.at("carol.near", 10 * NEAR);
-        arena.place_mint("snake".into());
+        arena.place_mint("snake".into(), None);
         play(&mut arena, &mut w, "saint", "snake", "COOPERATE", "DEFECT");
         w.at("anyone.near", 0);
         arena.fill_order("snake".into(), acc("carol.near"));
@@ -489,8 +573,8 @@ mod orders {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         w.at("carol.near", 10 * NEAR);
-        arena.place_mint("saint".into());
-        w.wait(120 * MINUTE);
+        arena.place_mint("saint".into(), None);
+        w.wait(60 * MINUTE);
         arena.fill_order("saint".into(), acc("carol.near"));
         assert_eq!(arena.get_shares("saint".into(), acc("carol.near")).0, 10 * NEAR);
     }
@@ -502,8 +586,8 @@ mod orders {
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         coin(&mut arena, &mut w, "bob.near", "snake", 100);
         w.at("carol.near", 10 * NEAR);
-        arena.place_mint("saint".into());
-        w.wait(120 * MINUTE);
+        arena.place_mint("saint".into(), None);
+        w.wait(60 * MINUTE);
         w.at("owner.near", 0);
         arena.open_parley_between("saint".into(), "snake".into());
         arena.fill_order("saint".into(), acc("carol.near"));
@@ -514,7 +598,7 @@ mod orders {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         w.at("carol.near", 10 * NEAR);
-        arena.place_mint("saint".into());
+        arena.place_mint("saint".into(), None);
         w.at("carol.near", 0);
         arena.cancel_order("saint".into());
         assert_eq!(arena.get_overview().escrow.0, 0);
@@ -527,7 +611,7 @@ mod orders {
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         coin(&mut arena, &mut w, "bob.near", "snake", 100);
         w.at("alice.near", 0);
-        arena.place_redeem("saint".into(), U128(25 * NEAR));
+        arena.place_redeem("saint".into(), U128(25 * NEAR), None);
         assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 75 * NEAR);
         play(&mut arena, &mut w, "saint", "snake", "DEFECT", "COOPERATE");
         assert_eq!(treasury(&arena, "saint"), 102 * NEAR);
@@ -542,7 +626,7 @@ mod orders {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         w.at("alice.near", 0);
-        arena.place_redeem("saint".into(), U128(25 * NEAR));
+        arena.place_redeem("saint".into(), U128(25 * NEAR), None);
         arena.cancel_order("saint".into());
         assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 100 * NEAR);
     }
@@ -553,7 +637,7 @@ mod orders {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         w.at("alice.near", 0);
-        arena.place_redeem("saint".into(), U128(101 * NEAR));
+        arena.place_redeem("saint".into(), U128(101 * NEAR), None);
     }
 
     #[test]
@@ -562,8 +646,8 @@ mod orders {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         w.at("carol.near", NEAR);
-        arena.place_mint("saint".into());
-        arena.place_mint("saint".into());
+        arena.place_mint("saint".into(), None);
+        arena.place_mint("saint".into(), None);
     }
 
     #[test]
@@ -576,7 +660,7 @@ mod orders {
         assert_eq!(arena.get_shares("saint".into(), acc("bob.near")).0, 30 * NEAR);
         assert_eq!(arena.get_coin("saint".into()).unwrap().total_shares.0, 100 * NEAR);
         w.at("bob.near", 0);
-        arena.place_redeem("saint".into(), U128(30 * NEAR));
+        arena.place_redeem("saint".into(), U128(30 * NEAR), None);
     }
 
     #[test]
@@ -594,9 +678,100 @@ mod orders {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         w.at("alice.near", 0);
-        arena.propose_amendment("saint".into(), "Always defect.".into(), MODEL.into());
-        arena.vote("saint".into(), true, U128(100 * NEAR));
+        let id = arena.propose_amendment("saint".into(), "Always defect.".into(), MODEL.into());
+        arena.vote(id, true, U128(99 * NEAR));
         arena.transfer_shares("saint".into(), acc("bob.near"), U128(NEAR));
+    }
+
+    #[test]
+    fn a_mint_below_the_buyers_minimum_is_returned() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        coin(&mut arena, &mut w, "bob.near", "snake", 100);
+        w.at("carol.near", 10 * NEAR);
+        arena.place_mint("saint".into(), Some(U128(10 * NEAR)));
+        play(&mut arena, &mut w, "saint", "snake", "DEFECT", "COOPERATE");
+        w.at("anyone.near", 0);
+        arena.fill_order("saint".into(), acc("carol.near"));
+        assert_eq!(arena.get_shares("saint".into(), acc("carol.near")).0, 0);
+        assert!(arena.get_order("saint".into(), acc("carol.near")).is_none());
+        assert_eq!(arena.get_overview().escrow.0, 0);
+        assert_eq!(treasury(&arena, "saint"), 102 * NEAR);
+    }
+
+    #[test]
+    fn a_redeem_below_the_sellers_minimum_is_returned() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        coin(&mut arena, &mut w, "bob.near", "snake", 100);
+        w.at("alice.near", 0);
+        arena.place_redeem("saint".into(), U128(50 * NEAR), Some(U128(50 * NEAR)));
+        play(&mut arena, &mut w, "saint", "snake", "COOPERATE", "DEFECT");
+        w.at("anyone.near", 0);
+        arena.fill_order("saint".into(), acc("alice.near"));
+        assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 100 * NEAR);
+        assert_eq!(treasury(&arena, "saint"), 98 * NEAR);
+    }
+
+    #[test]
+    fn a_mint_that_would_buy_no_share_is_returned() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        coin(&mut arena, &mut w, "bob.near", "snake", 100);
+        play(&mut arena, &mut w, "saint", "snake", "DEFECT", "COOPERATE");
+        w.at("dust.near", 1);
+        arena.place_mint("saint".into(), None);
+        w.wait(60 * MINUTE);
+        arena.fill_order("saint".into(), acc("dust.near"));
+        assert_eq!(treasury(&arena, "saint"), 102 * NEAR);
+        assert_eq!(arena.get_coin("saint".into()).unwrap().total_shares.0, 100 * NEAR);
+        assert_eq!(arena.get_overview().escrow.0, 0);
+    }
+
+    #[test]
+    fn a_redeem_cannot_leave_a_sliver_of_shares() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "mallory.near", "evil", 100);
+        w.at("mallory.near", 0);
+        arena.place_redeem("evil".into(), U128(100 * NEAR - 1), None);
+        w.wait(60 * MINUTE);
+        arena.fill_order("evil".into(), acc("mallory.near"));
+        assert_eq!(arena.get_coin("evil".into()).unwrap().total_shares.0, 100 * NEAR);
+        assert_eq!(arena.get_shares("evil".into(), acc("mallory.near")).0, 100 * NEAR);
+
+        w.at("mallory.near", 0);
+        arena.place_redeem("evil".into(), U128(100 * NEAR), None);
+        w.wait(60 * MINUTE);
+        arena.fill_order("evil".into(), acc("mallory.near"));
+        let c = arena.get_coin("evil".into()).unwrap();
+        assert_eq!((c.total_shares.0, c.treasury.0), (0, 0));
+    }
+
+    #[test]
+    fn the_share_price_cannot_be_inflated_against_a_buyer() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "mallory.near", "evil", 100);
+        coin(&mut arena, &mut w, "bob.near", "snake", 100);
+        play(&mut arena, &mut w, "evil", "snake", "DEFECT", "COOPERATE");
+        w.at("mallory.near", 0);
+        arena.place_redeem("evil".into(), U128(100 * NEAR - 1), None);
+        for i in 0..8u32 {
+            w.at(&format!("dust{i}.near"), 1 << i);
+            arena.place_mint("evil".into(), None);
+        }
+        w.at("victim.near", 10 * NEAR);
+        arena.place_mint("evil".into(), None);
+        w.wait(60 * MINUTE);
+        arena.fill_order("evil".into(), acc("mallory.near"));
+        for i in 0..8u32 {
+            arena.fill_order("evil".into(), acc(&format!("dust{i}.near")));
+        }
+        arena.fill_order("evil".into(), acc("victim.near"));
+        let c = arena.get_coin("evil".into()).unwrap();
+        let held = arena.get_shares("evil".into(), acc("victim.near")).0;
+        let worth = crate::math::mul_div(held, c.treasury.0, c.total_shares.0);
+        assert!(worth > 10 * NEAR - 1_000, "the buyer keeps what they paid, got {worth}");
+        assert_eq!(arena.get_overview().escrow.0, 0);
     }
 
     #[test]
@@ -606,7 +781,7 @@ mod orders {
         w.at("owner.near", 10 * NEAR);
         arena.create_house_coin("titfortat".into(), "TIT FOR TAT".into(), "Mirror.".into(), MODEL.into());
         w.at("carol.near", NEAR);
-        arena.place_mint("titfortat".into());
+        arena.place_mint("titfortat".into(), None);
     }
 }
 
@@ -618,21 +793,45 @@ mod governance {
         arena.propose_amendment("saint".into(), text.into(), MODEL.into())
     }
 
+    fn with_two_holders() -> (Arena, World) {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        w.at("carol.near", 100 * NEAR);
+        arena.place_mint("saint".into(), None);
+        w.wait(60 * MINUTE);
+        arena.fill_order("saint".into(), acc("carol.near"));
+        (arena, w)
+    }
+
     #[test]
     fn a_passed_amendment_replaces_the_constitution_after_the_timelock() {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
-        propose(&mut arena, &mut w, "Never forgive.");
-        arena.vote("saint".into(), true, U128(30 * NEAR));
+        let id = propose(&mut arena, &mut w, "Never forgive.");
+        arena.vote(id, true, U128(30 * NEAR));
         w.wait(60 * MINUTE);
-        arena.finalize_amendment("saint".into());
-        assert_eq!(arena.get_amendment("saint".into()).unwrap().status, AmendmentStatus::Passed);
+        arena.finalize_amendment(id);
+        assert_eq!(arena.get_amendment(id).unwrap().status, AmendmentStatus::Passed);
         w.wait(60 * MINUTE);
-        arena.enact_amendment("saint".into());
+        arena.enact_amendment(id);
         let c = arena.get_coin("saint".into()).unwrap();
         assert_eq!(c.constitution, "Never forgive.");
         assert_eq!(c.constitution_version, 2);
         assert_eq!(c.treasury.0, 100 * NEAR);
+        assert!(c.amendments.is_empty());
+        assert!(arena.get_amendment(id).is_none());
+    }
+
+    #[test]
+    fn proposing_locks_the_proposers_stake_as_yes_votes() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        let id = propose(&mut arena, &mut w, "Never forgive.");
+        let a = arena.get_amendment(id).unwrap();
+        assert_eq!((a.yes.0, a.no.0), (NEAR, 0));
+        assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 99 * NEAR);
+        assert_eq!(arena.get_vote("saint".into(), acc("alice.near")).unwrap().shares.0, NEAR);
+        assert_eq!(arena.get_amendments("saint".into()).len(), 1);
     }
 
     #[test]
@@ -640,39 +839,38 @@ mod governance {
     fn the_timelock_cannot_be_skipped() {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
-        propose(&mut arena, &mut w, "Never forgive.");
-        arena.vote("saint".into(), true, U128(30 * NEAR));
+        let id = propose(&mut arena, &mut w, "Never forgive.");
+        arena.vote(id, true, U128(30 * NEAR));
         w.wait(60 * MINUTE);
-        arena.finalize_amendment("saint".into());
-        arena.enact_amendment("saint".into());
+        arena.finalize_amendment(id);
+        arena.enact_amendment(id);
     }
 
     #[test]
-    fn a_vote_below_quorum_is_rejected() {
+    fn a_vote_below_quorum_is_rejected_and_forgotten() {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
-        propose(&mut arena, &mut w, "Never forgive.");
-        arena.vote("saint".into(), true, U128(19 * NEAR));
+        let id = propose(&mut arena, &mut w, "Never forgive.");
+        arena.vote(id, true, U128(18 * NEAR));
         w.wait(60 * MINUTE);
-        arena.finalize_amendment("saint".into());
-        assert_eq!(arena.get_amendment("saint".into()).unwrap().status, AmendmentStatus::Rejected);
+        arena.finalize_amendment(id);
+        assert!(arena.get_amendment(id).is_none());
+        assert!(arena.get_coin("saint".into()).unwrap().amendments.is_empty());
+        assert_eq!(arena.get_coin("saint".into()).unwrap().constitution_version, 1);
     }
 
     #[test]
-    fn more_no_than_yes_is_rejected() {
-        let (mut arena, mut w) = setup();
-        coin(&mut arena, &mut w, "alice.near", "saint", 100);
-        w.at("carol.near", 100 * NEAR);
-        arena.place_mint("saint".into());
-        w.wait(120 * MINUTE);
-        arena.fill_order("saint".into(), acc("carol.near"));
-        propose(&mut arena, &mut w, "Never forgive.");
-        arena.vote("saint".into(), true, U128(40 * NEAR));
+    #[should_panic(expected = "no such amendment")]
+    fn a_rejected_amendment_cannot_be_enacted() {
+        let (mut arena, mut w) = with_two_holders();
+        let id = propose(&mut arena, &mut w, "Never forgive.");
+        arena.vote(id, true, U128(39 * NEAR));
         w.at("carol.near", 0);
-        arena.vote("saint".into(), false, U128(60 * NEAR));
+        arena.vote(id, false, U128(60 * NEAR));
         w.wait(60 * MINUTE);
-        arena.finalize_amendment("saint".into());
-        assert_eq!(arena.get_amendment("saint".into()).unwrap().status, AmendmentStatus::Rejected);
+        arena.finalize_amendment(id);
+        w.wait(60 * MINUTE);
+        arena.enact_amendment(id);
     }
 
     #[test]
@@ -694,8 +892,30 @@ mod governance {
     }
 
     #[test]
-    #[should_panic(expected = "an amendment is already in progress")]
-    fn one_amendment_at_a_time() {
+    fn a_holder_cannot_keep_others_from_proposing() {
+        let (mut arena, mut w) = with_two_holders();
+        for round in 0..3 {
+            let junk = propose(&mut arena, &mut w, &format!("Junk {round}."));
+            w.at("carol.near", 0);
+            let real = arena.propose_amendment("saint".into(), format!("Mirror, take {round}."), MODEL.into());
+            arena.vote(real, true, U128(60 * NEAR));
+            w.wait(60 * MINUTE);
+            arena.finalize_amendment(junk);
+            arena.finalize_amendment(real);
+            assert!(arena.get_amendment(junk).is_none());
+            assert_eq!(arena.get_amendment(real).unwrap().status, AmendmentStatus::Passed);
+            w.wait(60 * MINUTE);
+            arena.enact_amendment(real);
+            w.at("carol.near", 0);
+            arena.release_votes("saint".into());
+        }
+        assert_eq!(arena.get_coin("saint".into()).unwrap().constitution, "Mirror, take 2.");
+        assert_eq!(arena.get_coin("saint".into()).unwrap().constitution_version, 4);
+    }
+
+    #[test]
+    #[should_panic(expected = "your shares are locked in another open vote")]
+    fn one_account_backs_one_open_vote_at_a_time() {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         propose(&mut arena, &mut w, "Never forgive.");
@@ -703,13 +923,27 @@ mod governance {
     }
 
     #[test]
+    #[should_panic(expected = "too many amendments are open on this coin")]
+    fn open_amendments_are_bounded() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        for i in 0..17 {
+            let holder = format!("holder{i}.near");
+            w.at("alice.near", 0);
+            arena.transfer_shares("saint".into(), acc(&holder), U128(2 * NEAR));
+            w.at(&holder, 0);
+            arena.propose_amendment("saint".into(), format!("Rule {i}."), MODEL.into());
+        }
+    }
+
+    #[test]
     #[should_panic(expected = "not enough free shares")]
     fn locked_votes_cannot_be_redeemed() {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
-        propose(&mut arena, &mut w, "Never forgive.");
-        arena.vote("saint".into(), true, U128(80 * NEAR));
-        arena.place_redeem("saint".into(), U128(30 * NEAR));
+        let id = propose(&mut arena, &mut w, "Never forgive.");
+        arena.vote(id, true, U128(80 * NEAR));
+        arena.place_redeem("saint".into(), U128(30 * NEAR), None);
     }
 
     #[test]
@@ -717,9 +951,8 @@ mod governance {
     fn a_voter_cannot_back_both_sides() {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
-        propose(&mut arena, &mut w, "Never forgive.");
-        arena.vote("saint".into(), true, U128(10 * NEAR));
-        arena.vote("saint".into(), false, U128(10 * NEAR));
+        let id = propose(&mut arena, &mut w, "Never forgive.");
+        arena.vote(id, false, U128(10 * NEAR));
     }
 
     #[test]
@@ -727,21 +960,21 @@ mod governance {
     fn late_votes_do_not_count() {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
-        propose(&mut arena, &mut w, "Never forgive.");
+        let id = propose(&mut arena, &mut w, "Never forgive.");
         w.wait(60 * MINUTE);
         w.at("alice.near", 0);
-        arena.vote("saint".into(), true, U128(10 * NEAR));
+        arena.vote(id, true, U128(10 * NEAR));
     }
 
     #[test]
     fn votes_unlock_once_the_vote_is_closed() {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
-        propose(&mut arena, &mut w, "Never forgive.");
-        arena.vote("saint".into(), true, U128(30 * NEAR));
+        let id = propose(&mut arena, &mut w, "Never forgive.");
+        arena.vote(id, true, U128(29 * NEAR));
         assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 70 * NEAR);
         w.wait(60 * MINUTE);
-        arena.finalize_amendment("saint".into());
+        arena.finalize_amendment(id);
         w.at("alice.near", 0);
         arena.release_votes("saint".into());
         assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 100 * NEAR);
@@ -754,8 +987,20 @@ mod governance {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         propose(&mut arena, &mut w, "Never forgive.");
-        arena.vote("saint".into(), true, U128(30 * NEAR));
         arena.release_votes("saint".into());
+    }
+
+    #[test]
+    fn a_finished_vote_frees_the_shares_for_the_next_one() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        let first = propose(&mut arena, &mut w, "Never forgive.");
+        w.wait(60 * MINUTE);
+        arena.finalize_amendment(first);
+        let second = propose(&mut arena, &mut w, "Always forgive.");
+        arena.vote(second, true, U128(50 * NEAR));
+        assert_eq!(arena.get_amendment(second).unwrap().yes.0, 51 * NEAR);
+        assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 49 * NEAR);
     }
 
     #[test]
@@ -764,14 +1009,14 @@ mod governance {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         coin(&mut arena, &mut w, "bob.near", "snake", 100);
-        propose(&mut arena, &mut w, "Never forgive.");
-        arena.vote("saint".into(), true, U128(30 * NEAR));
+        let id = propose(&mut arena, &mut w, "Never forgive.");
+        arena.vote(id, true, U128(30 * NEAR));
         w.wait(60 * MINUTE);
-        arena.finalize_amendment("saint".into());
+        arena.finalize_amendment(id);
         w.wait(60 * MINUTE);
         w.at("owner.near", 0);
         arena.open_parley_between("saint".into(), "snake".into());
-        arena.enact_amendment("saint".into());
+        arena.enact_amendment(id);
     }
 
     #[test]
@@ -780,21 +1025,23 @@ mod governance {
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         coin(&mut arena, &mut w, "bob.near", "snake", 100);
         w.at("carol.near", 50 * NEAR);
-        arena.place_mint("saint".into());
-        w.wait(120 * MINUTE);
-        arena.fill_order("saint".into(), acc("carol.near"));
-        propose(&mut arena, &mut w, "Always cooperate with snake.");
-        arena.vote("saint".into(), true, U128(100 * NEAR));
+        arena.place_mint("saint".into(), None);
         w.wait(60 * MINUTE);
-        arena.finalize_amendment("saint".into());
+        arena.fill_order("saint".into(), acc("carol.near"));
+        let id = propose(&mut arena, &mut w, "Always cooperate with snake.");
+        arena.vote(id, true, U128(98 * NEAR));
+        w.wait(60 * MINUTE);
+        arena.finalize_amendment(id);
 
         w.at("carol.near", 0);
-        arena.place_redeem("saint".into(), U128(50 * NEAR));
-        play(&mut arena, &mut w, "saint", "snake", "COOPERATE", "COOPERATE");
+        arena.place_redeem("saint".into(), U128(50 * NEAR), None);
+        w.wait(60 * MINUTE);
         w.at("anyone.near", 0);
         arena.fill_order("saint".into(), acc("carol.near"));
         assert_eq!(arena.get_shares("saint".into(), acc("carol.near")).0, 0);
         assert_eq!(arena.get_coin("saint".into()).unwrap().constitution_version, 1);
+        arena.enact_amendment(id);
+        assert_eq!(arena.get_coin("saint".into()).unwrap().constitution_version, 2);
     }
 }
 
@@ -824,23 +1071,113 @@ mod parleys {
     }
 
     #[test]
-    fn random_pairing_never_pairs_a_coin_with_itself() {
+    fn pairing_takes_turns_and_spreads_opponents() {
         let (mut arena, mut w) = setup();
         for id in ["aa", "bb", "cc", "dd", "ee"] {
             coin(&mut arena, &mut w, "alice.near", id, 10);
+            w.wait(MINUTE);
         }
-        for _ in 0..40 {
+        let mut met = std::collections::BTreeSet::new();
+        for _ in 0..20 {
             w.at("anyone.near", 0);
             let id = arena.open_parley();
             let p = arena.get_parley(id).unwrap();
             assert_ne!(p.a, p.b);
-            w.wait(31 * MINUTE);
-            arena.void_parley(id);
+            met.insert(if p.a < p.b { (p.a.clone(), p.b.clone()) } else { (p.b.clone(), p.a.clone()) });
+            for line in ["a", "b", "c", "d", "COOPERATE", "COOPERATE"] {
+                answer(&mut arena, &mut w, id, line);
+            }
+            w.wait(MINUTE);
+        }
+        assert_eq!(met.len(), 10, "every pair has met");
+        for c in arena.get_coins(None, None) {
+            assert!((7..=9).contains(&c.matches_played), "{} played {} of 20", c.id, c.matches_played);
         }
     }
 
     #[test]
-    #[should_panic(expected = "fewer than two idle coins")]
+    fn the_coin_that_rested_longest_goes_first() {
+        let (mut arena, mut w) = setup();
+        for id in ["cc", "aa", "bb"] {
+            coin(&mut arena, &mut w, "alice.near", id, 10);
+            w.wait(MINUTE);
+        }
+        w.at("anyone.near", 0);
+        let id = arena.open_parley();
+        let p = arena.get_parley(id).unwrap();
+        assert_eq!((p.a.as_str(), p.b.as_str()), ("cc", "aa"));
+    }
+
+    #[test]
+    fn voided_coins_go_to_the_back_of_the_line() {
+        let (mut arena, mut w) = setup();
+        for id in ["aa", "bb", "cc", "dd"] {
+            coin(&mut arena, &mut w, "alice.near", id, 10);
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        for _ in 0..12 {
+            w.at("anyone.near", 0);
+            let id = arena.open_parley();
+            let p = arena.get_parley(id).unwrap();
+            seen.insert((p.a.clone(), p.b.clone()));
+            w.wait(31 * MINUTE);
+            arena.void_parley(id);
+            for c in ["aa", "bb", "cc", "dd"] {
+                assert_eq!(arena.get_coin(c.into()).unwrap().in_match, None);
+            }
+        }
+        assert!(seen.len() > 1, "voided coins go to the back of the line");
+    }
+
+    #[test]
+    #[should_panic(expected = "fewer than two rested coins")]
+    fn a_coin_rests_before_it_can_be_drawn_again() {
+        let mut w = World { now: 1_000 * MINUTE, seed: 0, enclave: Enclave::new(7) };
+        w.at("owner.near", 40 * NEAR);
+        let mut arena = Arena::new(Config { rest_ns: U64(5 * MINUTE), ..config() }, vec![model(MODEL, w.enclave.public_key())]);
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        coin(&mut arena, &mut w, "bob.near", "snake", 50);
+        w.wait(5 * MINUTE);
+        let id = arena.open_parley();
+        w.wait(31 * MINUTE);
+        arena.void_parley(id);
+        w.wait(4 * MINUTE);
+        arena.open_parley();
+    }
+
+    #[test]
+    fn resting_coins_can_fill_orders_and_then_play_again() {
+        let mut w = World { now: 1_000 * MINUTE, seed: 0, enclave: Enclave::new(7) };
+        w.at("owner.near", 40 * NEAR);
+        let mut arena = Arena::new(Config { rest_ns: U64(5 * MINUTE), ..config() }, vec![model(MODEL, w.enclave.public_key())]);
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        coin(&mut arena, &mut w, "bob.near", "snake", 50);
+        w.at("carol.near", 10 * NEAR);
+        arena.place_mint("saint".into(), None);
+        w.wait(5 * MINUTE);
+        let id = arena.open_parley();
+        for line in ["a", "b", "c", "d", "COOPERATE", "COOPERATE"] {
+            answer(&mut arena, &mut w, id, line);
+        }
+        w.at("anyone.near", 0);
+        arena.fill_order("saint".into(), acc("carol.near"));
+        assert!(arena.get_shares("saint".into(), acc("carol.near")).0 > 0);
+        w.wait(5 * MINUTE);
+        assert_eq!(arena.open_parley(), id + 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "no such Parley")]
+    fn a_parley_id_cannot_wrap_around() {
+        let (mut arena, mut w) = two_coins();
+        w.at("owner.near", 0);
+        arena.open_parley_between("saint".into(), "snake".into());
+        w.wait(31 * MINUTE);
+        arena.void_parley(4_294_967_296);
+    }
+
+    #[test]
+    #[should_panic(expected = "fewer than two rested coins")]
     fn a_busy_coin_is_not_drawn_again() {
         let (mut arena, mut w) = two_coins();
         w.at("anyone.near", 0);
@@ -1247,12 +1584,12 @@ mod parleys {
     fn the_request_follows_an_enacted_amendment() {
         let (mut arena, mut w) = two_coins();
         w.at("alice.near", 0);
-        arena.propose_amendment("saint".into(), "Never forgive a betrayal.".into(), MODEL.into());
-        arena.vote("saint".into(), true, U128(50 * NEAR));
+        let amendment = arena.propose_amendment("saint".into(), "Never forgive a betrayal.".into(), MODEL.into());
+        arena.vote(amendment, true, U128(50 * NEAR));
         w.wait(60 * MINUTE);
-        arena.finalize_amendment("saint".into());
+        arena.finalize_amendment(amendment);
         w.wait(60 * MINUTE);
-        arena.enact_amendment("saint".into());
+        arena.enact_amendment(amendment);
         w.at("owner.near", 0);
         let id = arena.open_parley_between("saint".into(), "snake".into());
         let request = arena.get_turn_request(id).unwrap();
@@ -1275,8 +1612,8 @@ mod parleys {
         let (mut arena, mut w) = two_coins();
         coin(&mut arena, &mut w, "carol.near", "third", 2);
         w.at("carol.near", 0);
-        arena.place_redeem("third".into(), U128(3 * NEAR / 2));
-        w.wait(120 * MINUTE);
+        arena.place_redeem("third".into(), U128(3 * NEAR / 2), None);
+        w.wait(60 * MINUTE);
         arena.fill_order("third".into(), acc("carol.near"));
         for _ in 0..12 {
             w.at("anyone.near", 0);
