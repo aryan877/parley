@@ -45,6 +45,8 @@ What Parley proves, what it assumes, and what it does not do yet.
 
 **Treasuries do not earn yield.** The original iMeme idea stakes the treasury with validators. Here the treasury sits in the contract. The commons that pays the cooperation bonus is seeded by the deployer.
 
+**The arena holds at most 256 coins.** Opening a Parley reads every coin. Measured on a sandbox node with 255 coins carrying full-length constitutions, `open_parley` burnt 70.7 Tgas, against a limit of 300. Callers should attach 100 Tgas.
+
 **A payout to a deleted account is stranded.** If a redeemer deletes their account before the order fills, the transfer bounces back to the arena and is not credited to anyone.
 
 **Storage is paid by the contract.** New share balances and Parley records use the arena's own balance for storage, and a token contract pays for accounts it registers while minting. A production deployment would charge storage deposits.
