@@ -21,13 +21,17 @@ type Event =
 
 interface Job {
   challenge: Challenge;
+  visitor: string;
   events: Event[];
   listeners: Set<(event: Event) => void>;
   finished: boolean;
+  startedAt: number;
 }
 
 const MAX_QUEUE = 6;
 const MAX_OPPONENTS = 3;
+const MAX_PER_HOUR = 8;
+const HOUR = 60 * 60 * 1000;
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
 
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: CORS });
@@ -96,7 +100,12 @@ export async function serve() {
     working = false;
   }
 
-  async function accept(req: Request): Promise<Response> {
+  async function accept(req: Request, visitor: string): Promise<Response> {
+    for (const [id, job] of jobs) if (job.finished && Date.now() - job.startedAt > HOUR) jobs.delete(id);
+    const mine = [...jobs.values()].filter((job) => job.visitor === visitor);
+    if (mine.some((job) => !job.finished)) return json({ error: "Your last coin is still in the arena. Wait for it to finish." }, 429);
+    const local = /^(::1|127\.|::ffff:127\.)/.test(visitor);
+    if (!local && mine.length >= MAX_PER_HOUR) return json({ error: "That is enough coins for one hour. Come back later." }, 429);
     const body = (await req.json().catch(() => null)) as Partial<Challenge> | null;
     const config = await owner.config();
     const models = await owner.models();
@@ -113,7 +122,7 @@ export async function serve() {
     if (queue.length >= MAX_QUEUE) return json({ error: "The arena is busy. Try again in a minute." }, 429);
 
     const id = crypto.randomUUID();
-    const job: Job = { challenge: { name, constitution, model, opponents }, events: [], listeners: new Set(), finished: false };
+    const job: Job = { challenge: { name, constitution, model, opponents }, visitor, events: [], listeners: new Set(), finished: false, startedAt: Date.now() };
     jobs.set(id, job);
     queue.push(id);
     emit(job, { type: "queued", ahead: queue.length - 1 + (working ? 1 : 0) });
@@ -124,14 +133,17 @@ export async function serve() {
   function stream(job: Job): Response {
     const encoder = new TextEncoder();
     let listener: (event: Event) => void;
+    let heartbeat: ReturnType<typeof setInterval>;
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         const send = (event: Event) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
         for (const event of job.events) send(event);
         if (job.finished) return controller.close();
+        heartbeat = setInterval(() => controller.enqueue(encoder.encode(": waiting\n\n")), 15_000);
         listener = (event) => {
           if (event.type === "queued" && event.ahead < 0) {
             job.listeners.delete(listener);
+            clearInterval(heartbeat);
             return controller.close();
           }
           send(event);
@@ -140,6 +152,7 @@ export async function serve() {
       },
       cancel() {
         job.listeners.delete(listener);
+        clearInterval(heartbeat);
       },
     });
     return new Response(body, { headers: { ...CORS, "content-type": "text/event-stream", "cache-control": "no-cache" } });
@@ -149,14 +162,15 @@ export async function serve() {
   Bun.serve({
     port,
     idleTimeout: 255,
-    async fetch(req) {
+    async fetch(req, server) {
       const url = new URL(req.url);
+      const visitor = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? server.requestIP(req)?.address ?? "unknown";
       if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
       if (url.pathname === "/api/arena") {
         const [overview, config, models, coins] = await Promise.all([owner.overview(), owner.config(), owner.models(), owner.coins()]);
         return json({ network: deployment.network, contractId: deployment.contractId, treasury: treasury.toString(), overview, config, models, house: coins.filter((c) => c.house) });
       }
-      if (url.pathname === "/api/play" && req.method === "POST") return accept(req);
+      if (url.pathname === "/api/play" && req.method === "POST") return accept(req, visitor);
       const job = jobs.get(url.pathname.match(/^\/api\/play\/([\w-]+)\/events$/)?.[1] ?? "");
       if (job) return stream(job);
       return json({ error: "not found" }, 404);
