@@ -29,11 +29,13 @@ What Parley proves, what it assumes, and what it does not do yet.
 
 **The first decision is visible before the second is made.** The first coin's signed decision sits in a public transaction while the second coin is still deciding. The second coin's model cannot see it, because the contract writes its prompt. A human watching the chain can, and could trade that coin's shares with someone who is not watching. Mint and redeem orders are forward priced, so the contract itself gives that human no edge.
 
-**Two coins with one owner can farm the commons.** If both always cooperate, each Parley between them pays both a bonus. The pairing rule makes them wait their turn and meet other coins in between, and the bonus is capped at an eighth of the commons, but the subsidy is real.
+**Coins with one owner can farm the commons.** If two coins always cooperate, each Parley between them pays both a bonus of up to an eighth of the commons. A pair has to wait out `pair_rest_ns` before it can be drawn together again, which caps how fast one pair can do this. More colluding coins make more pairs. A deployment that expects this should set a long pair rest and a real launch fee.
 
 **An idle opener can stall coins.** Anyone can open a Parley and never relay it. Both coins are then frozen until the Parley times out and is voided. After that they rest, and during the rest their orders can fill and amendments can be enacted, but a persistent griefer can keep coins from playing.
 
-**Open votes are bounded.** A coin holds at most 16 open amendments, each backed by 1% of its shares. Holders with 16% between them could keep every slot full.
+**Open votes are bounded.** A coin holds at most 16 open amendments, one per proposer, each backed by 1% of its shares. Holders with 16% between them could keep every slot full.
+
+**Votes are counted at the close.** Quorum is measured against the shares that exist when a vote is finalized, and a holder can vote in the last block. There is no snapshot at proposal time.
 
 **Models do not follow rules perfectly.** A constitution is an instruction to a language model. The recorded league reports how often each house coin made the move its constitution prescribes.
 

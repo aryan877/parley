@@ -10,6 +10,7 @@ use crate::{Arena, ModelInput, SignerInput};
 const NEAR: u128 = 10u128.pow(24);
 const MODEL: &str = "z-ai/glm-5.3-flash";
 const MINUTE: u64 = 60 * 1_000_000_000;
+const TIMELOCK: u64 = 180 * MINUTE;
 
 struct Enclave(SigningKey);
 
@@ -51,6 +52,7 @@ impl World {
                 .predecessor_account_id(acc(who))
                 .signer_account_id(acc(who))
                 .attached_deposit(NearToken::from_yoctonear(deposit))
+                .account_balance(NearToken::from_near(1_000_000))
                 .block_timestamp(self.now)
                 .random_seed([self.seed; 32])
                 .build()
@@ -90,11 +92,12 @@ fn config() -> Config {
         match_timeout_ns: U64(30 * MINUTE),
         order_timeout_ns: U64(60 * MINUTE),
         vote_period_ns: U64(60 * MINUTE),
-        timelock_ns: U64(60 * MINUTE),
+        timelock_ns: U64(TIMELOCK),
         quorum_bps: 2_000,
         proposer_bps: 100,
         signer_delay_ns: U64(24 * 60 * MINUTE),
         rest_ns: U64(0),
+        pair_rest_ns: U64(0),
         creation_fee: U128(0),
     }
 }
@@ -353,11 +356,11 @@ mod setup_and_signers {
     }
 
     #[test]
-    #[should_panic(expected = "order_timeout_ns must not exceed timelock_ns")]
+    #[should_panic(expected = "timelock_ns must cover vote_period_ns plus twice order_timeout_ns")]
     fn the_exit_window_must_fit_inside_the_timelock() {
         let mut w = World { now: 0, seed: 0, enclave: Enclave::new(1) };
         w.at("owner.near", 0);
-        Arena::new(Config { order_timeout_ns: U64(61 * MINUTE), ..config() }, vec![]);
+        Arena::new(Config { timelock_ns: U64(179 * MINUTE), ..config() }, vec![]);
     }
 
     #[test]
@@ -736,15 +739,30 @@ mod orders {
         arena.place_redeem("evil".into(), U128(100 * NEAR - 1), None);
         w.wait(60 * MINUTE);
         arena.fill_order("evil".into(), acc("mallory.near"));
-        assert_eq!(arena.get_coin("evil".into()).unwrap().total_shares.0, 100 * NEAR);
-        assert_eq!(arena.get_shares("evil".into(), acc("mallory.near")).0, 100 * NEAR);
+        assert_eq!(arena.get_coin("evil".into()).unwrap().total_shares.0, crate::MIN_SHARES);
+        assert_eq!(arena.get_shares("evil".into(), acc("mallory.near")).0, crate::MIN_SHARES);
 
         w.at("mallory.near", 0);
-        arena.place_redeem("evil".into(), U128(100 * NEAR), None);
+        arena.place_redeem("evil".into(), U128(crate::MIN_SHARES), None);
         w.wait(60 * MINUTE);
         arena.fill_order("evil".into(), acc("mallory.near"));
         let c = arena.get_coin("evil".into()).unwrap();
         assert_eq!((c.total_shares.0, c.treasury.0), (0, 0));
+    }
+
+    #[test]
+    fn a_dust_holder_cannot_bounce_a_full_redeem() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        w.at("alice.near", 0);
+        arena.transfer_shares("saint".into(), acc("mallory.near"), U128(1));
+        arena.place_redeem("saint".into(), U128(100 * NEAR - 1), None);
+        w.wait(60 * MINUTE);
+        arena.fill_order("saint".into(), acc("alice.near"));
+        let c = arena.get_coin("saint".into()).unwrap();
+        assert_eq!(c.total_shares.0, crate::MIN_SHARES);
+        assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, crate::MIN_SHARES - 1);
+        assert_eq!(c.treasury.0, crate::MIN_SHARES);
     }
 
     #[test]
@@ -812,7 +830,7 @@ mod governance {
         w.wait(60 * MINUTE);
         arena.finalize_amendment(id);
         assert_eq!(arena.get_amendment(id).unwrap().status, AmendmentStatus::Passed);
-        w.wait(60 * MINUTE);
+        w.wait(TIMELOCK);
         arena.enact_amendment(id);
         let c = arena.get_coin("saint".into()).unwrap();
         assert_eq!(c.constitution, "Never forgive.");
@@ -830,7 +848,7 @@ mod governance {
         let a = arena.get_amendment(id).unwrap();
         assert_eq!((a.yes.0, a.no.0), (NEAR, 0));
         assert_eq!(arena.get_shares("saint".into(), acc("alice.near")).0, 99 * NEAR);
-        assert_eq!(arena.get_vote("saint".into(), acc("alice.near")).unwrap().shares.0, NEAR);
+        assert_eq!(arena.get_vote("saint".into(), acc("alice.near")).unwrap().locked.0, NEAR);
         assert_eq!(arena.get_amendments("saint".into()).len(), 1);
     }
 
@@ -869,7 +887,7 @@ mod governance {
         arena.vote(id, false, U128(60 * NEAR));
         w.wait(60 * MINUTE);
         arena.finalize_amendment(id);
-        w.wait(60 * MINUTE);
+        w.wait(TIMELOCK);
         arena.enact_amendment(id);
     }
 
@@ -904,7 +922,7 @@ mod governance {
             arena.finalize_amendment(real);
             assert!(arena.get_amendment(junk).is_none());
             assert_eq!(arena.get_amendment(real).unwrap().status, AmendmentStatus::Passed);
-            w.wait(60 * MINUTE);
+            w.wait(TIMELOCK);
             arena.enact_amendment(real);
             w.at("carol.near", 0);
             arena.release_votes("saint".into());
@@ -914,8 +932,8 @@ mod governance {
     }
 
     #[test]
-    #[should_panic(expected = "your shares are locked in another open vote")]
-    fn one_account_backs_one_open_vote_at_a_time() {
+    #[should_panic(expected = "you already have an open amendment on this coin")]
+    fn one_open_proposal_per_account() {
         let (mut arena, mut w) = setup();
         coin(&mut arena, &mut w, "alice.near", "saint", 100);
         propose(&mut arena, &mut w, "Never forgive.");
@@ -1004,6 +1022,117 @@ mod governance {
     }
 
     #[test]
+    fn the_same_shares_vote_on_every_open_amendment() {
+        let (mut arena, mut w) = with_two_holders();
+        let mut hostile = Vec::new();
+        for i in 0..4 {
+            let proposer = format!("p{i}.near");
+            w.at("alice.near", 0);
+            arena.transfer_shares("saint".into(), acc(&proposer), U128(2 * NEAR));
+            w.at(&proposer, 0);
+            hostile.push(arena.propose_amendment("saint".into(), format!("Hostile {i}."), MODEL.into()));
+        }
+        w.at("alice.near", 0);
+        arena.transfer_shares("saint".into(), acc("q.near"), U128(38 * NEAR));
+        w.at("carol.near", 0);
+        for id in &hostile {
+            arena.vote(*id, false, U128(100 * NEAR));
+        }
+        assert_eq!(arena.get_shares("saint".into(), acc("carol.near")).0, 0);
+        assert_eq!(arena.get_vote("saint".into(), acc("carol.near")).unwrap().locked.0, 100 * NEAR);
+        w.at("q.near", 0);
+        arena.vote(hostile[3], true, U128(38 * NEAR));
+        w.wait(60 * MINUTE);
+        for id in &hostile {
+            arena.finalize_amendment(*id);
+            assert!(arena.get_amendment(*id).is_none(), "the majority's no counted on every amendment");
+        }
+        w.at("carol.near", 0);
+        assert_eq!(arena.release_votes("saint".into()).0, 100 * NEAR);
+        assert_eq!(arena.get_shares("saint".into(), acc("carol.near")).0, 100 * NEAR);
+    }
+
+    #[test]
+    fn the_lock_is_the_largest_open_ballot() {
+        let (mut arena, mut w) = with_two_holders();
+        let first = propose(&mut arena, &mut w, "Never forgive.");
+        w.wait(30 * MINUTE);
+        w.at("carol.near", 0);
+        let second = arena.propose_amendment("saint".into(), "Always forgive.".into(), MODEL.into());
+        arena.vote(first, false, U128(70 * NEAR));
+        arena.vote(second, true, U128(28 * NEAR));
+        assert_eq!(arena.get_vote("saint".into(), acc("carol.near")).unwrap().locked.0, 70 * NEAR);
+        assert_eq!(arena.get_shares("saint".into(), acc("carol.near")).0, 30 * NEAR);
+        w.wait(30 * MINUTE);
+        arena.finalize_amendment(first);
+        w.at("carol.near", 0);
+        assert_eq!(arena.release_votes("saint".into()).0, 40 * NEAR);
+        assert_eq!(arena.get_vote("saint".into(), acc("carol.near")).unwrap().locked.0, 30 * NEAR);
+    }
+
+    #[test]
+    #[should_panic(expected = "not enough free shares")]
+    fn a_ballot_cannot_exceed_what_the_voter_owns() {
+        let (mut arena, mut w) = with_two_holders();
+        let id = propose(&mut arena, &mut w, "Never forgive.");
+        w.at("carol.near", 0);
+        arena.vote(id, false, U128(60 * NEAR));
+        arena.vote(id, false, U128(41 * NEAR));
+    }
+
+    #[test]
+    fn an_amendment_lapses_when_the_constitution_moved_on() {
+        let (mut arena, mut w) = with_two_holders();
+        let old = propose(&mut arena, &mut w, "Always cooperate.");
+        arena.vote(old, true, U128(90 * NEAR));
+        w.at("carol.near", 0);
+        let newer = arena.propose_amendment("saint".into(), "Mirror.".into(), MODEL.into());
+        arena.vote(newer, true, U128(90 * NEAR));
+        w.wait(60 * MINUTE);
+        arena.finalize_amendment(old);
+        arena.finalize_amendment(newer);
+        w.wait(TIMELOCK);
+        assert!(arena.enact_amendment(newer));
+        assert!(!arena.enact_amendment(old), "the older text cannot overwrite a newer decision");
+        let c = arena.get_coin("saint".into()).unwrap();
+        assert_eq!((c.constitution.as_str(), c.constitution_version), ("Mirror.", 2));
+        assert!(c.amendments.is_empty());
+    }
+
+    #[test]
+    fn a_passed_amendment_left_unenacted_lapses() {
+        let (mut arena, mut w) = setup();
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        let id = propose(&mut arena, &mut w, "Always cooperate.");
+        arena.vote(id, true, U128(50 * NEAR));
+        w.wait(60 * MINUTE);
+        arena.finalize_amendment(id);
+        w.wait(2 * TIMELOCK + MINUTE);
+        assert!(!arena.enact_amendment(id));
+        assert_eq!(arena.get_coin("saint".into()).unwrap().constitution_version, 1);
+        assert!(arena.get_amendment(id).is_none());
+    }
+
+    #[test]
+    fn a_vote_on_an_outdated_constitution_fails_at_the_count() {
+        let (mut arena, mut w) = with_two_holders();
+        let first = propose(&mut arena, &mut w, "Always cooperate.");
+        arena.vote(first, true, U128(90 * NEAR));
+        w.wait(60 * MINUTE);
+        arena.finalize_amendment(first);
+        w.wait(TIMELOCK - 30 * MINUTE);
+        w.at("carol.near", 0);
+        let late = arena.propose_amendment("saint".into(), "Mirror.".into(), MODEL.into());
+        arena.vote(late, true, U128(90 * NEAR));
+        w.wait(30 * MINUTE);
+        assert!(arena.enact_amendment(first));
+        w.wait(30 * MINUTE);
+        arena.finalize_amendment(late);
+        assert!(arena.get_amendment(late).is_none());
+        assert_eq!(arena.get_coin("saint".into()).unwrap().constitution, "Always cooperate.");
+    }
+
+    #[test]
     #[should_panic(expected = "coin is in a Parley")]
     fn a_constitution_cannot_change_mid_parley() {
         let (mut arena, mut w) = setup();
@@ -1013,7 +1142,7 @@ mod governance {
         arena.vote(id, true, U128(30 * NEAR));
         w.wait(60 * MINUTE);
         arena.finalize_amendment(id);
-        w.wait(60 * MINUTE);
+        w.wait(TIMELOCK);
         w.at("owner.near", 0);
         arena.open_parley_between("saint".into(), "snake".into());
         arena.enact_amendment(id);
@@ -1040,7 +1169,8 @@ mod governance {
         arena.fill_order("saint".into(), acc("carol.near"));
         assert_eq!(arena.get_shares("saint".into(), acc("carol.near")).0, 0);
         assert_eq!(arena.get_coin("saint".into()).unwrap().constitution_version, 1);
-        arena.enact_amendment(id);
+        w.wait(TIMELOCK - 60 * MINUTE);
+        assert!(arena.enact_amendment(id));
         assert_eq!(arena.get_coin("saint".into()).unwrap().constitution_version, 2);
     }
 }
@@ -1130,7 +1260,7 @@ mod parleys {
     }
 
     #[test]
-    #[should_panic(expected = "fewer than two rested coins")]
+    #[should_panic(expected = "no two rested coins are ready to meet")]
     fn a_coin_rests_before_it_can_be_drawn_again() {
         let mut w = World { now: 1_000 * MINUTE, seed: 0, enclave: Enclave::new(7) };
         w.at("owner.near", 40 * NEAR);
@@ -1166,6 +1296,143 @@ mod parleys {
         assert_eq!(arena.open_parley(), id + 1);
     }
 
+    fn paced(rest: u64, pair_rest: u64) -> (Arena, World) {
+        let mut w = World { now: 1_000 * MINUTE, seed: 0, enclave: Enclave::new(7) };
+        w.at("owner.near", 40 * NEAR);
+        let arena = Arena::new(
+            Config { rest_ns: U64(rest), pair_rest_ns: U64(pair_rest), ..config() },
+            vec![model(MODEL, w.enclave.public_key())],
+        );
+        (arena, w)
+    }
+
+    fn cooperate(arena: &mut Arena, w: &mut World, id: u64) {
+        for line in ["a", "b", "c", "d", "COOPERATE", "COOPERATE"] {
+            answer(arena, w, id, line);
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "no two rested coins are ready to meet")]
+    fn two_coins_cannot_meet_again_straight_away() {
+        let (mut arena, mut w) = paced(MINUTE, 30 * MINUTE);
+        coin(&mut arena, &mut w, "mallory.near", "aa", 100);
+        coin(&mut arena, &mut w, "mallory.near", "bb", 100);
+        w.wait(30 * MINUTE);
+        let id = arena.open_parley();
+        cooperate(&mut arena, &mut w, id);
+        w.wait(29 * MINUTE);
+        arena.open_parley();
+    }
+
+    #[test]
+    fn a_pair_meets_again_once_it_has_waited() {
+        let (mut arena, mut w) = paced(MINUTE, 30 * MINUTE);
+        coin(&mut arena, &mut w, "mallory.near", "aa", 100);
+        coin(&mut arena, &mut w, "mallory.near", "bb", 100);
+        w.wait(30 * MINUTE);
+        let id = arena.open_parley();
+        cooperate(&mut arena, &mut w, id);
+        w.wait(30 * MINUTE);
+        assert_eq!(arena.open_parley(), id + 1);
+    }
+
+    #[test]
+    fn a_new_coin_cannot_jump_the_line() {
+        let (mut arena, mut w) = paced(MINUTE, 30 * MINUTE);
+        for id in ["aa", "bb", "cc"] {
+            coin(&mut arena, &mut w, "alice.near", id, 100);
+        }
+        w.wait(30 * MINUTE);
+        coin(&mut arena, &mut w, "mallory.near", "sniper", 100);
+        w.wait(2 * MINUTE);
+        let id = arena.open_parley();
+        let p = arena.get_parley(id).unwrap();
+        assert!(p.a != "sniper" && p.b != "sniper");
+    }
+
+    #[test]
+    fn the_next_coin_in_line_goes_first_when_the_first_has_no_partner() {
+        let (mut arena, mut w) = paced(MINUTE, 30 * MINUTE);
+        for id in ["aa", "bb", "cc", "dd"] {
+            coin(&mut arena, &mut w, "alice.near", id, 100);
+        }
+        w.wait(30 * MINUTE);
+        w.at("owner.near", 0);
+        for (a, b) in [("aa", "bb"), ("aa", "cc"), ("aa", "dd")] {
+            let id = arena.open_parley_between(a.into(), b.into());
+            cooperate(&mut arena, &mut w, id);
+            w.at("owner.near", 0);
+        }
+        w.wait(2 * MINUTE);
+        let id = arena.open_parley();
+        let p = arena.get_parley(id).unwrap();
+        assert!(p.a != "aa" && p.b != "aa", "aa met everyone a moment ago");
+    }
+
+    #[test]
+    fn a_voided_pair_is_not_drawn_together_again_at_once() {
+        let (mut arena, mut w) = paced(MINUTE, 60 * MINUTE);
+        for id in ["aa", "bb", "cc"] {
+            coin(&mut arena, &mut w, "alice.near", id, 100);
+            w.wait(MINUTE);
+        }
+        w.wait(60 * MINUTE);
+        let id = arena.open_parley();
+        let first = arena.get_parley(id).unwrap();
+        assert_eq!((first.a.as_str(), first.b.as_str()), ("aa", "bb"));
+        w.wait(31 * MINUTE);
+        arena.void_parley(id);
+        w.wait(MINUTE);
+        let next = arena.get_parley(arena.get_overview().parleys as u64 - 1).unwrap();
+        assert_eq!(next.status, MatchStatus::Void);
+        let id = arena.open_parley();
+        let second = arena.get_parley(id).unwrap();
+        assert_eq!((second.a.as_str(), second.b.as_str()), ("cc", "aa"));
+    }
+
+    #[test]
+    fn a_coin_whose_model_cannot_answer_is_left_out() {
+        let (mut arena, mut w) = setup();
+        let other = Enclave::new(9);
+        w.at("owner.near", 0);
+        arena.propose_model(model("some/other-model", other.public_key()));
+        w.wait(24 * 60 * MINUTE);
+        w.at("alice.near", 100 * NEAR);
+        arena.create_coin("mute".into(), "MUTE".into(), "Be kind.".into(), "some/other-model".into());
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        coin(&mut arena, &mut w, "bob.near", "snake", 100);
+        w.at("owner.near", 0);
+        arena.retire_signer("some/other-model".into(), other.public_key());
+        w.wait(24 * 60 * MINUTE);
+        for _ in 0..4 {
+            let id = arena.open_parley();
+            let p = arena.get_parley(id).unwrap();
+            assert!(p.a != "mute" && p.b != "mute");
+            cooperate(&mut arena, &mut w, id);
+        }
+    }
+
+    #[test]
+    fn a_coin_that_buys_its_way_back_in_goes_to_the_back_of_the_line() {
+        let (mut arena, mut w) = paced(5 * MINUTE, 0);
+        coin(&mut arena, &mut w, "mallory.near", "switch", 2);
+        w.wait(MINUTE);
+        coin(&mut arena, &mut w, "alice.near", "saint", 100);
+        coin(&mut arena, &mut w, "bob.near", "snake", 100);
+        w.at("mallory.near", 0);
+        arena.place_redeem("switch".into(), U128(3 * NEAR / 2), None);
+        w.at("mallory2.near", 5 * NEAR);
+        arena.place_mint("switch".into(), None);
+        w.wait(60 * MINUTE);
+        arena.fill_order("switch".into(), acc("mallory.near"));
+        arena.fill_order("switch".into(), acc("mallory2.near"));
+        assert_eq!(arena.get_coin("switch".into()).unwrap().idle_since.0, w.now);
+        let id = arena.open_parley();
+        let p = arena.get_parley(id).unwrap();
+        assert!(p.a != "switch" && p.b != "switch");
+    }
+
     #[test]
     #[should_panic(expected = "no such Parley")]
     fn a_parley_id_cannot_wrap_around() {
@@ -1177,7 +1444,7 @@ mod parleys {
     }
 
     #[test]
-    #[should_panic(expected = "fewer than two rested coins")]
+    #[should_panic(expected = "no two rested coins are ready to meet")]
     fn a_busy_coin_is_not_drawn_again() {
         let (mut arena, mut w) = two_coins();
         w.at("anyone.near", 0);
@@ -1588,7 +1855,7 @@ mod parleys {
         arena.vote(amendment, true, U128(50 * NEAR));
         w.wait(60 * MINUTE);
         arena.finalize_amendment(amendment);
-        w.wait(60 * MINUTE);
+        w.wait(TIMELOCK);
         arena.enact_amendment(amendment);
         w.at("owner.near", 0);
         let id = arena.open_parley_between("saint".into(), "snake".into());

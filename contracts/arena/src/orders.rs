@@ -63,6 +63,9 @@ impl Arena {
                     return self.return_order(&coin, &account, &order);
                 }
                 self.escrow -= order.amount.0;
+                if treasury < self.config.min_treasury.0 {
+                    c.idle_since = U64(env::block_timestamp());
+                }
                 c.treasury = U128(treasury + order.amount.0);
                 c.total_shares = U128(total + minted);
                 let balance = self.shares_of_internal(&coin, &account);
@@ -73,17 +76,23 @@ impl Arena {
                 );
             }
             OrderKind::Redeem => {
-                let payout = mul_div(order.amount.0, treasury, total);
                 let left = total - order.amount.0;
-                if payout < order.min_out.0 || (left > 0 && left < MIN_SHARES) {
+                let kept = if left > 0 && left < MIN_SHARES { MIN_SHARES - left } else { 0 };
+                let sold = order.amount.0.saturating_sub(kept);
+                let payout = mul_div(sold, treasury, total);
+                if sold == 0 || payout < order.min_out.0 {
                     return self.return_order(&coin, &account, &order);
                 }
+                if kept > 0 {
+                    let balance = self.shares_of_internal(&coin, &account);
+                    self.set_shares(&coin, &account, balance + kept);
+                }
                 c.treasury = U128(treasury - payout);
-                c.total_shares = U128(left);
+                c.total_shares = U128(total - sold);
                 Self::pay(account.clone(), payout);
                 events::emit(
                     "order_filled",
-                    json!({ "coin": coin, "account": account, "kind": "redeem", "near": U128(payout), "shares": order.amount }),
+                    json!({ "coin": coin, "account": account, "kind": "redeem", "near": U128(payout), "shares": U128(sold) }),
                 );
             }
         }

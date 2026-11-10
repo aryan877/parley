@@ -4,7 +4,9 @@ import { openAndPlay } from "../runner.ts";
 import { coinNames, deployHouse, flag, printParley } from "./shared.ts";
 
 const SECOND = 1_000_000_000n;
-const WAIT = 20n;
+const VOTE = 20n;
+const EXIT = 10n;
+const TIMELOCK = VOTE + 2n * EXIT;
 
 const step = (text: string) => console.log(`\n== ${text}`);
 
@@ -34,11 +36,10 @@ async function shares(arena: Arena, coin: string, account: string) {
  * and play under the new rules.
  */
 export async function govern() {
-  const period = (WAIT * SECOND).toString();
   const { deployment, arena: owner } = await deployHouse(flag("mind", "scripted")!, near(100), {
-    vote_period_ns: period,
-    timelock_ns: period,
-    order_timeout_ns: period,
+    vote_period_ns: (VOTE * SECOND).toString(),
+    timelock_ns: (TIMELOCK * SECOND).toString(),
+    order_timeout_ns: (EXIT * SECOND).toString(),
   });
   const alice = owner.as(deployment.accounts.alice!);
   const bob = owner.as(deployment.accounts.bob!);
@@ -90,7 +91,7 @@ export async function govern() {
   console.log(`   amendment #${amendment}: yes ${formatNear(tally.yes)} shares (alice), no ${formatNear(tally.no)} shares (bob)`);
   console.log(`   finalize now -> refused: ${await refused(owner.finalizeAmendment(amendment))}`);
 
-  await pause(WAIT, "the vote is open");
+  await pause(VOTE, "the vote is open");
   await expectOk("finalize", owner.finalizeAmendment(amendment));
   console.log(`   vote closed: ${(await owner.amendment(amendment))!.status}`);
   console.log(`   enact now -> refused: ${await refused(owner.enactAmendment(amendment))}`);
@@ -98,10 +99,11 @@ export async function govern() {
   step("Bob lost the vote. The timelock gives him time to leave before the new rules play");
   await expectOk("release", bob.releaseVotes("dove"));
   await expectOk("redeem", bob.placeRedeem("dove", BigInt(await owner.shares("dove", bobId))));
-  await pause(WAIT, "the timelock is running, and Bob's redeem comes due inside it");
+  await pause(EXIT, "the timelock is running, and Bob's redeem comes due well inside it");
   await expectOk("fill redeem", owner.fillOrder("dove", bobId));
   console.log(`   bob's redeem filled at the old constitution's price; he holds ${await shares(owner, "dove", bobId)} shares`);
 
+  await pause(TIMELOCK - EXIT, "the rest of the timelock");
   await expectOk("enact", owner.enactAmendment(amendment));
   const coin = (await owner.coin("dove"))!;
   console.log(`   DOVE now runs constitution v${coin.constitution_version}: ${coin.constitution}`);

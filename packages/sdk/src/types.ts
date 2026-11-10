@@ -19,6 +19,7 @@ export interface Config {
   proposer_bps: number;
   signer_delay_ns: string;
   rest_ns: string;
+  pair_rest_ns: string;
   creation_fee: string;
 }
 
@@ -123,6 +124,7 @@ export interface Amendment {
   id: number;
   coin: string;
   proposer: string;
+  base_version: number;
   constitution: string;
   model: string;
   yes: string;

@@ -68,8 +68,8 @@ impl Arena {
         require!(config.quorum_bps <= 10_000 && config.proposer_bps <= 10_000, "bps above 10000");
         require!(config.min_treasury.0 >= MIN_SHARES, "min_treasury is too small");
         require!(
-            config.order_timeout_ns.0 <= config.timelock_ns.0,
-            "order_timeout_ns must not exceed timelock_ns, or a dissenter could not leave in time"
+            config.timelock_ns.0 >= config.vote_period_ns.0 + 2 * config.order_timeout_ns.0,
+            "timelock_ns must cover vote_period_ns plus twice order_timeout_ns, or a dissenter could not leave in time"
         );
         let mut arena = Self {
             owner: Some(env::predecessor_account_id()),

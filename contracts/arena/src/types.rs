@@ -23,6 +23,8 @@ pub struct Config {
     pub signer_delay_ns: U64,
     /// How long a coin rests after a Parley ends before anyone can draw it into another.
     pub rest_ns: U64,
+    /// How long two coins wait after meeting, or after the newer of them was created, before they can be drawn together.
+    pub pair_rest_ns: U64,
     /// Paid by `create_coin` on top of the treasury. It goes to the commons.
     pub creation_fee: U128,
 }
@@ -180,6 +182,8 @@ pub struct Amendment {
     pub id: u32,
     pub coin: CoinId,
     pub proposer: AccountId,
+    /// The constitution version this amendment replaces. If the coin has moved on, the amendment lapses.
+    pub base_version: u32,
     pub constitution: String,
     pub model: String,
     pub yes: U128,
@@ -191,10 +195,19 @@ pub struct Amendment {
 
 #[near(serializers = [json, borsh])]
 #[derive(Clone, Debug)]
-pub struct VoteLock {
+pub struct Ballot {
     pub amendment_id: u32,
     pub shares: U128,
     pub support: bool,
+}
+
+/// One account's votes on one coin. The same shares can vote on every open amendment,
+/// so the lock is the largest single ballot, not the sum.
+#[near(serializers = [json, borsh])]
+#[derive(Clone, Debug, Default)]
+pub struct VoteLock {
+    pub locked: U128,
+    pub ballots: Vec<Ballot>,
 }
 
 #[near(serializers = [json, borsh])]

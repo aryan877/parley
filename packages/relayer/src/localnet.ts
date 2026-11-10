@@ -25,13 +25,14 @@ export const DEMO_CONFIG: Config = {
   max_response_bytes: 16_384,
   min_treasury: near(1).toString(),
   match_timeout_ns: (10n * MINUTE_NS).toString(),
-  order_timeout_ns: (2n * MINUTE_NS).toString(),
+  order_timeout_ns: MINUTE_NS.toString(),
   vote_period_ns: (2n * MINUTE_NS).toString(),
-  timelock_ns: (2n * MINUTE_NS).toString(),
+  timelock_ns: (4n * MINUTE_NS).toString(),
   quorum_bps: 2000,
   proposer_bps: 100,
   signer_delay_ns: (10n * MINUTE_NS).toString(),
-  rest_ns: (MINUTE_NS / 2n).toString(),
+  rest_ns: (MINUTE_NS / 3n).toString(),
+  pair_rest_ns: MINUTE_NS.toString(),
   creation_fee: near(1).toString(),
 };
 

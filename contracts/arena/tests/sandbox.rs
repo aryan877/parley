@@ -41,9 +41,9 @@ impl Env {
                         "max_message_len": 240, "max_response_bytes": 16384,
                         "min_treasury": NearToken::from_near(1).as_yoctonear().to_string(),
                         "match_timeout_ns": (30 * MINUTE).to_string(), "order_timeout_ns": (60 * MINUTE).to_string(),
-                        "vote_period_ns": (60 * MINUTE).to_string(), "timelock_ns": (60 * MINUTE).to_string(),
+                        "vote_period_ns": (60 * MINUTE).to_string(), "timelock_ns": (180 * MINUTE).to_string(),
                         "quorum_bps": 2000, "proposer_bps": 100, "signer_delay_ns": (24 * 60 * MINUTE).to_string(),
-                        "rest_ns": "0", "creation_fee": "0",
+                        "rest_ns": "0", "pair_rest_ns": "0", "creation_fee": "0",
                     },
                     "models": [{
                         "id": MODEL, "max_tokens_talk": 160, "max_tokens_decide": 16,
