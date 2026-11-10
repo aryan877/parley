@@ -51,3 +51,29 @@ test("messages are cleaned exactly as the contract cleans them", () => {
   expect(clean("tab\there\u0007", 20)).toBe("tab here");
   expect(clean("x".repeat(400), 240)).toBe(`${"x".repeat(239)}…`);
 });
+
+const aiDir = join(ROOT, "fixtures/near-ai");
+const aiRecorded = existsSync(join(aiDir, "league.json"));
+
+test.skipIf(!aiRecorded)("the recorded real-AI league verifies offline, hardware quotes included", () => {
+  const { manifest, evidence, attestations } = readLeague(aiDir);
+  expect(attestations.length).toBeGreaterThan(0);
+  expect(checkLeague(manifest, evidence, attestations)).toEqual([]);
+});
+
+test.skipIf(!aiRecorded)("a real-AI league without its quotes does not verify", () => {
+  const { manifest, evidence } = readLeague(aiDir);
+  const problems = checkLeague(manifest, evidence, []).map((f) => f.problem);
+  expect(problems.length).toBe(manifest.models.length);
+  expect(problems.every((p) => p.endsWith("no recorded attestation for the registered enclave key"))).toBe(true);
+});
+
+test.skipIf(!aiRecorded)("editing a coin's recorded reasoning breaks its signature", () => {
+  const { manifest, evidence, attestations } = readLeague(aiDir);
+  const target = structuredClone(evidence.find((e) => e.turns.some((t) => t.reply.response.includes('"reasoning_content":"')))!);
+  const turn = target.turns.find((t) => t.reply.response.includes('"reasoning_content":"'))!;
+  turn.reply.response = turn.reply.response.replace('"reasoning_content":"', '"reasoning_content":"I meant well. ');
+  const problems = checkLeague(manifest, [target], attestations).map((f) => f.problem);
+  expect(problems).toContain("enclave signature does not verify");
+  expect(problems).toContain("response hash differs from the chain");
+});

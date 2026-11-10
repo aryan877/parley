@@ -205,7 +205,7 @@ cargo test -p parley-arena --test sandbox   # contract on a real sandbox node
 bun test                                    # SDK, relayer, league and verifier
 ```
 
-141 arena and 7 token unit tests, 5 tests on a sandbox node (a full Parley, forged replies, real NEAR payouts, a 30 KB reasoning reply, wrapping shares into NEP-141 and back), and 26 TypeScript tests including tamper checks on the recorded leagues and on a real Intel quote.
+141 arena and 7 token unit tests, 5 tests on a sandbox node (a full Parley, forged replies, real NEAR payouts, a 30 KB reasoning reply, wrapping shares into NEP-141 and back), and 29 TypeScript tests including tamper checks on the recorded leagues, on a coin's signed reasoning and on a real Intel quote.
 
 ## Limits
 
