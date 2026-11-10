@@ -1,11 +1,13 @@
 import { type Finding, attestedKeys, checkLeague } from "@parley/league/src/browser.ts";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Loading } from "../components/bits.tsx";
 import { short, useLeague } from "../lib/data.ts";
 
 export function Verify() {
   const { league, error } = useLeague();
   const [result, setResult] = useState<{ findings: Finding[]; ms: number } | null>(null);
+  const auto = useSearchParams()[0].has("run");
   if (!league) return <Loading error={error} />;
   const turns = league.evidence.reduce((n, e) => n + e.turns.length, 0);
   const attested = attestedKeys(league.manifest);
@@ -15,6 +17,7 @@ export function Verify() {
     const findings = checkLeague(league.manifest, league.evidence, league.attestations);
     setResult({ findings, ms: Math.round(performance.now() - start) });
   };
+  if (auto && !result) queueMicrotask(run);
 
   return (
     <>
@@ -36,7 +39,7 @@ export function Verify() {
             {result.findings.length ? `${result.findings.length} problems found` : `All ${turns} replies verified`}
           </h2>
           <p className="sub" style={{ margin: 0 }}>
-            Checked in {result.ms} ms on this device.{" "}
+            Checked on this device{result.ms > 0 ? ` in ${result.ms} ms` : ""}.{" "}
             {attested
               ? `${attested} enclave keys traced to Intel's root certificate through their hardware quotes.`
               : "This recording was signed by a local stand-in key, not sealed hardware."}

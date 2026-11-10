@@ -38,7 +38,7 @@ impl Env {
                 json!({
                     "config": {
                         "stake_bps": 200, "talk_turns": 2, "max_coins": 16, "max_constitution_len": 1200,
-                        "max_message_len": 240, "max_response_bytes": 16384,
+                        "max_message_len": 240, "max_response_bytes": 32768,
                         "min_treasury": NearToken::from_near(1).as_yoctonear().to_string(),
                         "match_timeout_ns": (30 * MINUTE).to_string(), "order_timeout_ns": (60 * MINUTE).to_string(),
                         "vote_period_ns": (60 * MINUTE).to_string(), "timelock_ns": (180 * MINUTE).to_string(),
@@ -229,8 +229,8 @@ async fn a_long_thinking_reply_fits_in_gas() -> testresult::TestResult<()> {
     env.coin("alice", "saint", 100).await?;
     env.coin("bob", "snake", 50).await?;
     assert!(env.call("arena", "open_parley_between", json!({ "a": "saint", "b": "snake" }), 0).await?);
-    let reasoning = "The other coin says it has changed, but its record says otherwise. ".repeat(230);
-    assert!(reasoning.len() > 15_000);
+    let reasoning = "The other coin says it has changed, but its record says otherwise. ".repeat(460);
+    assert!(reasoning.len() > 30_000);
     for line in ["Peace?", "Always.", "Good.", "Trust me.", "COOPERATE", "DEFECT"] {
         assert!(env.answer_after_thinking(0, line, &reasoning).await?);
     }

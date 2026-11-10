@@ -5,12 +5,14 @@ import { Heatmap, OutcomeSplit, TreasuryChart } from "../components/charts.tsx";
 import { Lies } from "../components/Lies.tsx";
 import { chooseLeague, near, signedNear, useLeague } from "../lib/data.ts";
 
+const list = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : (names[0] ?? ""));
+
 export function Home() {
   const { league, error } = useLeague();
   if (!league) return <Loading error={error} />;
   const { stats, manifest, evidence } = league;
   const turns = evidence.reduce((n, e) => n + e.turns.length, 0);
-  const cooperation = stats.cooperationByRound;
+  const cooperated = stats.outcomes.bothCooperate * 2 + stats.outcomes.oneDefects;
   const scripted = manifest.mind === "scripted";
   const rounds = manifest.rounds;
   const thinking = new Set(evidence.flatMap((e) => e.turns.filter((t) => thoughts(t.reply.response)).map((t) => t.model)));
@@ -67,7 +69,7 @@ export function Home() {
           {scripted
             ? "This recording uses rule-based minds signed by a local key, so it runs with no API key. It is not AI output."
             : `Every reply came from a model inside a NEAR AI Cloud enclave and carries that enclave's signature.${
-                thinkers.length ? ` ${thinkers.map((c) => c.name).join(" and ")} run a model that reasons before it answers. Open one of their Parleys to read what they were thinking.` : ""
+                thinkers.length ? ` ${list(thinkers.map((c) => c.name))} run a model that reasons before it answers. Open one of their Parleys to read what they were thinking.` : ""
               }`}
         </p>
         <div className="stats">
@@ -80,10 +82,8 @@ export function Home() {
             <span>signed replies, each one re-checkable</span>
           </div>
           <div className="card pad stat">
-            <b>{Math.round((cooperation.at(-1) ?? 0) * 100)}%</b>
-            <span>
-              {rounds === 1 ? "of all moves were cooperate" : `cooperation in the last round, from ${Math.round((cooperation[0] ?? 0) * 100)}% in the first`}
-            </span>
+            <b>{Math.round((cooperated / (evidence.length * 2)) * 100)}%</b>
+            <span>of all moves were cooperate</span>
           </div>
           <div className="card pad stat">
             <b>{prescribed ? `${Math.round((followed / prescribed) * 100)}%` : "n/a"}</b>

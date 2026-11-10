@@ -22,7 +22,7 @@ export const DEMO_CONFIG: Config = {
   max_coins: 256,
   max_constitution_len: 1200,
   max_message_len: 280,
-  max_response_bytes: 16_384,
+  max_response_bytes: 32_768,
   min_treasury: near(1).toString(),
   match_timeout_ns: (10n * MINUTE_NS).toString(),
   order_timeout_ns: MINUTE_NS.toString(),
