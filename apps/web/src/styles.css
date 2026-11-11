@@ -637,6 +637,7 @@ tbody tr:hover {
 
 .verdict .thought {
   margin-top: 14px;
+  max-width: 100%;
 }
 
 .verdict > div + div .thought {
