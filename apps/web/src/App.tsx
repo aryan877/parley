@@ -1,49 +1,65 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import { NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { Mark } from "./components/Mark.tsx";
-import { CoinPage } from "./pages/CoinPage.tsx";
-import { Home } from "./pages/Home.tsx";
-import { ParleyPage } from "./pages/ParleyPage.tsx";
-import { Play } from "./pages/Play.tsx";
-import { Rules } from "./pages/Rules.tsx";
-import { Verify } from "./pages/Verify.tsx";
+import { WalletButton } from "./components/WalletButton.tsx";
+import { Arena } from "./pages/Arena.tsx";
+import { CoinView } from "./pages/CoinView.tsx";
+import { Coins } from "./pages/Coins.tsx";
+import { Launch } from "./pages/Launch.tsx";
+import { MatchView } from "./pages/MatchView.tsx";
+import { Matches } from "./pages/Matches.tsx";
+import { ProofPage } from "./pages/ProofPage.tsx";
 
 export function App() {
-  const link = ({ isActive }: { isActive: boolean }) => `link${isActive ? " active" : ""}`;
+  const link = ({ isActive }: { isActive: boolean }) => `navlink${isActive ? " active" : ""}`;
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
   return (
-    <div className="shell">
-      <nav className="nav">
-        <NavLink to="/" className="brand">
-          <Mark />
-          Parley
-        </NavLink>
-        <NavLink to="/" end className={link}>
-          League
-        </NavLink>
-        <NavLink to="/play" className={link}>
-          Play
-        </NavLink>
-        <NavLink to="/rules" className={link}>
-          Rules
-        </NavLink>
-        <NavLink to="/verify" className={link}>
-          Verify
-        </NavLink>
-        <a className="link" href="https://github.com/aryan877/parley">
-          Code
-        </a>
-      </nav>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/parley/:id" element={<ParleyPage />} />
-        <Route path="/coin/:id" element={<CoinPage />} />
-        <Route path="/play" element={<Play />} />
-        <Route path="/rules" element={<Rules />} />
-        <Route path="/verify" element={<Verify />} />
-      </Routes>
-      <footer className="foot">
-        <span>Built at NEAR HACKATHON, November 2026.</span>
-        <span>Unaudited. Treasuries do not earn yield. See the limits in the README.</span>
-      </footer>
-    </div>
+    <>
+      <header className="topbar">
+        <div className="topbar-inner">
+          <NavLink to="/" className="brand">
+            <Mark />
+            Parley
+          </NavLink>
+          <NavLink to="/" end className={link}>
+            Arena
+          </NavLink>
+          <NavLink to="/coins" className={link}>
+            Coins
+          </NavLink>
+          <NavLink to="/matches" className={link}>
+            Matches
+          </NavLink>
+          <NavLink to="/proof" className={link}>
+            Proof
+          </NavLink>
+          <span className="spacer" />
+          <NavLink to="/launch" className="btn ghost" style={{ padding: "9px 16px", fontSize: 14 }}>
+            Launch a coin
+          </NavLink>
+          <WalletButton />
+        </div>
+      </header>
+      <main className="shell">
+        <Routes>
+          <Route path="/" element={<Arena />} />
+          <Route path="/coins" element={<Coins />} />
+          <Route path="/coin/:id" element={<CoinView />} />
+          <Route path="/matches" element={<Matches />} />
+          <Route path="/match/:id" element={<MatchView />} />
+          <Route path="/season/match/:id" element={<MatchView season />} />
+          <Route path="/season/coin/:id" element={<CoinView season />} />
+          <Route path="/launch" element={<Launch />} />
+          <Route path="/proof" element={<ProofPage />} />
+        </Routes>
+        <footer className="foot">
+          <span>Parley. Built at NEAR HACKATHON, November 2026.</span>
+          <span>Unaudited. Test money only. Read the limits in the README.</span>
+        </footer>
+      </main>
+    </>
   );
 }

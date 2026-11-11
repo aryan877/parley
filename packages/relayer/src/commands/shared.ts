@@ -15,8 +15,12 @@ export interface House {
   model: string;
 }
 
-/** A fresh local arena with the eight house coins. With real AI, every model's enclave key is attested before it is registered. */
-export async function deployHouse(kind: string, treasury: bigint, config: Partial<Config> = {}): Promise<House> {
+/**
+ * A fresh local arena with the eight house characters. With `community` they launch as ordinary coins the arena
+ * account holds, so anyone can buy in and vote; otherwise they are fixed house coins. With real AI, every
+ * model's enclave key is attested before it is registered.
+ */
+export async function deployHouse(kind: string, treasury: bigint, config: Partial<Config> = {}, community = false): Promise<House> {
   let models: ModelInput[] = localModels();
   let modelOf = (_coin: string) => LOCAL_MODEL;
   if (kind !== "scripted") {
@@ -29,7 +33,8 @@ export async function deployHouse(kind: string, treasury: bigint, config: Partia
   const deployment = await deployLocal(models, config);
   const arena = new Arena({ ...deployment, signer: deployment.accounts.arena });
   for (const c of loadConstitutions()) {
-    const made = await arena.createCoin({ id: c.id, name: c.name, constitution: c.text, model: modelOf(c.id) }, treasury, true);
+    const fee = community ? BigInt((await arena.config()).creation_fee) : 0n;
+    const made = await arena.createCoin({ id: c.id, name: c.name, constitution: c.text, model: modelOf(c.id) }, treasury + fee, !community);
     if (!made.ok) throw new Error(`create ${c.id}: ${made.error}`);
   }
   return { deployment, arena, model: modelOf("") };

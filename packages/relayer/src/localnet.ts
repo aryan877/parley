@@ -41,6 +41,16 @@ export function loadDeployment(): Deployment {
   return JSON.parse(readFileSync(DEPLOYMENT, "utf8")) as Deployment;
 }
 
+/** Creates a new local account for a key someone holds, funded with test NEAR. Only for the local chain. */
+export async function fundLocalAccount(publicKey: string, amount = near(50)): Promise<string> {
+  const validator = JSON.parse(readFileSync(join(HOME, "validator_key.json"), "utf8")) as { account_id: string; secret_key: string };
+  const rpcUrl = process.env.LOCALNET_PORT ? `http://127.0.0.1:${process.env.LOCALNET_PORT}` : NETWORKS.local.rpcUrl;
+  const root = new Account(validator.account_id, new JsonRpcProvider({ url: rpcUrl }), validator.secret_key as KeyPairString);
+  const accountId = `player-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.${validator.account_id}`;
+  await root.createSubAccount({ accountOrPrefix: accountId, publicKey, nearToTransfer: amount });
+  return accountId;
+}
+
 /** Deploys a fresh arena on the local chain and funds a handful of named accounts. */
 export async function deployLocal(models: ModelInput[], overrides: Partial<Config> = {}, commons = near(200)): Promise<Deployment> {
   const keyFile = join(HOME, "validator_key.json");
@@ -52,7 +62,7 @@ export async function deployLocal(models: ModelInput[], overrides: Partial<Confi
   const tag = Date.now().toString(36);
   const accounts: Deployment["accounts"] = {};
 
-  for (const [name, funds] of [["arena", 400], ["relayer", 100], ["alice", 2000], ["bob", 2000], ["carol", 2000]] as const) {
+  for (const [name, funds] of [["arena", 2000], ["relayer", 100], ["alice", 2000], ["bob", 2000], ["carol", 2000]] as const) {
     const key = KeyPair.fromRandom("ed25519");
     const accountId = `${name}-${tag}.${validator.account_id}`;
     await root.createSubAccount({ accountOrPrefix: accountId, publicKey: key.getPublicKey(), nearToTransfer: near(funds) });

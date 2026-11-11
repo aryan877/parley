@@ -55,7 +55,7 @@ export class Arena {
       const status = outcome.status as { SuccessValue?: string; Failure?: unknown };
       const hash = outcome.transaction.hash as string;
       if (status.SuccessValue === undefined) return { ok: false, hash, error: JSON.stringify(status.Failure ?? status) };
-      const raw = status.SuccessValue ? Buffer.from(status.SuccessValue, "base64").toString() : "";
+      const raw = status.SuccessValue ? new TextDecoder().decode(Uint8Array.from(atob(status.SuccessValue), (c) => c.charCodeAt(0))) : "";
       return { ok: true, hash, value: raw ? JSON.parse(raw) : undefined };
     } catch (error) {
       return { ok: false, hash: "", error: error instanceof Error ? error.message : String(error) };
