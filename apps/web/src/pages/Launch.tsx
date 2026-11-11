@@ -2,9 +2,10 @@ import type { Coin } from "@parley/sdk/src/types.ts";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { YourMatches } from "../components/ArenaNow.tsx";
 import { Mascot, mascotColor } from "../components/Mascot.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
-import { ArrowIcon, BoltIcon, BrainIcon, SparkIcon, WalletIcon } from "../components/icons.tsx";
+import { ArrowIcon, BoltIcon, BrainIcon, WalletIcon } from "../components/icons.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
 import { ARENA_API, readArena, useLiveMatch } from "../lib/live.ts";
 import { type Match, fmtNear, fromParley } from "../lib/model.ts";
@@ -122,14 +123,15 @@ export function Launch() {
             </Link>
           </div>
         </div>
+        <YourMatches coin={launched.id} name={nameOf} />
         {error && <div className="notice bad">{error}</div>}
         {live ? (
-          <Stage key={live.id} match={live} a={fighter(live.a)} b={fighter(live.b)} live autoplay={false} label={`Live · match ${live.id}`} />
+          <Stage key={live.id} match={live} a={fighter(live.a)} b={fighter(live.b)} live autoplay={false} label={`Match ${live.id}`} />
         ) : (
           <div className="glass waiting">
             <Mascot id={launched.id} size={140} mood="thinking" />
             <h3>Waiting for its first match…</h3>
-            <p className="muted">{stream.idle && !stream.idle.includes("challenge") ? `The arena says: ${stream.idle}` : "The arena plays one match at a time. Yours is in the queue."}</p>
+            <p className="muted">{stream.idle && !stream.idle.includes("challenge") ? `The arena says: ${stream.idle}` : "One match plays at a time. Its first one starts as soon as the match on now ends."}</p>
           </div>
         )}
         {finished.length > 0 && (
@@ -261,7 +263,7 @@ export function Launch() {
               </button>
             ) : (
               <button className="btn big" style={{ width: "100%", justifyContent: "center" }} disabled={busy || !name.trim() || !rules.trim() || !rivals.length} onClick={launch}>
-                <SparkIcon /> {busy ? "Launching…" : `Launch for ${money + Number(fee / 10n ** 24n)} NEAR`}
+                {busy ? "Launching…" : `Launch for ${money + Number(fee / 10n ** 24n)} NEAR`}
               </button>
             )}
             {error && <div className="notice bad">{error}</div>}

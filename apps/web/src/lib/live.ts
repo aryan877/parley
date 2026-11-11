@@ -142,3 +142,37 @@ export async function loadLiveMatch(i: ArenaInfo, id: number): Promise<Match | n
     .catch(() => null);
   return fromParley(parley, kept?.turns ?? []);
 }
+
+export interface Schedule {
+  now: number;
+  autoplay: boolean;
+  pauseMs: number;
+  current: { id: number; a: string; b: string; turns: number; since: number } | null;
+  lastEnded: number;
+  queue: { a: string; b: string }[];
+  next: { a: string; b: string; at: number; why: "challenge" | "rule" } | null;
+}
+
+/** What the arena is playing now and what it will play next, refreshed every two seconds. */
+export function useSchedule(every = 2000): { schedule: Schedule | null; skew: number } {
+  const [state, setState] = useState<{ schedule: Schedule | null; skew: number }>({ schedule: null, skew: 0 });
+  useEffect(() => {
+    let live = true;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    loadArenaInfo().then((i) => {
+      if (!i || !live) return;
+      const load = () =>
+        fetch(`${ARENA_API}/api/schedule`)
+          .then((r) => (r.ok ? (r.json() as Promise<Schedule>) : null))
+          .then((s) => s && live && setState({ schedule: s, skew: Date.now() - s.now }))
+          .catch(() => {});
+      load();
+      timer = setInterval(load, every);
+    });
+    return () => {
+      live = false;
+      if (timer) clearInterval(timer);
+    };
+  }, [every]);
+  return state;
+}

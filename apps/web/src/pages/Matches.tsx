@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ArenaNow } from "../components/ArenaNow.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
 import { fromParley } from "../lib/model.ts";
 import { useLiveArena } from "../lib/live.ts";
@@ -37,6 +38,11 @@ export function Matches() {
           ))}
         </div>
       </div>
+      {showLive && (
+        <div style={{ marginBottom: 18 }}>
+          <ArenaNow />
+        </div>
+      )}
       <div className="match-list">
         {showLive
           ? live.parleys

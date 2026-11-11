@@ -74,7 +74,7 @@ function LiveMatch({ id }: { id: number }) {
       <div className="crumbs">
         <Link to="/matches">Matches</Link> / live / match {shown.id}
       </div>
-      <Stage key={shown.id} match={shown} a={fighter(shown.a)} b={fighter(shown.b)} live={!shown.settled || !!stream.match} autoplay={!shown.settled} label={`Live arena · match ${shown.id}`} />
+      <Stage key={shown.id} match={shown} a={fighter(shown.a)} b={fighter(shown.b)} live={!shown.settled || !!stream.match} autoplay={!shown.settled} label={`Match ${shown.id}`} />
     </>
   );
 }

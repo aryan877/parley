@@ -30,7 +30,7 @@ export function MatchRow({ match, to, name }: { match: Match; to: string; name: 
         </span>
       ) : (
         <span className="pill live">
-          <i /> Playing now
+          Playing now
         </span>
       )}
       <span className="match-side right">

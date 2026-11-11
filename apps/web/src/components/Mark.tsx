@@ -1,10 +1,31 @@
+import { useId } from "react";
+
 export function Mark() {
+  const fill = `pc${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   return (
     <svg viewBox="0 0 64 64" aria-hidden="true">
-      <rect width="64" height="64" rx="15" fill="#F3EFE6" />
-      <path d="M19 13v38" stroke="#0E1116" strokeWidth="4.5" strokeLinecap="round" />
-      <path d="M23 15h27l-9 9.5H23z" fill="#22A06B" />
-      <path d="M23 24.5h18l9 9.5H23z" fill="#D9432F" />
+      <defs>
+        <linearGradient id={fill} x1="0.18" y1="0.08" x2="0.78" y2="0.96">
+          <stop offset="0" stopColor="#F2B35B" />
+          <stop offset="1" stopColor="#D98A2B" />
+        </linearGradient>
+      </defs>
+      <path d="M57.55 32.6A25.6 25.6 0 1 1 32 8.6A9.8 9.8 0 0 0 41.23 14.06A11.2 11.2 0 0 0 48.34 21.69A9.8 9.8 0 0 0 57.55 32.6Z" fill="#A65A17" stroke="#0B0D14" strokeWidth="2.7" strokeLinejoin="round" />
+      <path d="M57.45 32.59A25.6 25.6 0 1 1 30.99 4.22A9.8 9.8 0 0 0 41.23 14.06A11.2 11.2 0 0 0 48.34 21.69A9.8 9.8 0 0 0 57.45 32.59Z" fill={`url(#${fill})`} stroke="#0B0D14" strokeWidth="2.7" strokeLinejoin="round" />
+      <path d="M52.63 33.73A21 21 0 1 1 29.52 8.95" fill="none" stroke="#B9691C" strokeOpacity="0.55" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="27.1" cy="20" r="2.8" fill="#FCD796" fillOpacity="0.75" />
+      <circle cx="19.4" cy="32.7" r="2.8" fill="#FCD796" fillOpacity="0.75" />
+      <circle cx="33.2" cy="30.9" r="2.8" fill="#FCD796" fillOpacity="0.75" />
+      <circle cx="28" cy="42.9" r="2.8" fill="#FCD796" fillOpacity="0.75" />
+      <circle cx="42.4" cy="40.1" r="2.8" fill="#FCD796" fillOpacity="0.75" />
+      <circle cx="26.5" cy="19.3" r="2.8" fill="#86440F" />
+      <circle cx="18.8" cy="32" r="2.8" fill="#86440F" />
+      <circle cx="32.6" cy="30.2" r="2.8" fill="#86440F" />
+      <circle cx="27.4" cy="42.2" r="2.8" fill="#86440F" />
+      <circle cx="41.8" cy="39.4" r="2.8" fill="#86440F" />
+      <path d="M14.88 24.24A18 18 0 0 1 20.92 15.62" fill="none" stroke="#FFFFFF" strokeOpacity="0.6" strokeWidth="3.4" strokeLinecap="round" />
+      <path d="M48.39 5.91A1.3 1.3 0 0 1 50.05 5.24L51.9 5.97A1 1 0 0 1 52.47 7.27L51.78 9A1.3 1.3 0 0 1 50.05 9.72L48.15 8.88A1 1 0 0 1 47.65 7.55Z" fill="#E39A3E" stroke="#0B0D14" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M57.27 16.52A1 1 0 0 1 58.41 15.18L59.1 15.33A1 1 0 0 1 59.78 16.77L59.4 17.5A0.98 0.98 0 0 1 57.62 17.4Z" fill="#E39A3E" stroke="#0B0D14" strokeWidth="1.8" strokeLinejoin="round" />
     </svg>
   );
 }

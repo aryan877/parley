@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { fmtNear } from "../lib/model.ts";
 import { shortAccount, useWallet } from "../lib/wallet.tsx";
 import { SparkIcon, WalletIcon } from "./icons.tsx";
+import { Mascot } from "./Mascot.tsx";
 
 const WALLETS = ["Meteor", "HOT", "MyNearWallet", "Intear", "NEAR Mobile"];
 
@@ -60,7 +61,7 @@ export function WalletButton() {
   if (w.accountId) {
     return (
       <div className="wallet-chip" title={w.accountId}>
-        <span className="dot" />
+        <Mascot id={w.accountId} size={26} />
         <span className="acct">{shortAccount(w.accountId)}</span>
         <span className="bal">{w.balance ? fmtNear(w.balance) : "…"} NEAR</span>
         <button className="tiny" onClick={w.disconnect}>

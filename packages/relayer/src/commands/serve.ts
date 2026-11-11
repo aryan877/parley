@@ -1,4 +1,4 @@
-import { Arena, type Parley, type SignedReply } from "@parley/sdk";
+import { Arena, type Coin, type Config, type Model, type Parley, type SignedReply } from "@parley/sdk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT, fundLocalAccount, loadDeployment } from "../localnet.ts";
@@ -31,6 +31,54 @@ const MAX_QUEUE = 12;
 const PLAYERS = join(ROOT, ".localnet", "players.json");
 const EVIDENCE = join(ROOT, ".localnet", "evidence");
 
+interface Next {
+  a: string;
+  b: string;
+  /** Unix milliseconds when it can start; now or earlier means as soon as the current match ends. */
+  at: number;
+  why: "challenge" | "rule";
+}
+
+const NS = 1_000_000;
+
+/**
+ * Who the contract will pair next, by the same rule `open_parley` follows: rested coins only, the one that has
+ * waited longest goes first and meets the rested coin it met least recently, skipping pairs that met too
+ * recently. When no pair is ready, the earliest moment one will be.
+ */
+async function predict(arena: Arena, coins: Coin[], config: Config, models: Model[]): Promise<Next | null> {
+  const now = BigInt(Date.now()) * BigInt(NS);
+  const rest = BigInt(config.rest_ns);
+  const apart = BigInt(config.pair_rest_ns);
+  const answers = (model: string) => models.some((m) => m.id === model && m.signers.some((k) => BigInt(k.active_from) <= now && (!k.retired_from || now < BigInt(k.retired_from))));
+  const able = coins.filter((c) => c.in_match === null && BigInt(c.treasury) >= BigInt(config.min_treasury) && answers(c.model));
+  const order = [...able].sort((x, y) => (BigInt(x.idle_since) === BigInt(y.idle_since) ? x.id.localeCompare(y.id) : BigInt(x.idle_since) < BigInt(y.idle_since) ? -1 : 1));
+  const met = new Map<string, bigint>();
+  const lastMet = async (a: Coin, b: Coin) => {
+    const key = [a.id, b.id].sort().join(":");
+    if (!met.has(key)) {
+      const record = await arena.view<{ last_met: string }>("get_pair_record", { a: a.id, b: b.id });
+      met.set(key, BigInt(record.last_met ?? "0"));
+    }
+    const together = BigInt(a.created_at) > BigInt(b.created_at) ? BigInt(a.created_at) : BigInt(b.created_at);
+    const last = met.get(key)!;
+    return last > together ? last : together;
+  };
+  let soonest: { a: Coin; b: Coin; at: bigint } | null = null;
+  for (const first of order.slice(0, 6)) {
+    let best: { b: Coin; last: bigint } | null = null;
+    for (const other of order) {
+      if (other.id === first.id) continue;
+      const last = await lastMet(first, other);
+      const ready = [BigInt(first.idle_since) + rest, BigInt(other.idle_since) + rest, last + apart].reduce((x, y) => (x > y ? x : y));
+      if (ready <= now && (!best || last < best.last)) best = { b: other, last };
+      if (!soonest || ready < soonest.at) soonest = { a: first, b: other, at: ready };
+    }
+    if (best && BigInt(first.idle_since) + rest <= now) return { a: first.id, b: best.b.id, at: Date.now(), why: "rule" };
+  }
+  return soonest ? { a: soonest.a.id, b: soonest.b.id, at: Number(soonest.at / BigInt(NS)), why: "rule" } : null;
+}
+
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: CORS });
 const panic = (error?: string) => error?.match(/Smart contract panicked: ([^"\\]+)/)?.[1] ?? error ?? "refused";
 
@@ -49,6 +97,8 @@ export async function serve() {
   const watchers = new Set<(event: Event) => void>();
   const players: string[] = existsSync(PLAYERS) ? (JSON.parse(readFileSync(PLAYERS, "utf8")) as string[]) : [];
   let current: { parley: Parley; turns: Evidence[] } | null = null;
+  let currentSince = 0;
+  let lastEnded = Date.now();
   mkdirSync(EVIDENCE, { recursive: true });
 
   const emit = (event: Event) => {
@@ -71,6 +121,7 @@ export async function serve() {
     const id = opened.value as number;
     const parley = (await owner.parley(id))!;
     current = { parley, turns: [] };
+    currentSince = Date.now();
     emit({ type: "opened", parley, reason });
     await playParley(owner, mind, id, async ({ index, model, request, reply, txHash }) => {
       const turn = { index, model, request, reply, txHash };
@@ -84,6 +135,7 @@ export async function serve() {
     writeFileSync(evidenceFile(id), JSON.stringify(current));
     emit({ type: "settled", parley: done });
     current = null;
+    lastEnded = Date.now();
     await keep().catch(() => {});
     return null;
   }
@@ -160,6 +212,24 @@ export async function serve() {
           return json({ network: deployment.network, rpcUrl: deployment.rpcUrl, contractId: deployment.contractId, autoplay, overview, config, models });
         }
         if (url.pathname === "/api/live") return stream();
+        if (url.pathname === "/api/schedule") {
+          const [coins, config, models] = await Promise.all([owner.coins(), owner.config(), owner.models()]);
+          const queued = queue.map((q) => ({ a: q.a, b: q.b }));
+          const next: Next | null = queued[0]
+            ? { ...queued[0], at: current ? 0 : Date.now(), why: "challenge" }
+            : autoplay
+              ? await predict(owner, coins.filter((c) => c.id !== current?.parley.a && c.id !== current?.parley.b), config, models)
+              : null;
+          return json({
+            now: Date.now(),
+            autoplay,
+            pauseMs: pause,
+            current: current ? { id: current.parley.id, a: current.parley.a, b: current.parley.b, turns: current.parley.turns.length, since: currentSince } : null,
+            lastEnded,
+            queue: queued,
+            next,
+          });
+        }
         if (url.pathname === "/api/challenge" && req.method === "POST") return challenge(req);
         if (url.pathname === "/api/faucet" && req.method === "POST") return faucet(req);
         const match = url.pathname.match(/^\/api\/match\/(\d+)$/);

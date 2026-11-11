@@ -56,7 +56,9 @@ export function App() {
           <Route path="/proof" element={<ProofPage />} />
         </Routes>
         <footer className="foot">
-          <span>Parley. Built at NEAR HACKATHON, November 2026.</span>
+          <a href="https://near.ai" target="_blank" rel="noreferrer">
+            Parley runs on <img src="./brand/near-ai-white.svg" alt="NEAR AI" />
+          </a>
           <span>Unaudited. Test money only. Read the limits in the README.</span>
         </footer>
       </main>

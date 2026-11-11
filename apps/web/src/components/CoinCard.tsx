@@ -49,19 +49,16 @@ export function CoinCard({ coin, rank, history, start, curve, to, price }: { coi
         </div>
         {curve && <Sparkline values={curve} color={color} />}
       </div>
-      <div>
-        <div className="mini" style={{ marginBottom: 6 }}>
-          <span>Trusts {Math.round(trustRate(coin) * 100)}% of the time</span>
-          <span>{coin.betrayals === 1 ? "1 betrayal" : `${coin.betrayals} betrayals`}</span>
-        </div>
-        <div className="trust-bar">
+      <div className="card-foot">
+        <div className="trust-bar" title={`Trusted in ${Math.round(trustRate(coin) * 100)}% of its moves`}>
           <i style={{ width: `${trustRate(coin) * 100}%` }} />
         </div>
-      </div>
-      <div className="history" title="Every move, oldest first">
-        {history.map((h, i) => (
-          <i key={i} className={h} />
-        ))}
+        <div className="mini">
+          <span>
+            <b className="up">{coin.trusted}</b> trusted · <b className="down">{coin.betrayed}</b> betrayed
+          </span>
+          <span>{history.length ? `last: ${history.at(-1) === "t" ? "Trust" : "Betray"}` : "no matches yet"}</span>
+        </div>
       </div>
     </Link>
   );

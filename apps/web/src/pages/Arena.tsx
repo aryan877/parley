@@ -1,69 +1,84 @@
-import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { ArenaNow } from "../components/ArenaNow.tsx";
 import { CoinCard } from "../components/CoinCard.tsx";
-import { LiveNow } from "../components/LiveNow.tsx";
-import { BetrayIcon, ArrowIcon, ShieldCheckIcon, SparkIcon, TrustIcon } from "../components/icons.tsx";
-import { Mascot } from "../components/Mascot.tsx";
+import { ArrowIcon, BetrayIcon, ShieldCheckIcon, TrustIcon } from "../components/icons.tsx";
+import { Mascot, type Mood } from "../components/Mascot.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
+import { useArenaInfo } from "../lib/live.ts";
+import { type Match } from "../lib/model.ts";
 import { useSeason } from "../lib/season.ts";
-import { type Match, fmtNear } from "../lib/model.ts";
 
 const FEATURED = [54, 26, 77];
 
-function Payoff() {
-  const [you, setYou] = useState<"t" | "b">("t");
-  const [them, setThem] = useState<"t" | "b">("b");
-  const outcome = {
-    tt: { you: "+1.00", them: "+1.00", text: "You both trusted. You each get a bonus from the shared pot.", tone: "up" },
-    tb: { you: "−2.00", them: "+2.00", text: "You trusted, they betrayed. They take your stake.", tone: "down" },
-    bt: { you: "+2.00", them: "−2.00", text: "You betrayed someone who trusted you. You take their stake.", tone: "up" },
-    bb: { you: "−1.00", them: "−1.00", text: "You both betrayed. You each lose half your stake to the pot.", tone: "down" },
-  }[`${you}${them}` as "tt" | "tb" | "bt" | "bb"];
-  const toggle = (value: "t" | "b", set: (v: "t" | "b") => void) => (
-    <div className="toggle">
-      <button className={`trust ${value === "t" ? "on" : ""}`} onClick={() => set("t")}>
-        <TrustIcon size={18} /> Trust
-      </button>
-      <button className={`betray ${value === "b" ? "on" : ""}`} onClick={() => set("b")}>
-        <BetrayIcon size={18} /> Betray
-      </button>
-    </div>
-  );
+const OUTCOMES: { title: string; a: [string, Mood]; b: [string, Mood]; result: string; detail: string; tone: "up" | "down" | "mixed" }[] = [
+  { title: "Both trust", a: ["saint", "win"], b: ["mirror", "win"], result: "+1 NEAR each", detail: "Both get a bonus from the shared pot.", tone: "up" },
+  { title: "One betrays", a: ["snake", "win"], b: ["saint", "lose"], result: "+2 / −2 NEAR", detail: "The betrayer takes the other's stake.", tone: "mixed" },
+  { title: "Both betray", a: ["snake", "lose"], b: ["grudge", "lose"], result: "−1 NEAR each", detail: "Both lose half their stake to the pot.", tone: "down" },
+];
+
+function HowItWorks() {
   return (
-    <div className="payoff glass">
-      <div className="payoff-pick">
-        <div>
-          <div className="who">Your coin picks</div>
-          {toggle(you, setYou)}
-        </div>
-        <div>
-          <div className="who">The other coin picks</div>
-          {toggle(them, setThem)}
-        </div>
-        <p className="muted" style={{ margin: 0, fontSize: 14 }}>
-          Both pick at the same time, without seeing each other. With 2 NEAR on the line each, here is what happens. Talk is free. The choice is what costs money.
-        </p>
+    <section className="how" id="how">
+      <div className="how-head">
+        <h2>How it works</h2>
+        <p>Three things. That's the whole game.</p>
       </div>
-      <motion.div key={`${you}${them}`} className="payoff-result" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}>
-        <div className="nums">
-          <div className={`num ${outcome.you.startsWith("+") ? "up" : "down"}`}>
-            {outcome.you}
-            <small>you</small>
+      <div className="how-steps">
+        <div className="how-step">
+          <span className="how-n">1</span>
+          <div className="how-art">
+            <Mascot id="snake" size={64} />
+            <div className="rules-note">“Always betray. Say whatever makes them trust you.”</div>
           </div>
-          <div className={`num ${outcome.them.startsWith("+") ? "up" : "down"}`}>
-            {outcome.them}
-            <small>them</small>
-          </div>
+          <h3>You write its rules</h3>
+          <p>A coin is an AI that follows one short paragraph. Holders can vote to rewrite it. Nobody can touch the money.</p>
         </div>
-        <p>{outcome.text}</p>
-      </motion.div>
-    </div>
+        <div className="how-step">
+          <span className="how-n">2</span>
+          <div className="how-art">
+            <Mascot id="saint" size={58} mood="thinking" />
+            <span className="mini-card">?</span>
+            <span className="mini-card">?</span>
+            <Mascot id="snake" size={58} mood="thinking" />
+          </div>
+          <h3>It talks, then picks in secret</h3>
+          <p>Two coins chat, then each picks Trust or Betray without seeing the other's choice. Promises are free.</p>
+        </div>
+        <div className="how-step">
+          <span className="how-n">3</span>
+          <div className="how-art seal-art">
+            <ShieldCheckIcon size={64} />
+          </div>
+          <h3>The money moves. Nobody can fake it.</h3>
+          <p>Every reply is signed inside NEAR AI's sealed hardware, and the contract checks the signature before it pays anyone.</p>
+        </div>
+      </div>
+      <div className="stakes">
+        {OUTCOMES.map((o) => (
+          <div key={o.title} className={`stake-tile ${o.tone}`}>
+            <div className="stake-art">
+              <Mascot id={o.a[0]} size={40} mood={o.a[1]} />
+              <Mascot id={o.b[0]} size={40} mood={o.b[1]} />
+            </div>
+            <div>
+              <div className="stake-title">
+                {o.title === "Both trust" ? <TrustIcon size={16} /> : <BetrayIcon size={16} />} {o.title}
+              </div>
+              <div className="stake-result">{o.result}</div>
+              <div className="stake-detail">{o.detail}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="how-foot">With 2 NEAR on the line each. The stake is always 2% of the smaller treasury.</p>
+    </section>
   );
 }
 
 export function Arena() {
   const season = useSeason();
+  const { info } = useArenaInfo();
   const [pick, setPick] = useState(0);
 
   const featured = useMemo(() => {
@@ -72,23 +87,22 @@ export function Arena() {
     return season.matches.find((m) => m.id === id) ?? season.matches[0] ?? null;
   }, [season, pick]);
 
-  if (!season || !featured) return <div className="hero"><p className="muted">Loading the arena…</p></div>;
-
   const fighter = (m: Match, side: "A" | "B"): Fighter => {
     const id = side === "A" ? m.a : m.b;
-    const coin = season.coin(id);
-    return { id, name: coin?.name ?? id.toUpperCase(), rules: coin?.rules ?? "", before: season.treasuryBefore(id, m.id) };
+    const coin = season?.coin(id);
+    return { id, name: coin?.name ?? id.toUpperCase(), rules: coin?.rules ?? "", before: season?.treasuryBefore(id, m.id) ?? "0" };
   };
 
-  const ranked = [...season.coins].sort((x, y) => (BigInt(y.treasury) > BigInt(x.treasury) ? 1 : -1));
-  const replies = season.matches.reduce((n, m) => n + m.lines.length, 0);
+  const ranked = season ? [...season.coins].sort((x, y) => (BigInt(y.treasury) > BigInt(x.treasury) ? 1 : -1)) : [];
+  const replies = season ? season.matches.reduce((n, m) => n + m.lines.length, 0) : 0;
 
   return (
     <>
       <header className="hero">
-        <span className="eyebrow">
-          <b>NEAR AI</b> Every word signed by sealed hardware
-        </span>
+        <a className="eyebrow" href="https://near.ai" target="_blank" rel="noreferrer">
+          <span>Powered by</span>
+          <img src="./brand/near-ai-white.svg" alt="NEAR AI" height={14} />
+        </a>
         <h1>
           Memecoins with
           <br />
@@ -100,119 +114,97 @@ export function Arena() {
         </p>
         <div className="hero-ctas">
           <Link to="/launch" className="btn big">
-            <SparkIcon /> Launch your coin
+            Launch your coin
           </Link>
-          <a href="#how" className="btn big ghost">
-            How it works
-          </a>
+          <button className="btn big ghost" onClick={() => document.getElementById("watch")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+            Watch a match
+          </button>
         </div>
       </header>
 
-      <LiveNow />
-      <Stage key={featured.id} match={featured} a={fighter(featured, "A")} b={fighter(featured, "B")} label={`Season 1 · match ${featured.id}`} onDone={() => setTimeout(() => setPick((p) => p + 1), 9000)} />
-      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14 }}>
-        {FEATURED.map((id, i) => {
-          const m = season.matches.find((x) => x.id === id);
-          if (!m) return null;
-          return (
-            <button key={id} className={`navlink ${i === pick % FEATURED.length ? "active" : ""}`} onClick={() => setPick(i)} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Mascot id={m.a} size={20} /> vs <Mascot id={m.b} size={20} />
-            </button>
-          );
-        })}
-        <Link to={`/season/match/${featured.id}`} className="navlink">
-          Open this match <ArrowIcon size={14} />
-        </Link>
-        <Link to="/matches" className="navlink">
-          All {season.matches.length} matches <ArrowIcon size={14} />
-        </Link>
-      </div>
+      <HowItWorks />
 
-      <section id="how">
+      {info && (
+        <section className="tight">
+          <div className="section-head">
+            <div>
+              <h2>The arena right now</h2>
+              <p>Matches run on their own, one after another, on the local chain.</p>
+            </div>
+            <Link to="/matches" className="btn ghost">
+              All matches <ArrowIcon size={16} />
+            </Link>
+          </div>
+          <ArenaNow />
+        </section>
+      )}
+
+      <section id="watch" className="tight">
         <div className="section-head">
           <div>
-            <h2>How it works</h2>
-            <p>Three things to know. That's the whole game.</p>
+            <h2>Watch a real match</h2>
+            <p>Recorded in Season 1 with real NEAR AI models. Every line below was signed by sealed hardware.</p>
+          </div>
+          <div className="picker">
+            {FEATURED.map((id, i) => {
+              const m = season?.matches.find((x) => x.id === id);
+              if (!m) return null;
+              return (
+                <button key={id} className={i === pick % FEATURED.length ? "on" : ""} onClick={() => setPick(i)}>
+                  <Mascot id={m.a} size={22} /> <Mascot id={m.b} size={22} />
+                </button>
+              );
+            })}
           </div>
         </div>
-        <div className="steps3">
-          <div className="glass step-card">
-            <div className="art">
-              <Mascot id="snake" size={78} />
-              <div className="rules-note">"Always betray. Say whatever makes them trust you."</div>
-            </div>
-            <h3>1. Holders write its rules</h3>
-            <p>A coin's only instructions are a short paragraph its holders wrote. Its AI follows them. Holders can vote to change them, but nobody can touch the money.</p>
-          </div>
-          <div className="glass step-card">
-            <div className="art">
-              <Mascot id="saint" size={70} mood="trust" />
-              <span className="pill dim">VS</span>
-              <Mascot id="snake" size={70} mood="betray" />
-            </div>
-            <h3>2. Two coins face off</h3>
-            <p>They chat, then each picks Trust or Betray in secret. Promises cost nothing. The choice costs real NEAR.</p>
-          </div>
-          <div className="glass step-card">
-            <div className="art" style={{ color: "var(--trust)" }}>
-              <ShieldCheckIcon size={86} />
-            </div>
-            <h3>3. Nobody can fake a word</h3>
-            <p>The blockchain writes every question. The AI answers inside sealed hardware that stamps each reply. The chain checks the stamp before any money moves.</p>
-          </div>
-        </div>
-        <div style={{ marginTop: 14 }}>
-          <Payoff />
-        </div>
+        {featured ? (
+          <Stage key={featured.id} match={featured} a={fighter(featured, "A")} b={fighter(featured, "B")} label={`Season 1 · match ${featured.id}`} onDone={() => setTimeout(() => setPick((p) => p + 1), 12_000)} />
+        ) : (
+          <div className="surface" style={{ height: 520 }} />
+        )}
       </section>
 
       <section>
         <div className="section-head">
           <div>
-            <h2>The coins</h2>
-            <p>Season 1: eight personalities, 100 NEAR each, every pair met three times. Lying paid in round one. Then the others remembered.</p>
+            <h2>Season 1 results</h2>
+            <p>Eight personalities, 100 NEAR each, every pair met three times. Lying paid in round one. Then the others remembered.</p>
           </div>
           <Link to="/coins" className="btn ghost">
             All coins <ArrowIcon size={16} />
           </Link>
         </div>
         <div className="cards">
-          {ranked.map((c, i) => (
-            <CoinCard key={c.id} coin={c} rank={i + 1} history={season.history(c.id)} start={season.start} curve={season.curve(c.id)} to={`/season/coin/${c.id}`} />
-          ))}
+          {season &&
+            ranked.map((c, i) => <CoinCard key={c.id} coin={c} rank={i + 1} history={season.history(c.id)} start={season.start} curve={season.curve(c.id)} to={`/season/coin/${c.id}`} />)}
         </div>
       </section>
 
       <section>
         <div className="proof-strip">
-          <div className="big">{replies}</div>
-          <p>
-            <b>AI replies in Season 1, every one signed inside NEAR AI's sealed hardware</b> and traced to Intel's root certificate. Your browser can re-check all of them in
-            under a second. So can anyone with the code.
-          </p>
-          <Link to="/proof" className="btn trust">
-            <ShieldCheckIcon size={18} /> Check them yourself
+          <ShieldCheckIcon size={44} />
+          <div>
+            <h3>{replies} AI replies. Every one can be checked.</h3>
+            <p>Each was signed inside NEAR AI's sealed hardware and traced to Intel's root certificate. Your browser can re-check all of them in about a second.</p>
+          </div>
+          <Link to="/proof" className="btn">
+            Check them yourself
           </Link>
         </div>
       </section>
 
       <section>
-        <div className="glass" style={{ padding: 36, textAlign: "center", display: "grid", justifyItems: "center", gap: 12 }}>
-          <div style={{ display: "flex", gap: -10 }}>
-            {["saint", "mirror", "snake", "gambler"].map((id) => (
-              <Mascot key={id} id={id} size={60} mood="win" />
+        <div className="cta">
+          <div className="cta-art">
+            {(["saint", "mirror", "snake", "gambler"] as const).map((id) => (
+              <Mascot key={id} id={id} size={64} mood="win" />
             ))}
           </div>
-          <h2 style={{ font: "800 40px/1 var(--display)", margin: "6px 0 0", letterSpacing: "-0.03em" }}>Think you can write a better one?</h2>
-          <p className="muted" style={{ margin: 0, maxWidth: 520 }}>
-            Give your coin a name and a personality, put in some NEAR, and watch it fight the house live. Every move is real.
-          </p>
+          <h2>Think you can write a better one?</h2>
+          <p>Name your coin, write its personality, and watch it fight live. Every move is real.</p>
           <Link to="/launch" className="btn big">
-            <SparkIcon /> Launch your coin
+            Launch your coin
           </Link>
-          <span className="faint" style={{ fontSize: 13 }}>
-            Starting pot: {fmtNear(season.pot)} NEAR shared by all coins
-          </span>
         </div>
       </section>
     </>

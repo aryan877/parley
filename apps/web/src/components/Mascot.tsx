@@ -767,11 +767,6 @@ function drop(x: number, y: number, k: number): string {
   return `M${n(x)} ${n(y - 1.7 * k)}Q${n(x + 1.15 * k)} ${n(y - 0.2 * k)} ${n(x + k)} ${n(y + 0.45 * k)}A${n(k)} ${n(k)} 0 0 1 ${n(x - k)} ${n(y + 0.45 * k)}Q${n(x - 1.15 * k)} ${n(y - 0.2 * k)} ${n(x)} ${n(y - 1.7 * k)}Z`;
 }
 
-function sparkle(x: number, y: number, s: number): string {
-  const k = s * 0.2;
-  return `M${n(x)} ${n(y - s)}Q${n(x + k)} ${n(y - k)} ${n(x + s)} ${n(y)}Q${n(x + k)} ${n(y + k)} ${n(x)} ${n(y + s)}Q${n(x - k)} ${n(y + k)} ${n(x - s)} ${n(y)}Q${n(x - k)} ${n(y - k)} ${n(x)} ${n(y - s)}Z`;
-}
-
 function heart(x: number, y: number, s: number): string {
   return `M${n(x)} ${n(y + s * 0.95)}C${n(x - s * 1.7)} ${n(y - s * 0.1)} ${n(x - s * 0.95)} ${n(y - s * 1.45)} ${n(x)} ${n(y - s * 0.5)}C${n(x + s * 0.95)} ${n(y - s * 1.45)} ${n(x + s * 1.7)} ${n(y - s * 0.1)} ${n(x)} ${n(y + s * 0.95)}Z`;
 }
@@ -854,10 +849,12 @@ function extrasFront(face: Face, c: Ctx): ReactNode {
   }
   if (fx.includes("sparkle")) {
     out.push(
-      <g key="sparkle" fill="#FFF4C7">
-        <path d={sparkle(87, 20, c.lod === 0 ? 9 : 8)} />
-        <path d={sparkle(10.5, 45, c.lod === 0 ? 6.5 : 5.5)} />
-        {c.lod > 0 && <path d={sparkle(93, 41, 3.6)} />}
+      <g key="sparkle" stroke="#FFE59A" strokeWidth={c.lod === 0 ? 4.2 : 3.4} strokeLinecap="round" fill="none">
+        <path d="M80 11L83 3.5" />
+        <path d="M87.5 16L94.5 10" />
+        <path d="M91 25L99 23.5" />
+        {c.lod > 0 && <path d="M13 33L6.5 28" />}
+        {c.lod > 0 && <path d="M10 41L2.5 40.5" />}
       </g>,
     );
   }

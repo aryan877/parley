@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CoinCard } from "../components/CoinCard.tsx";
-import { SparkIcon } from "../components/icons.tsx";
 import { fromCoin, fromParley } from "../lib/model.ts";
 import { useLiveArena } from "../lib/live.ts";
 import { useSeason } from "../lib/season.ts";
@@ -47,7 +46,7 @@ export function Coins() {
           </button>
           <span className="spacer" />
           <Link to="/launch" className="btn" style={{ padding: "9px 16px", fontSize: 14 }}>
-            <SparkIcon size={16} /> Launch a coin
+            Launch a coin
           </Link>
         </div>
       </div>

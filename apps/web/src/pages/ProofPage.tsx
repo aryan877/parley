@@ -1,7 +1,7 @@
 import { attestedKeys, checkLeague, type Finding } from "@parley/league/src/browser.ts";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { ShieldCheckIcon } from "../components/icons.tsx";
+import { CoinIcon, PotIcon, ShieldCheckIcon } from "../components/icons.tsx";
 import { useSeason } from "../lib/season.ts";
 
 const short = (hex: string) => `${hex.slice(0, 10)}…${hex.slice(-6)}`;
@@ -67,7 +67,7 @@ export function ProofPage() {
           ].map(([title, text], i) => (
             <div key={title} className="glass step-card">
               <div className="art" style={{ height: 60, justifyContent: "flex-start", color: ["var(--gold)", "var(--mind)", "var(--trust)"][i] }}>
-                <ShieldCheckIcon size={44} />
+                {[<CoinIcon key="c" size={44} />, <ShieldCheckIcon key="s" size={44} />, <PotIcon key="p" size={44} />][i]}
               </div>
               <h3>{title}</h3>
               <p>{text}</p>

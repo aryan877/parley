@@ -4,7 +4,7 @@ import type { Line, Match, Side } from "../lib/model.ts";
 import { fmtNear, nearNumber, signedNear } from "../lib/model.ts";
 import { headline, moveWord, tagline } from "../lib/words.ts";
 import { Mascot, type Mood, mascotColor } from "./Mascot.tsx";
-import { BetrayIcon, BoltIcon, BrainIcon, EyeIcon, PauseIcon, PlayIcon, RestartIcon, ShieldCheckIcon, SkipIcon, TrustIcon } from "./icons.tsx";
+import { BetrayIcon, BoltIcon, BrainIcon, EyeIcon, PauseIcon, PlayIcon, RestartIcon, SkipIcon, TrustIcon } from "./icons.tsx";
 import { Proof } from "./Proof.tsx";
 
 export interface Fighter {
@@ -205,12 +205,12 @@ function Bubble({ line, fighter, fresh, onProof }: { line: Line; fighter: Fighte
         <div className="bubble-tools">
           {line.proof && (
             <button className="tiny verified" onClick={() => onProof(line)} title="Signed inside NEAR AI's sealed hardware">
-              <ShieldCheckIcon size={12} /> verified
+              Verified
             </button>
           )}
           {line.thought && (
             <button className={`tiny mind ${open ? "on" : ""}`} onClick={() => setOpen((v) => !v)}>
-              <EyeIcon size={12} /> {open ? "hide" : "what it was thinking"}
+              {open ? "Hide thoughts" : "What it was thinking"}
             </button>
           )}
         </div>
@@ -359,7 +359,7 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
         <div className="stage-tags">
           {live ? (
             <span className="pill live">
-              <i /> Live
+              Live
             </span>
           ) : (
             <span className="pill">Replay</span>
@@ -441,7 +441,7 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
                 </p>
                 {decisionLine.proof && (
                   <button className="tiny verified" onClick={() => setProof(decisionLine)}>
-                    <ShieldCheckIcon size={12} /> signed by the same sealed hardware as its answer
+                    Signed by the same sealed hardware as its answer
                   </button>
                 )}
               </motion.blockquote>
