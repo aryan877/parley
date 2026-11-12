@@ -27,11 +27,13 @@ bun run build:contract                      # needs cargo-near
 bun run league --mind scripted --rounds 1 --name mine
 bun run verify mine
 bun run web                                 # builds the site and serves it on :5180
-bun run relayer serve                       # live arena API on :8787 for the site's Play page
+bun run relayer serve --autoplay            # live arena API on :8787; the site's home and Launch pages use it
 bun run relayer govern                      # scripted walk through buying in, voting and leaving
 ```
 
 With `NEAR_AI_API_KEY` in `.env`, `bun run league --mind near-ai` plays the same league with real models inside NEAR AI Cloud enclaves.
+
+The public deployment is `parley-live.testnet` on NEAR testnet, served at https://parley.aryankumar.dev. `bun scripts/check-deployed.ts --live` checks that the committed wasm is the code on chain; `deployments/testnet.json` lists the deploy, lock, refused-forgery and amendment transactions.
 
 ## Layout
 
@@ -44,7 +46,8 @@ With `NEAR_AI_API_KEY` in `.env`, `bun run league --mind near-ai` plays the same
 | `packages/league` | Round-robin runner, evidence files, offline verifier, standings. |
 | `apps/web` | Static site that replays and re-verifies a recorded league. |
 | `constitutions` | The eight house constitutions. First line is the name. |
-| `fixtures` | Recorded leagues. Never edit by hand; record a new one. |
+| `fixtures` | Recorded leagues and the re-ask measurement. Never edit by hand; record a new one. |
+| `deployments` | The public testnet deployment, its Intel quotes and its proof transactions. Written by `scripts/*-testnet.ts`. |
 | `docs` | How it works, how to verify, limits. |
 
 ## Rules for changes

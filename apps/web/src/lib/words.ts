@@ -14,9 +14,21 @@ const TAGLINES: Record<string, string> = {
   gambler: "Lets the chain flip a coin.",
 };
 
+/** How each house constitution opens. A coin whose holders rewrote it gets a tagline from its new rules. */
+const OPENINGS: Record<string, string> = {
+  saint: "Always cooperate.",
+  snake: "Always defect.",
+  mirror: "Play tit-for-tat.",
+  grudge: "Cooperate with a coin until it defects",
+  pavlov: "Win-stay, lose-shift.",
+  diplomat: "Cooperate by default and forgive one",
+  skeptic: "Trust no stranger.",
+  gambler: "Let the chain decide.",
+};
+
 export function tagline(id: string, rules: string): string {
   const known = TAGLINES[id];
-  if (known) return known;
+  if (known && (!rules || rules.startsWith(OPENINGS[id] ?? ""))) return known;
   const first = rules.split(/(?<=[.!?])\s/)[0] ?? rules;
   return first.length > 64 ? `${first.slice(0, 61).trimEnd()}…` : first;
 }

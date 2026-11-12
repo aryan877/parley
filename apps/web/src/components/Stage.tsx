@@ -157,7 +157,7 @@ function ChoiceCard({ side, match, beat, name }: { side: Side; match: Match; bea
       >
         <div className="choice-face back">
           <span className="q">?</span>
-          <small>{name} locked in</small>
+          <small>{!match.settled && !decidedLive ? `${name} is choosing…` : `${name} locked in`}</small>
         </div>
         <div className="choice-face front">
           {move === "Cooperate" ? <TrustIcon size={44} /> : <BetrayIcon size={44} />}
@@ -360,7 +360,9 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
       : beat.phase === "choosing"
         ? "Both are choosing in secret. Neither can see the other's choice."
         : beat.phase === "locked"
-          ? "Both locked in. The chain checks each answer before it counts."
+          ? !match.settled && match.lines.filter((l) => l.kind === "Decide").length < 2
+            ? "One has chosen. The other is still choosing in secret."
+            : "Both locked in. The chain checks each answer before it counts."
           : beat.phase === "reveal" || beat.phase === "money" || beat.phase === "done"
             ? headline(match, name)
             : null;

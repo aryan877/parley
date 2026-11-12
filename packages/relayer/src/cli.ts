@@ -40,7 +40,7 @@ if (!command) {
     [
       "usage: bun run relayer <command>",
       "  deploy [--mind scripted|near-ai] [--community]  fresh local arena with the eight characters",
-      "  play [--rounds N]                       open random Parleys and play them",
+      "  play [--rounds N]                       open Parleys by the pairing rule and play them",
       "  challenge <file.md> [--rounds N]        launch your own constitution against the house",
       "  govern [--mind scripted|near-ai]        walk through buying in, amending and leaving",
       "  serve [--port 8787] [--autoplay]        live arena API for the site; --autoplay keeps matches running",
