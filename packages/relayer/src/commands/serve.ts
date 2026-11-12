@@ -214,7 +214,8 @@ export async function serve() {
       start(controller) {
         const send = (event: Event) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
         send({ type: "hello", current, queue: queue.length });
-        heartbeat = setInterval(() => controller.enqueue(encoder.encode(": still here\n\n")), 15_000);
+        // Proxies buffer idle streams; 20s keeps the live arena feed alive without spamming.
+        heartbeat = setInterval(() => controller.enqueue(encoder.encode(": still here\n\n")), 20_000);
         watch = send;
         watchers.add(watch);
       },
