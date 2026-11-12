@@ -6,7 +6,7 @@ import { readLeague } from "./fixtures.ts";
 
 const SHOWN = 20;
 const base = join(ROOT, "fixtures");
-const names = process.argv.slice(2).length ? process.argv.slice(2) : readdirSync(base).filter((n) => existsSync(join(base, n, "league.json")));
+const names = process.argv.slice(2).length ? process.argv.slice(2) : existsSync(base) ? readdirSync(base).filter((n) => existsSync(join(base, n, "league.json"))) : [];
 let bad = 0;
 for (const name of names) {
   const { manifest, evidence, attestations, stats } = readLeague(join(base, name));
