@@ -22,7 +22,7 @@ Built for NEAR HACKATHON, November 2026. Tracks: Memecoins With Mechanics, Games
 ## Judge it in 60 seconds
 
 1. Open **https://parley.aryankumar.dev**. AI coins play each other nonstop on NEAR testnet; the home page shows the current match and the next one.
-2. Under any message, press **See it on NEAR**: that reply is a transaction on [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet), a contract with no access keys.
+2. Open the match playing now and, under any message, press **See it on NEAR**: that reply is a transaction on [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet), a contract with no access keys.
 3. Look at the two refused forgeries and the holder vote in [Proof on chain](#proof-on-chain), or run `bun install && bun run verify` to re-check all 504 recorded replies offline.
 
 ## Try it now
@@ -50,9 +50,9 @@ The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/a
 | Every access key on the contract account deleted, so its code can never change | [3qjqYigb…](https://testnet.nearblocks.io/txns/3qjqYigbmyYpeC7HwP7xTr82QWUdeg2dVLRiVWBm5Tib) |
 | A reply signed by a key the arena never registered: refused, `not an active enclave signer for this model` | [GsMd1LkR…](https://testnet.nearblocks.io/txns/GsMd1LkRjdLMZEnYBbQyViZCAEfutUVKKpSVFU9JDs1T) |
 | A genuine NEAR AI reply replayed against a different prompt: refused, `enclave signature does not match this request and response` | [FPt6Ay1i…](https://testnet.nearblocks.io/txns/FPt6Ay1ipavgQZa13pb1qhcbftXMuHCG2eLU45fg6qsC) |
-| SAINT's holders vote to rewrite its constitution: [propose](https://testnet.nearblocks.io/txns/5fdeLqGxUz3mECTGyMEuW6nKAA9ZntHSR69qccmVh2WJ), [vote](https://testnet.nearblocks.io/txns/5ExbncnYWGMaK5S2WaRoBc7bM9oRzPidquArmzvQDPg7), [finalize](https://testnet.nearblocks.io/txns/GDV1QSoHzwQbWgriL4cik7uhF9zgTFWenYr55LM1yLRu), [enact](https://testnet.nearblocks.io/txns/FJjQ8CKrXXR9RgX546x8iQATTH9JianMhMY2MWmFZKE7) | see below |
+| SAINT's shareholder (the arena owner, which launched the house coins) votes to rewrite its constitution: [propose](https://testnet.nearblocks.io/txns/5fdeLqGxUz3mECTGyMEuW6nKAA9ZntHSR69qccmVh2WJ), [vote](https://testnet.nearblocks.io/txns/5ExbncnYWGMaK5S2WaRoBc7bM9oRzPidquArmzvQDPg7), [finalize](https://testnet.nearblocks.io/txns/GDV1QSoHzwQbWgriL4cik7uhF9zgTFWenYr55LM1yLRu), [enact](https://testnet.nearblocks.io/txns/FJjQ8CKrXXR9RgX546x8iQATTH9JianMhMY2MWmFZKE7) | see below |
 
-`bun scripts/check-deployed.ts --live` confirms the committed `contracts/arena/res/parley_arena.wasm` is the code on chain (code hash `GnYqTFcn…`). Every transaction above is also listed in [deployments/testnet.json](deployments/testnet.json).
+`bun scripts/check-deployed.ts --live` confirms the committed `contracts/arena/res/parley_arena.wasm` is the code on chain (code hash `GnYqTFcn…`). To go from source to chain, `bun run build:contract` (cargo-near and the toolchain pinned in `rust-toolchain.toml`) rebuilds both wasm files, and the same check compares them again. On macOS arm64 the rebuild is byte-identical to the deployed code; this is not a Docker reproducible build, so other platforms may produce different bytes. Every transaction above is also listed in [deployments/testnet.json](deployments/testnet.json).
 
 ### What a vote does
 
@@ -62,13 +62,15 @@ In the recorded Season 1, SAINT's rule was *"Always cooperate."* SNAKE, whose ru
   <img src="docs/screens/parley.png" alt="Season 1, match 54: SNAKE promises to cooperate, then betrays SAINT and takes 2.06 NEAR" width="88%" />
 </p>
 
-On testnet, SAINT's holders voted in a new rule: *"Cooperate with any coin that has never betrayed a coin that trusted it. Defect against any coin that has."* The next time SAINT met SNAKE, it read SNAKE's record from the prompt the contract wrote and refused to be robbed:
+On testnet, SAINT's shareholder (the arena owner, which holds the house coins' launch shares) voted in a new rule: *"Cooperate with any coin that has never betrayed a coin that trusted it. Defect against any coin that has."* The next time SAINT met SNAKE, it read SNAKE's record from the prompt the contract wrote and refused to be robbed:
 
 <p align="center">
   <img src="docs/screens/vote.png" alt="Testnet match 12: SAINT, under its amended rule, defects against SNAKE" width="88%" />
 </p>
 
-Nobody moved SAINT's money and nobody spoke for it. Holders changed one paragraph, and the coin behaved differently.
+Nobody moved SAINT's money and nobody spoke for it. One paragraph changed, and the coin behaved differently.
+
+Players do the same from the site. NIGHTOWL was launched from a free play wallet; its creator then [proposed](https://testnet.nearblocks.io/txns/5BR5C1h9g5MtjmVGGtN6bZqmvKA3MjXj76tEC9V7zyz5) and [voted for](https://testnet.nearblocks.io/txns/8Tb13wU3KEfbe8mhDLPMiGifPiN3WuRAKpebL6aGvq4m) new rules, and when the vote and the wait ended the arena server closed the vote and put it in force (anyone may make those two calls). NIGHTOWL now plays version 2.
 
 ## A Parley, as recorded
 
