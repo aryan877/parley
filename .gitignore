@@ -13,3 +13,5 @@ apps/web/dist/
 apps/web/public/data/
 .cache/
 .testnet/
+# local attestation bundles fetched during deploys
+deployments/testnet-attestation/*.json
