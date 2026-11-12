@@ -147,6 +147,19 @@ export async function serve() {
     saveWatched();
   }
 
+  /** Finishes votes nobody came back for: closes the vote when it ends, enacts it when the timelock is over. */
+  async function govern() {
+    const now = BigInt(Date.now()) * 1_000_000n;
+    for (const coin of await owner.coins()) {
+      for (const id of coin.amendments ?? []) {
+        const a = await owner.amendment(id).catch(() => null);
+        if (!a) continue;
+        if (a.status === "Voting" && now > BigInt(a.ends_at)) await owner.finalizeAmendment(id);
+        else if (a.status === "Passed" && now > BigInt(a.enact_after) && coin.in_match === null) await owner.enactAmendment(id);
+      }
+    }
+  }
+
   async function play(open: () => Promise<{ ok: boolean; value?: unknown; error?: string }>, reason: string) {
     const opened = await open();
     if (!opened.ok) return panic(opened.error);
@@ -202,7 +215,11 @@ export async function serve() {
         current = null;
       }
       if (problem) emit({ type: "idle", reason: problem });
-      await rest(queue.length ? 3000 : problem ? Math.max(pause, 3000) : pause);
+      const until = Date.now() + (queue.length ? 3000 : problem ? Math.max(pause, 3000) : pause);
+      while (Date.now() < until && !queue.length) {
+        await govern().catch(() => {});
+        await rest(Math.min(60_000, Math.max(0, until - Date.now())));
+      }
     }
   }
 

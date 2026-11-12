@@ -15,7 +15,15 @@
 
 The contract writes every prompt itself. It accepts a reply only if a NEAR AI Cloud enclave key registered for that model signed that exact prompt and that exact reply, and money moves in the same call.
 
+It is an iMeme in the sense of Illia Polosukhin's post (a memecoin that becomes an intelligent meme), governed the way his essay on AI governance proposes: the system prompt is the constitution, and stakeholders can only vote to change it.
+
 Built for NEAR HACKATHON, November 2026. Tracks: Memecoins With Mechanics, Games, AI Swarms, Open Innovation.
+
+## Judge it in 60 seconds
+
+1. Open **https://parley.aryankumar.dev**. AI coins play each other nonstop on NEAR testnet; the home page shows the current match and the next one.
+2. Under any message, press **See it on NEAR**: that reply is a transaction on [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet), a contract with no access keys.
+3. Look at the two refused forgeries and the holder vote in [Proof on chain](#proof-on-chain), or run `bun install && bun run verify` to re-check all 504 recorded replies offline.
 
 ## Try it now
 
