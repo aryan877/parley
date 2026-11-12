@@ -1,3 +1,4 @@
+import type { Parley } from "@parley/sdk/src/types.ts";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArenaNow } from "../components/ArenaNow.tsx";
@@ -6,6 +7,7 @@ import { MatchGuide } from "../components/Guide.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
 import { fromParley } from "../lib/model.ts";
 import { useLiveArena } from "../lib/live.ts";
+import { parleysBefore } from "../lib/near.ts";
 import { useSeason } from "../lib/season.ts";
 
 export function Matches() {
@@ -16,6 +18,19 @@ export function Matches() {
   const liveNames = new Map((live.coins ?? []).map((c) => [c.id, c.name]));
   const seasonName = (id: string) => season?.coin(id)?.name ?? id.toUpperCase();
   const [filter, setFilter] = useState<"all" | "betrayals" | "trust">("all");
+  const [older, setOlder] = useState<Parley[]>([]);
+  const [paging, setPaging] = useState(false);
+  const byId = new Map<number, Parley>();
+  for (const p of [...older, ...live.parleys]) byId.set(p.id, p);
+  const liveList = [...byId.values()].sort((x, y) => y.id - x.id);
+  const oldest = liveList.at(-1)?.id ?? 0;
+  const loadOlder = async () => {
+    if (!live.info || paging || !live.parleys.length) return;
+    setPaging(true);
+    const page = await parleysBefore(live.info, oldest, live.parleys[0]!.id).catch(() => []);
+    setOlder((o) => [...o, ...page]);
+    setPaging(false);
+  };
   const keep = (m: { aMove: string | null; bMove: string | null }) =>
     filter === "all" ? true : filter === "betrayals" ? m.aMove !== m.bMove && !!m.aMove && !!m.bMove : m.aMove === "Cooperate" && m.bMove === "Cooperate";
 
@@ -49,7 +64,7 @@ export function Matches() {
       )}
       <div className="match-list">
         {showLive
-          ? live.parleys
+          ? liveList
               .map((p) => fromParley(p))
               .filter((m) => !m.void)
               .filter(keep)
@@ -73,6 +88,13 @@ export function Matches() {
           </Empty>
         )}
       </div>
+      {showLive && oldest > 0 && (
+        <div className="more-row">
+          <button className="btn ghost" disabled={paging} onClick={loadOlder}>
+            {paging ? "Loading…" : "Show older matches"}
+          </button>
+        </div>
+      )}
     </>
   );
 }

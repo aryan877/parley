@@ -107,10 +107,16 @@ export function nearNumber(yocto: string | bigint): number {
   return Number(v / 10n ** 20n) / 10_000;
 }
 
+/** Rounds to `digits`, but adds digits (up to 4) so a small amount never shows as 0. */
 export function fmtNear(yocto: string | bigint, digits = 2): string {
   const n = nearNumber(yocto);
-  return n.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  let d = digits;
+  while (d < 4 && n !== 0 && Math.abs(n) < 0.5 * 10 ** -d) d++;
+  return n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 }
+
+/** A config amount such as a fee: 0.1, 1 or 2.5, with no padding zeros. */
+export const plainNear = (yocto: string | bigint) => nearNumber(yocto).toLocaleString("en-US", { maximumFractionDigits: 4 });
 
 export function signedNear(yocto: string | bigint, digits = 2): string {
   const v = BigInt(yocto);
@@ -126,3 +132,12 @@ export function sharePrice(c: CoinInfo, start = 100n * YOCTO): number {
 }
 
 export const trustRate = (c: CoinInfo) => (c.played ? c.trusted / c.played : 0);
+
+/** Percent change in share price since launch, when every coin's shares start at 1 NEAR each. Null for coins without shares. */
+export function sinceLaunch(c: { treasury: string; shares: string }): number | null {
+  const shares = BigInt(c.shares);
+  if (shares === 0n) return null;
+  return Number(((BigInt(c.treasury) - shares) * 1_000_000n) / shares) / 10_000;
+}
+
+export const pctText = (pct: number) => `${pct >= 0 ? "▲" : "▼"} ${Math.abs(pct).toFixed(1)}%`;

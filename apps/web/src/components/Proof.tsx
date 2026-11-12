@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { Line, Match } from "../lib/model.ts";
 import { brainOf } from "../lib/words.ts";
 import { ShieldCheckIcon } from "./icons.tsx";
+import { MoveWords } from "./MoveWords.tsx";
 
 const short = (hex: string, n = 10) => (hex.length > n * 2 ? `${hex.slice(0, n)}…${hex.slice(-6)}` : hex);
 
@@ -78,6 +79,7 @@ export function Proof({ line, match, name, onClose, txUrl }: { line: Line; match
 
         <h4>What the contract asked {who}</h4>
         <pre className="prompt">{prompt}</pre>
+        <MoveWords />
 
         <button className="link-btn" onClick={() => setRaw((v) => !v)}>
           {raw ? "Hide the raw proof" : "Show the raw proof"}

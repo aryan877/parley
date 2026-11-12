@@ -2,7 +2,8 @@ import type { Coin, Move, Parley } from "@parley/sdk/src/types.ts";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { readArena, subscribeLive, useArenaInfo } from "../lib/live.ts";
+import { subscribeLive, useArenaInfo } from "../lib/live.ts";
+import { reads } from "../lib/near.ts";
 import { fmtNear } from "../lib/model.ts";
 import { useWallet } from "../lib/wallet.tsx";
 import { Mascot, type Mood, mascotColor } from "./Mascot.tsx";
@@ -41,13 +42,15 @@ export function Alerts() {
   useEffect(() => {
     if (!info || !w.accountId) return;
     const account = w.accountId;
-    const arena = readArena(info);
     const seen = new Set<string>();
     const coins = new Map<string, Promise<Coin | null>>();
     const timers = new Set<ReturnType<typeof setTimeout>>();
     let live = true;
     const coin = (id: string) => {
-      if (!coins.has(id)) coins.set(id, arena.coin(id).catch(() => null));
+      if (!coins.has(id)) {
+        const found = reads.coins(info).then((list) => list.find((c) => c.id === id) ?? reads.coin(info, id), () => reads.coin(info, id));
+        coins.set(id, found.catch(() => (coins.delete(id), null)));
+      }
       return coins.get(id)!;
     };
     const push = (t: Toast) => {

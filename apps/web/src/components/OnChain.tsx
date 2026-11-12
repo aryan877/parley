@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useArenaInfo } from "../lib/live.ts";
+import { query } from "../lib/near.ts";
 import { BetrayIcon, ChipIcon, ShieldCheckIcon, VoteIcon } from "./icons.tsx";
 import { Mascot } from "./Mascot.tsx";
 
@@ -12,7 +13,7 @@ interface Refusal {
 }
 
 export interface OnChainData {
-  deployment: { network: string; rpcUrl: string; contractId: string; deployedAt: string; transactions: Record<string, string> };
+  deployment: { network: string; rpcUrl: string; contractId: string; owner?: string; deployedAt: string; transactions: Record<string, string> };
   forgeries: { parley: number; triedAt: string; unregisteredKey: Refusal; replayedReply: Refusal } | null;
   amendment: { coin: string; constitution: string; steps: Record<string, string> } | null;
   reask: { decisions: number; timesEach: number; asks: number; flipped: number } | null;
@@ -35,23 +36,18 @@ export function loadOnChain(): Promise<OnChainData | null> {
 type Keys = { count: number; block: number } | "error" | null;
 
 /** Asks NEAR right now how many access keys the contract has. Zero keys means nobody can redeploy it. */
-function useAccessKeys(rpcUrl: string | null, account: string | null): Keys {
+function useAccessKeys(chain: { network: string; rpcUrl: string; contractId: string } | null): Keys {
   const [keys, setKeys] = useState<Keys>(null);
   useEffect(() => {
-    if (!rpcUrl || !account) return;
+    if (!chain) return;
     let live = true;
-    fetch(rpcUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "view_access_key_list", finality: "final", account_id: account } }),
-    })
-      .then((r) => r.json() as Promise<{ result?: { keys: unknown[]; block_height: number } }>)
-      .then((body) => live && setKeys(body.result ? { count: body.result.keys.length, block: body.result.block_height } : "error"))
+    query<{ keys: unknown[]; block_height: number }>(chain, { request_type: "view_access_key_list", finality: "final", account_id: chain.contractId })
+      .then((r) => live && setKeys({ count: r.keys.length, block: r.block_height }))
       .catch(() => live && setKeys("error"));
     return () => {
       live = false;
     };
-  }, [rpcUrl, account]);
+  }, [chain?.rpcUrl, chain?.contractId]);
   return keys;
 }
 
@@ -80,9 +76,11 @@ export function OnChain() {
     loadOnChain().then(setData);
   }, []);
   const dep = data?.deployment ?? null;
-  const rpc = dep ? (info && info.contractId === dep.contractId ? info.rpcUrl : dep.rpcUrl) : null;
-  const keys = useAccessKeys(rpc, dep?.contractId ?? null);
+  const same = !!info && !!dep && info.contractId === dep.contractId;
+  const keys = useAccessKeys(dep ? { network: dep.network, rpcUrl: same ? info!.rpcUrl : dep.rpcUrl, contractId: dep.contractId } : null);
   if (!data || !dep) return null;
+  const owner = (same ? info!.overview.owner : dep.owner) ?? null;
+  const wait = Math.round(Number((same ? info!.config.signer_delay_ns : null) ?? "600000000000") / 60e9);
   const { forgeries, amendment, reask } = data;
   const t = dep.transactions;
   const coin = amendment?.coin.toUpperCase() ?? "";
@@ -117,13 +115,19 @@ export function OnChain() {
               : keys === "error"
                 ? "Could not reach NEAR just now. Try the link."
                 : keys.count === 0
-                  ? "0 access keys, code can never change"
+                  ? "0 access keys, so its code can never change"
                   : `${keys.count} access ${keys.count === 1 ? "key" : "keys"}. Its code can still change`}
           </h3>
-          <p className="faint small">
-            {keys && keys !== "error" ? `Your browser asked NEAR just now, at block ${keys.block.toLocaleString("en-US")}.` : "Checked live from your browser."}
-            {keys && keys !== "error" && keys.count === 0 && " Nobody holds a key to it, us included."}
-          </p>
+          <p className="faint small">{keys && keys !== "error" ? `Your browser asked NEAR just now, at block ${keys.block.toLocaleString("en-US")}.` : "Checked live from your browser."}</p>
+          {owner && (
+            <p className="oc-owner">
+              The owner account,{" "}
+              <a href={addressUrl(owner)} target="_blank" rel="noreferrer">
+                {owner}
+              </a>
+              , can still register a new AI signing key. A new key only counts after a public {wait}-minute wait. The owner also schedules challenge matches, and its server relays the live matches. Anyone else may relay them too.
+            </p>
+          )}
           <div className="oc-links">
             <Tx hash={t.deploy}>Deployed</Tx>
             <Tx hash={t.init}>Started</Tx>
@@ -165,8 +169,9 @@ export function OnChain() {
               <span className="g-tile trust">
                 <VoteIcon size={20} />
               </span>
-              <h3>{coin}'s holders changed its rules</h3>
+              <h3>A vote changed {coin}'s rules</h3>
             </div>
+            <p className="faint small">Voted by its shareholder, the arena owner, which holds the house coins' launch shares. Players vote the same way from any coin page.</p>
             <p className="oc-quote">“{firstSentences(amendment.constitution, 2)}”</p>
             <div className="oc-steps">
               {STEPS.map(([key, label]) => (

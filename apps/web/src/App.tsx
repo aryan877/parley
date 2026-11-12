@@ -1,10 +1,12 @@
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
 import { Alerts } from "./components/Alerts.tsx";
 import { Mark } from "./components/Mark.tsx";
 import { TabBar } from "./components/TabBar.tsx";
 import { WalletButton } from "./components/WalletButton.tsx";
 import { accountLink, useArenaInfo } from "./lib/live.ts";
+import { useNearTrouble } from "./lib/near.ts";
 import { Arena } from "./pages/Arena.tsx";
 import { CoinView } from "./pages/CoinView.tsx";
 import { Coins } from "./pages/Coins.tsx";
@@ -12,6 +14,24 @@ import { Launch } from "./pages/Launch.tsx";
 import { MatchView } from "./pages/MatchView.tsx";
 import { Matches } from "./pages/Matches.tsx";
 import { ProofPage } from "./pages/ProofPage.tsx";
+
+function Reconnecting() {
+  const trouble = useNearTrouble();
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setShown(trouble), trouble ? 1000 : 4000);
+    return () => clearTimeout(timer);
+  }, [trouble]);
+  return (
+    <AnimatePresence>
+      {shown && (
+        <motion.div className="near-trouble" role="status" initial={{ opacity: 0, x: "-50%", y: -8 }} animate={{ opacity: 1, x: "-50%", y: 0 }} exit={{ opacity: 0, x: "-50%", y: -8 }}>
+          Reconnecting to NEAR… The numbers shown are the last ones we read.
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 export function App() {
   const link = ({ isActive }: { isActive: boolean }) => `navlink${isActive ? " active" : ""}`;
@@ -50,6 +70,7 @@ export function App() {
           </NavLink>
           <WalletButton />
         </div>
+        <Reconnecting />
       </header>
       <main className="shell">
         <Routes>

@@ -5,7 +5,8 @@ import { ShareButton, matchShareLine } from "../components/Share.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
 import { ArrowIcon } from "../components/icons.tsx";
 import { type Match } from "../lib/model.ts";
-import { loadLiveMatch, readArena, useArenaInfo, useLiveMatch } from "../lib/live.ts";
+import { loadLiveMatch, useArenaInfo, useLiveMatch, useSchedule } from "../lib/live.ts";
+import { reads } from "../lib/near.ts";
 import { useSeason } from "../lib/season.ts";
 import { useWallet } from "../lib/wallet.tsx";
 import type { Coin } from "@parley/sdk/src/types.ts";
@@ -55,20 +56,25 @@ function LiveMatch({ id }: { id: number }) {
   const [later, setLater] = useState<Map<string, bigint>>(new Map());
   const stream = useLiveMatch((p) => p.id === id);
   const w = useWallet();
+  const { schedule } = useSchedule(5000);
   useEffect(() => {
     if (!info) return;
-    const arena = readArena(info);
-    loadLiveMatch(info, id).then(setMatch);
-    arena.coins().then(setCoins);
-    arena.parleys(0, 50).then((ps) => {
+    let live = true;
+    const fetchMatch = () => loadLiveMatch(info, id).then((m) => live && setMatch(m), () => live && setTimeout(fetchMatch, 4000));
+    fetchMatch();
+    reads.coins(info).then((c) => live && setCoins(c), () => {});
+    reads.recent(info).then((ps) => {
       const sums = new Map<string, bigint>();
       for (const p of ps) {
         if (p.id < id || p.status !== "Settled") continue;
         sums.set(p.a, (sums.get(p.a) ?? 0n) + BigInt(p.a_delta));
         sums.set(p.b, (sums.get(p.b) ?? 0n) + BigInt(p.b_delta));
       }
-      setLater(sums);
-    });
+      if (live) setLater(sums);
+    }, () => {});
+    return () => {
+      live = false;
+    };
   }, [info, id]);
   const shown = stream.match ?? match;
   if (!ready) return <p className="muted loading-line">Connecting…</p>;
@@ -107,6 +113,15 @@ function LiveMatch({ id }: { id: number }) {
         {mine && <Rematch key={shown.id} mine={mine} rival={mine === shown.a ? shown.b : shown.a} name={nameOf} />}
         {shown.settled && <ShareButton path={`/match/${shown.id}`} text={matchShareLine(shown, nameOf, own)} />}
       </div>
+      {(shown.settled || shown.void) && schedule?.current && schedule.current.id !== shown.id && (
+        <Link to={`/match/${schedule.current.id}`} className="next-live">
+          <span className="live-tag">Live</span>
+          <span>
+            Now playing: <b>{nameOf(schedule.current.a)}</b> vs <b>{nameOf(schedule.current.b)}</b>
+          </span>
+          <ArrowIcon size={16} />
+        </Link>
+      )}
     </>
   );
 }

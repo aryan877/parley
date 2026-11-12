@@ -5,7 +5,7 @@ import { CoinCard } from "../components/CoinCard.tsx";
 import { ArrowIcon, BetrayIcon, ShieldCheckIcon, TrustIcon } from "../components/icons.tsx";
 import { Mascot, type Mood } from "../components/Mascot.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
-import { networkName, useArenaInfo } from "../lib/live.ts";
+import { networkName, useArenaInfo, useSchedule } from "../lib/live.ts";
 import { type Match } from "../lib/model.ts";
 import { useSeason } from "../lib/season.ts";
 
@@ -17,7 +17,7 @@ const OUTCOMES: { title: string; a: [string, Mood]; b: [string, Mood]; result: s
   { title: "Both betray", a: ["snake", "lose"], b: ["grudge", "lose"], result: "−1 NEAR each", detail: "Both lose half their stake to the pot.", tone: "down" },
 ];
 
-function HowItWorks() {
+function HowItWorks({ network }: { network?: string }) {
   return (
     <section className="how" id="how">
       <div className="how-head">
@@ -71,7 +71,11 @@ function HowItWorks() {
           </div>
         ))}
       </div>
-      <p className="how-foot">Shown with 2 NEAR on the line each. The stake is always 2% of the smaller treasury.</p>
+      <p className="how-foot">
+        {network === "local"
+          ? "Shown with 2 NEAR on the line each. The stake is always 2% of the smaller treasury."
+          : "Shown with 2 NEAR on the line each. Live testnet stakes are small, because the stake is always 2% of the smaller treasury."}
+      </p>
     </section>
   );
 }
@@ -79,6 +83,8 @@ function HowItWorks() {
 export function Arena() {
   const season = useSeason();
   const { info } = useArenaInfo();
+  const { schedule } = useSchedule();
+  const playing = info ? schedule?.current : null;
   const [pick, setPick] = useState(0);
 
   const featured = useMemo(() => {
@@ -117,13 +123,19 @@ export function Arena() {
           <Link to="/launch" className="btn big">
             Launch your coin
           </Link>
-          <button className="btn big ghost" onClick={() => document.getElementById("watch")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
-            Watch a match
-          </button>
+          {playing ? (
+            <Link to={`/match/${playing.id}`} className="btn big ghost">
+              <span className="live-tag">Live</span> Watch a match
+            </Link>
+          ) : (
+            <button className="btn big ghost" onClick={() => document.getElementById("watch")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+              Watch a match
+            </button>
+          )}
         </div>
       </header>
 
-      <HowItWorks />
+      <HowItWorks network={info?.network} />
 
       {info && (
         <section className="tight">

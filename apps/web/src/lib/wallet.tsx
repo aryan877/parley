@@ -2,6 +2,7 @@ import { Arena } from "@parley/sdk/src/arena.ts";
 import { KeyPair } from "near-api-js";
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { ARENA_API, type ArenaInfo, useArenaInfo } from "./live.ts";
+import { forget, query } from "./near.ts";
 
 interface Stored {
   accountId: string;
@@ -29,15 +30,8 @@ interface Wallet {
 const STORE = "parley.wallet";
 const WalletContext = createContext<Wallet | null>(null);
 
-async function viewBalance(rpcUrl: string, accountId: string): Promise<string | null> {
-  const res = await fetch(rpcUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "view_account", finality: "optimistic", account_id: accountId } }),
-  });
-  const body = (await res.json()) as { result?: { amount: string } };
-  return body.result?.amount ?? null;
-}
+const viewBalance = (info: ArenaInfo, accountId: string) =>
+  query<{ amount: string }>(info, { request_type: "view_account", finality: "optimistic", account_id: accountId }).then((r) => r.amount);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const { info } = useArenaInfo();
@@ -56,13 +50,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const current = stored && info && stored.contractId === info.contractId && stored.network === info.network ? stored : null;
 
+  useEffect(() => setBalance(null), [current?.accountId]);
+
   useEffect(() => {
-    if (!current || !info) {
-      setBalance(null);
-      return;
-    }
+    if (!current || !info) return;
     let live = true;
-    const load = () => viewBalance(info.rpcUrl, current.accountId).then((b) => live && setBalance(b)).catch(() => {});
+    const load = () => viewBalance(info, current.accountId).then((b) => live && setBalance(b), () => {});
     load();
     const timer = setInterval(load, 6000);
     return () => {
@@ -108,7 +101,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         setStored(null);
       },
       arena: () => (current && info ? new Arena({ rpcUrl: info.rpcUrl, contractId: info.contractId, signer: { accountId: current.accountId, privateKey: current.privateKey } }) : null),
-      refresh: () => setTick((t) => t + 1),
+      refresh: () => {
+        if (info) forget(info);
+        setTick((t) => t + 1);
+      },
       open,
       setOpen,
     }),
@@ -121,6 +117,27 @@ export function useWallet(): Wallet {
   const wallet = useContext(WalletContext);
   if (!wallet) throw new Error("useWallet outside WalletProvider");
   return wallet;
+}
+
+const NOTED = "parley.coins.";
+
+/** Coins this browser's wallet bought, voted on or launched, so My coins knows where to look first. */
+export function notedCoins(account: string): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(NOTED + account) ?? "[]") as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+export function noteCoin(account: string | null, coin: string) {
+  if (!account) return;
+  const coins = notedCoins(account);
+  if (coins.has(coin)) return;
+  coins.add(coin);
+  try {
+    localStorage.setItem(NOTED + account, JSON.stringify([...coins]));
+  } catch {}
 }
 
 /** Short form of a NEAR account for display: player-abc12.test.near → player-abc12 */

@@ -8,6 +8,7 @@ import { fmtNear, nearNumber, signedNear } from "../lib/model.ts";
 import { BRAIN_LABEL, brainOf, headline, moveWord, tagline } from "../lib/words.ts";
 import { Mascot, type Mood, mascotColor } from "./Mascot.tsx";
 import { BetrayIcon, BoltIcon, BrainIcon, EyeIcon, PauseIcon, PlayIcon, RestartIcon, SkipIcon, TrustIcon } from "./icons.tsx";
+import { MoveWords } from "./MoveWords.tsx";
 import { Proof } from "./Proof.tsx";
 
 export interface Fighter {
@@ -114,25 +115,27 @@ function FighterPanel({ fighter, side, match, beat, model, mascotRef }: { fighte
           <Mascot id={fighter.id} size={190} mood={moodOf(match, side, beat)} />
         </motion.div>
         <div className="fighter-floor" />
-        <AnimatePresence>
-          {paid && delta !== 0n && (
-            <motion.div
-              key="delta"
-              className={`delta ${delta > 0n ? "up" : "down"}`}
-              initial={{ opacity: 0, y: 10, scale: 0.8 }}
-              animate={{ opacity: 1, y: -18, scale: 1 }}
-              transition={{ delay: 0.5, type: "spring", stiffness: 260, damping: 18 }}
-            >
-              {signedNear(delta)}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
       <h3 className="fighter-name">{fighter.name}</h3>
       <p className="fighter-tag">{tagline(fighter.id, fighter.rules)}</p>
       <div className="fighter-meta">
-        <span className="treasury">
-          <Counter value={treasury} /> <small>NEAR</small>
+        <span className="treasury-row">
+          <span className="treasury">
+            <Counter value={treasury} /> <small>NEAR</small>
+          </span>
+          <AnimatePresence>
+            {paid && delta !== 0n && (
+              <motion.span
+                key="delta"
+                className={`delta ${delta > 0n ? "up" : "down"}`}
+                initial={{ opacity: 0, y: 8, scale: 0.6 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ delay: 0.5, type: "spring", stiffness: 300, damping: 15 }}
+              >
+                {signedNear(delta)}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </span>
         <span className={`brain ${brain === "deep" ? "deep" : ""}`} title={brain === "practice" ? "No AI is running for this coin" : model}>
           {brain === "deep" ? <BrainIcon size={13} /> : brain === "practice" ? <RestartIcon size={13} /> : <BoltIcon size={13} />}
@@ -481,12 +484,10 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
     <div className="stage" ref={stage} style={{ "--ca": mascotColor(a.id), "--cb": mascotColor(b.id) } as React.CSSProperties}>
       <div className="stage-top">
         <div className="stage-tags">
-          {live ? (
-            <span className="pill live">
-              Live
-            </span>
+          {live && !match.settled && !match.void ? (
+            <span className="pill live">Live</span>
           ) : (
-            <span className="pill">Replay</span>
+            <span className="pill">{match.void ? "Timed out" : live ? "Finished" : "Replay"}</span>
           )}
           <span className="pill dim">{label ?? `Match ${match.id}`}</span>
         </div>
@@ -570,6 +571,7 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
                 <p>
                   <Typed text={decisionLine.thought.replace(/\s+/g, " ").trim()} run />
                 </p>
+                <MoveWords />
                 {decisionLine.proof && (
                   <button className="tiny verified" onClick={() => setProof(decisionLine)}>
                     {brainOf(decisionLine.proof.model) === "practice" ? "Signed with the same key as its answer" : "Signed by the same sealed hardware as its answer"}

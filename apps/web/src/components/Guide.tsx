@@ -62,10 +62,10 @@ const Cards = ({ open }: { open?: boolean }) => (
 );
 
 /** A one-line picture strip that shows what to do on this part of the site. */
-export function Guide({ steps, compact = false, label = "How it works" }: { steps: GuideStep[]; compact?: boolean; label?: string }) {
+export function Guide({ steps, compact = false, label = "How it works", note }: { steps: GuideStep[]; compact?: boolean; label?: string; note?: ReactNode }) {
   return (
-    <div className={`guide ${compact ? "compact" : ""}`} aria-label={label} role="list">
-      <div className="guide-row">
+    <div className={`guide ${compact ? "compact" : ""}`} aria-label={label}>
+      <div className="guide-row" role="list">
         {steps.map((s, i) => (
           <Fragment key={s.text}>
             {i > 0 && (
@@ -88,9 +88,15 @@ export function Guide({ steps, compact = false, label = "How it works" }: { step
           </Fragment>
         ))}
       </div>
+      {note && <p className="guide-note">{note}</p>}
     </div>
   );
 }
+
+export const shareWhy = (name?: string) =>
+  name
+    ? `A share is a slice of ${name}'s treasury. It rises when ${name} outplays others, and holders vote on its rules.`
+    : "A share is a slice of a coin's treasury. It rises when the coin outplays others, and holders vote on its rules.";
 
 export const LaunchGuide = ({ coin }: { coin: string }) => (
   <Guide
@@ -203,9 +209,10 @@ export const MineGuide = ({ coin }: { coin: string }) => (
   />
 );
 
-export const TradeGuide = ({ coin }: { coin: string }) => (
+export const TradeGuide = ({ coin, name }: { coin: string; name: string }) => (
   <Guide
     compact
+    note={shareWhy(name)}
     steps={[
       {
         art: (
@@ -392,6 +399,7 @@ export const WalletGuide = () => (
 
 export const CoinsGuide = () => (
   <Guide
+    note={shareWhy()}
     steps={[
       { art: <Trio />, text: "Pick a coin you like" },
       {

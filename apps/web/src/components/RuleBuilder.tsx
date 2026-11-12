@@ -2,11 +2,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { BLOCKS, EMPTY_PLAN, FALLBACKS, GROUPS, type Plan, isOn, readRules, sentences, toggle, writeRules } from "../lib/rules.ts";
 import { BetrayIcon, ShuffleIcon, TrustIcon } from "./icons.tsx";
+import { MoveWords } from "./MoveWords.tsx";
 
 const length = (text: string) => [...text].length;
 
 /** Writes a coin's constitution from tapped blocks, with a plain text editor for anything the blocks can't say. */
-export function RuleBuilder({ value, onChange, limit, children }: { value: string; onChange: (text: string) => void; limit: number; children?: ReactNode }) {
+export function RuleBuilder({ value, onChange, limit, children, legend = true }: { value: string; onChange: (text: string) => void; limit: number; children?: ReactNode; legend?: boolean }) {
   const [plan, setPlan] = useState<Plan>(() => readRules(value) ?? EMPTY_PLAN);
   const [mode, setMode] = useState<"blocks" | "text">(() => (readRules(value) || !value.trim() ? "blocks" : "text"));
   const [fresh, setFresh] = useState<string | null>(null);
@@ -66,7 +67,7 @@ export function RuleBuilder({ value, onChange, limit, children }: { value: strin
           </div>
         </div>
         {replace && <p className="faint small rb-note">Your own wording can't be turned back into blocks. Tap again to start from blocks.</p>}
-        <p className="faint small rb-note">Write COOPERATE for Trust and DEFECT for Betray. That is what its AI is asked to pick.</p>
+        <MoveWords className="rb-note" />
       </div>
     );
   }
@@ -94,6 +95,7 @@ export function RuleBuilder({ value, onChange, limit, children }: { value: strin
         </div>
       </div>
       <p className="faint small rb-note">This is exactly what its AI reads. Rules are checked in the order you tap them.</p>
+      {legend && <MoveWords className="rb-note" />}
 
       {GROUPS.map((g) => (
         <div key={g.id} className="rb-group">

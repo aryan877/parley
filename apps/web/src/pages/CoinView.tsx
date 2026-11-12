@@ -1,4 +1,4 @@
-import type { Amendment, Coin, Order } from "@parley/sdk/src/types.ts";
+import type { Amendment, Coin, Order, Parley } from "@parley/sdk/src/types.ts";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -9,14 +9,16 @@ import { Sparkline } from "../components/CoinCard.tsx";
 import { Empty } from "../components/Empty.tsx";
 import { TradeGuide, VoteGuide } from "../components/Guide.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
+import { MoveWords } from "../components/MoveWords.tsx";
 import { RuleBuilder } from "../components/RuleBuilder.tsx";
 import { ShareButton } from "../components/Share.tsx";
 import { Mascot, mascotColor } from "../components/Mascot.tsx";
 import { BoltIcon, BrainIcon, RestartIcon, TrustIcon, BetrayIcon, WalletIcon } from "../components/icons.tsx";
-import { type CoinInfo, type Match, fmtNear, fromCoin, fromParley, nearNumber, sharePrice, trustRate } from "../lib/model.ts";
-import { ARENA_API, readArena, useArenaInfo } from "../lib/live.ts";
+import { type CoinInfo, type Match, fmtNear, fromCoin, fromParley, nearNumber, pctText, sharePrice, sinceLaunch, trustRate } from "../lib/model.ts";
+import { ARENA_API, useArenaInfo } from "../lib/live.ts";
+import { type VoteLock, forget, parleysBefore, reads, view } from "../lib/near.ts";
 import { useSeason } from "../lib/season.ts";
-import { useWallet } from "../lib/wallet.tsx";
+import { noteCoin, useWallet } from "../lib/wallet.tsx";
 import { BRAIN_LABEL, PRACTICE_NOTE, brainOf, tagline } from "../lib/words.ts";
 
 const YOCTO = 10n ** 24n;
@@ -35,18 +37,29 @@ function until(ns: string): string {
   return `in ${Math.round(s / 3600)} h`;
 }
 
+const why = (error?: string) =>
+  /Not enough balance|NotEnoughBalance|LackBalance/i.test(error ?? "") ? "not enough NEAR in your wallet for gas" : (error?.match(/panicked: ([^"\\]+)/)?.[1] ?? error?.slice(0, 140) ?? "unknown error");
+const refusal = (label: string, error?: string) => `${label} failed: ${why(error)}.`;
+
+/** Treasury after each match, oldest first, counted back from the treasury now. */
+function curveOf(id: string, treasury: string, matches: Match[]): number[] {
+  const delta = (m: Match) => BigInt(m.a === id ? m.aDelta : m.bDelta);
+  let value = BigInt(treasury) - matches.reduce((n, m) => n + delta(m), 0n);
+  const curve = [nearNumber(value)];
+  for (const m of matches) {
+    value += delta(m);
+    curve.push(nearNumber(value));
+  }
+  return curve;
+}
+
 function Hero({ coin, matches, live }: { coin: CoinInfo; matches: Match[]; live: boolean }) {
   const color = mascotColor(coin.id);
   const brain = brainOf(coin.model);
-  let value = BigInt(coin.treasury) - matches.reduce((n, m) => n + BigInt(m.a === coin.id ? m.aDelta : m.bDelta), 0n);
-  const curve = [nearNumber(value)];
-  for (const m of matches) {
-    value += BigInt(m.a === coin.id ? m.aDelta : m.bDelta);
-    curve.push(nearNumber(value));
-  }
+  const curve = curveOf(coin.id, coin.treasury, matches);
   const first = curve[0] ?? 0;
-  const last = curve.at(-1) ?? 0;
-  const pct = first ? ((last - first) / first) * 100 : 0;
+  const priced = live ? sinceLaunch(coin) : null;
+  const pct = priced ?? (first ? (((curve.at(-1) ?? 0) - first) / first) * 100 : 0);
   return (
     <div className="coin-hero" style={{ "--c": color } as React.CSSProperties}>
       <div className="coin-hero-art">
@@ -71,14 +84,12 @@ function Hero({ coin, matches, live }: { coin: CoinInfo; matches: Match[]; live:
         {brain === "practice" && <p className="practice-note">{PRACTICE_NOTE}</p>}
         <div className="coin-stats">
           <div>
-            <b>{live && !coin.house ? sharePrice(coin).toFixed(4) : fmtNear(coin.treasury)}</b>
-            <span>{live && !coin.house ? "NEAR per share" : "NEAR in its treasury"}</span>
+            <b>{priced !== null ? sharePrice(coin).toFixed(4) : fmtNear(coin.treasury)}</b>
+            <span>{priced !== null ? "NEAR per share" : "NEAR in its treasury"}</span>
           </div>
           <div>
-            <b className={pct >= 0 ? "up" : "down"}>
-              {pct >= 0 ? "▲" : "▼"} {Math.abs(pct).toFixed(1)}%
-            </b>
-            <span>over {matches.length} matches</span>
+            <b className={pct >= 0 ? "up" : "down"}>{pctText(pct)}</b>
+            <span>{priced !== null ? "since launch, from 1 NEAR a share" : live ? `over its last ${matches.length} matches` : "since launch"}</span>
           </div>
           <div>
             <b>{Math.round(trustRate(coin) * 100)}%</b>
@@ -99,9 +110,9 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
   const w = useWallet();
   const [mode, setMode] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState("5");
-  const [held, setHeld] = useState<bigint>(0n);
-  const [locked, setLocked] = useState<bigint>(0n);
-  const [order, setOrder] = useState<Order | null>(null);
+  const [held, setHeld] = useState<bigint | null>(null);
+  const [locked, setLocked] = useState<bigint | null>(null);
+  const [order, setOrder] = useState<Order | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ tone: "good" | "bad"; text: string } | null>(null);
   const info = w.info;
@@ -112,36 +123,32 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
 
   const load = useCallback(async () => {
     if (!info || !w.accountId) return;
-    const arena = readArena(info);
-    const [s, o, v] = await Promise.all([
-      arena.shares(coin.id, w.accountId),
-      arena.order(coin.id, w.accountId),
-      arena.view<{ locked: string } | null>("get_vote", { coin: coin.id, account: w.accountId }),
-    ]);
-    setHeld(BigInt(s));
-    setOrder(o);
-    setLocked(BigInt(v?.locked ?? "0"));
+    const [s, o, v] = await Promise.allSettled([reads.shares(info, coin.id, w.accountId), reads.order(info, coin.id, w.accountId), reads.vote(info, coin.id, w.accountId)]);
+    if (s.status === "fulfilled") setHeld(BigInt(s.value));
+    if (o.status === "fulfilled") setOrder(o.value);
+    if (v.status === "fulfilled") setLocked(BigInt(v.value?.locked ?? "0"));
   }, [info, w.accountId, coin.id]);
 
   useEffect(() => {
-    load().catch(() => {});
-    const timer = setInterval(() => load().catch(() => {}), 4000);
+    load();
+    const timer = setInterval(load, 5000);
     return () => clearInterval(timer);
   }, [load]);
 
-  const price = Number(BigInt(coin.treasury) * 1_000_000n / (BigInt(coin.total_shares) || 1n)) / 1_000_000;
+  const price = Number((BigInt(coin.treasury) * 1_000_000n) / (BigInt(coin.total_shares) || 1n)) / 1_000_000;
   const value = toYocto(amount);
   const run = async (label: string, action: () => Promise<{ ok: boolean; error?: string }>, done: string) => {
     setBusy(true);
     setNote(null);
     const result = await action();
+    if (result.ok) noteCoin(w.accountId, coin.id);
     if (result.ok && w.accountId && (label === "Buying" || label === "Selling")) {
       fetch(`${ARENA_API}/api/watch-order`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ coin: coin.id, account: w.accountId }) }).catch(() => {});
     }
     setBusy(false);
-    setNote(result.ok ? { tone: "good", text: done } : { tone: "bad", text: /Not enough balance/.test(result.error ?? "") ? "Not enough NEAR in your wallet. Keep about 0.1 NEAR for gas." : `${label} failed: ${result.error?.match(/panicked: ([^"\\]+)/)?.[1] ?? result.error?.slice(0, 140)}` });
-    await load();
+    setNote(result.ok ? { tone: "good", text: done } : { tone: "bad", text: /Not enough balance/.test(result.error ?? "") ? "Not enough NEAR in your wallet. Keep about 0.1 NEAR for gas." : refusal(label, result.error) });
     w.refresh();
+    await load();
     onDone();
   };
 
@@ -162,10 +169,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     return (
       <div className="glass trade">
         <h3>Own a piece of {coin.name}</h3>
-        <TradeGuide coin={coin.id} />
-        <p className="muted" style={{ margin: 0 }}>
-          Shares give you a cut of its treasury and a vote on its rules.
-        </p>
+        <TradeGuide coin={coin.id} name={coin.name} />
         <button className="btn big" onClick={() => w.setOpen(true)} style={{ width: "100%", justifyContent: "center" }}>
           <WalletIcon /> Get a free wallet to buy
         </button>
@@ -174,10 +178,12 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
   }
 
   const due = order && (coin.matches_played > order.epoch || Date.now() * 1e6 >= Number(order.placed_at) + Number(info?.config.order_timeout_ns ?? 0));
+  const known = held !== null && locked !== null;
+  const total = (held ?? 0n) + (locked ?? 0n);
 
   return (
     <div className="glass trade">
-      <TradeGuide coin={coin.id} />
+      <TradeGuide coin={coin.id} name={coin.name} />
       <div className="tabs" style={{ marginTop: 0 }}>
         <button className={mode === "buy" ? "on" : ""} onClick={() => setMode("buy")}>
           Buy
@@ -188,17 +194,15 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
       </div>
       <div className="position">
         <span>You hold</span>
-        <b>{fmtNear(held + locked, 2)} shares</b>
-        <span className="faint">≈ {(nearNumber(held + locked) * price).toFixed(2)} NEAR</span>
-        {locked > 0n && <span className="faint">({fmtNear(locked, 2)} held in a vote until it ends)</span>}
+        <b>{known ? `${fmtNear(total, 2)} shares` : "… shares"}</b>
+        {known && <span className="faint">≈ {(nearNumber(total) * price).toFixed(2)} NEAR</span>}
+        {locked !== null && locked > 0n && <span className="faint">({fmtNear(locked, 2)} held in a vote until it ends)</span>}
       </div>
       {order ? (
         <div className="pending">
           <div>
             <b>{order.kind === "Mint" ? `Buying with ${fmtNear(order.amount)} NEAR` : `Selling ${fmtNear(order.amount)} shares`}</b>
-            <span>
-              {due ? "Filling now at the price after its last match…" : `Your order fills after ${coin.name}'s next match, so nobody can buy knowing how a match ends.`}
-            </span>
+            <span>{due ? "Filling now at the price after its last match…" : `Your order fills after ${coin.name}'s next match, so nobody can buy knowing how a match ends.`}</span>
           </div>
           <button className="btn ghost" disabled={busy} onClick={() => run("Cancel", () => w.arena()!.cancelOrder(coin.id), "Order cancelled. Your funds are back.")}>
             Cancel
@@ -215,7 +219,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
             <br />
             Your order fills after its next match.
           </p>
-          <button className="btn trust big" disabled={busy || !value} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Buying", () => w.arena()!.placeMint(coin.id, value), "Order placed. It fills after the next match.")}>
+          <button className="btn trust big" disabled={busy || !value || order === undefined} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Buying", () => w.arena()!.placeMint(coin.id, value), "Order placed. It fills after the next match.")}>
             {busy ? "Sending…" : `Buy ${coin.name}`}
           </button>
         </>
@@ -224,12 +228,14 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
           <label className="field">
             <span>Shares to sell</span>
             <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
-            <button className="tiny" onClick={() => setAmount((nearNumber(held)).toString())}>
+            <button className="tiny" disabled={held === null} onClick={() => held !== null && setAmount(nearNumber(held).toString())}>
               max
             </button>
           </label>
-          <p className="muted small" style={{ margin: 0 }}>Your sale fills after its next match.</p>
-          <button className="btn betray big" disabled={busy || !value || value > held} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Selling", () => w.arena()!.placeRedeem(coin.id, value), "Sell order placed. It fills after the next match.")}>
+          <p className="muted small" style={{ margin: 0 }}>
+            Your sale fills after its next match.
+          </p>
+          <button className="btn betray big" disabled={busy || !value || held === null || value > held || order === undefined} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Selling", () => w.arena()!.placeRedeem(coin.id, value), "Sell order placed. It fills after the next match.")}>
             {busy ? "Sending…" : `Sell for about ${value ? (nearNumber(value) * price).toFixed(2) : "0"} NEAR`}
           </button>
         </>
@@ -245,39 +251,130 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
   );
 }
 
+const share = (n: bigint) => fmtNear(n, 2);
+
+function Tally({ a, total, quorumBps }: { a: Amendment; total: bigint; quorumBps: number }) {
+  const yes = BigInt(a.yes);
+  const no = BigInt(a.no);
+  const quorum = (total * BigInt(quorumBps)) / 10_000n;
+  const width = (v: bigint) => (total > 0n ? Math.min(100, Number((v * 10_000n) / total) / 100) : 0);
+  const line = quorumBps / 100;
+  const short = quorum > yes ? quorum - yes : 0n;
+  const verdict = short > 0n ? `Needs ${share(short)} more yes to pass.` : yes > no ? "Enough yes to pass if the vote closed now." : "More no than yes, so it would fail now.";
+  return (
+    <div className="tally">
+      <div className="tally-bar" role="img" aria-label={`Yes ${share(yes)}, no ${share(no)}, ${share(quorum)} yes needed`}>
+        <span className="tally-fill">
+          <i className="yes" style={{ width: `${width(yes)}%` }} />
+          <i className="no" style={{ width: `${width(no)}%` }} />
+        </span>
+        <span className="tally-line" style={{ left: `${line}%` }} />
+      </div>
+      <div className="tally-scale">
+        <span style={{ left: `${line}%` }}>{line}% needed</span>
+      </div>
+      <div className="tally-text">
+        <span className="up">Yes {share(yes)}</span>
+        <span className="down">No {share(no)}</span>
+        <span className="faint">of {share(total)} shares</span>
+      </div>
+      <p className="tally-verdict">{verdict}</p>
+    </div>
+  );
+}
+
 function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
   const w = useWallet();
   const [amendments, setAmendments] = useState<Amendment[]>([]);
+  const [free, setFree] = useState<bigint | null>(null);
+  const [lock, setLock] = useState<VoteLock | null | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [writing, setWriting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<string | null>(null);
   const [note, setNote] = useState<{ tone: "good" | "bad"; text: string } | null>(null);
   const info = w.info;
+  const account = w.accountId;
 
   const load = useCallback(async () => {
     if (!info) return;
-    setAmendments(await readArena(info).amendments(coin.id));
-  }, [info, coin.id]);
+    const [list, s, v] = await Promise.allSettled([
+      reads.amendments(info, coin.id),
+      account ? reads.shares(info, coin.id, account) : Promise.resolve(null),
+      account ? reads.vote(info, coin.id, account) : Promise.resolve(null),
+    ]);
+    if (list.status === "fulfilled") setAmendments(list.value);
+    if (account && s.status === "fulfilled" && s.value !== null) setFree(BigInt(s.value));
+    if (account && v.status === "fulfilled") setLock(v.value);
+  }, [info, coin.id, account]);
 
   useEffect(() => {
-    load().catch(() => {});
-    const timer = setInterval(() => load().catch(() => {}), 4000);
+    load();
+    const timer = setInterval(load, 5000);
     return () => clearInterval(timer);
   }, [load]);
 
-  const run = async (label: string, action: () => Promise<{ ok: boolean; error?: string }>, done: string) => {
-    if (!w.accountId) return w.setOpen(true);
-    setBusy(true);
-    setNote(null);
-    const r = await action();
-    setBusy(false);
-    setNote(r.ok ? { tone: "good", text: done } : { tone: "bad", text: `${label} failed: ${r.error?.match(/panicked: ([^"\\]+)/)?.[1] ?? r.error?.slice(0, 140)}` });
+  const refresh = async () => {
+    if (info) forget(info, "get_amendments", "get_shares", "get_vote", "get_coins", "get_coin");
     await load();
     onDone();
   };
 
-  const mine = async () => BigInt(await readArena(info!).shares(coin.id, w.accountId!));
+  const run = async (label: string, action: () => Promise<{ ok: boolean; error?: string }>, done: string) => {
+    if (!account) return w.setOpen(true);
+    setBusy(true);
+    setNote(null);
+    const r = await action();
+    if (r.ok) noteCoin(account, coin.id);
+    setBusy(false);
+    setNote(r.ok ? { tone: "good", text: done } : { tone: "bad", text: refusal(label, r.error) });
+    await refresh();
+  };
+
+  const owned = free !== null && lock !== undefined ? free + BigInt(lock?.locked ?? "0") : null;
+  const total = BigInt(coin.total_shares);
+  const stake = (() => {
+    const s = (total * BigInt(info?.config.proposer_bps ?? 100)) / 10_000n;
+    return s > 0n ? s : 1n;
+  })();
+  const quorumBps = info?.config.quorum_bps ?? 2000;
   const limit = info?.config.max_constitution_len ?? 1200;
+  const proposed = amendments.some((a) => a.proposer === account);
+
+  const propose = async () => {
+    const arena = w.arena();
+    if (!arena || !info || !account) return w.setOpen(true);
+    setBusy(true);
+    setNote(null);
+    setStep("Step 1 of 2: sending your proposal…");
+    const made = await arena.proposeAmendment(coin.id, draft.trim(), coin.model);
+    if (!made.ok) {
+      setBusy(false);
+      setStep(null);
+      setNote({ tone: "bad", text: refusal("Proposing", made.error) });
+      return;
+    }
+    const id = Number(made.value);
+    noteCoin(account, coin.id);
+    setWriting(false);
+    setDraft("");
+    setStep("Step 2 of 2: voting yes with all your shares…");
+    const [mine, held] = await Promise.all([
+      view<VoteLock | null>(info, "get_vote", { coin: coin.id, account }).catch(() => null),
+      view<string>(info, "get_shares", { coin: coin.id, account }).catch(() => null),
+    ]);
+    const ballot = BigInt(mine?.ballots.find((b) => b.amendment_id === id)?.shares ?? "0");
+    const add = held === null ? 0n : BigInt(held) + BigInt(mine?.locked ?? "0") - ballot;
+    const voted = add > 0n ? await arena.vote(id, true, add) : { ok: held !== null, error: "could not read your shares" };
+    setBusy(false);
+    setStep(null);
+    setNote(
+      voted.ok
+        ? { tone: "good", text: `Proposed, and you voted yes with ${share(ballot + add)} shares.` }
+        : { tone: "bad", text: `Proposed, but your yes vote did not go through: ${why(voted.error)}. Press Vote yes to try again.` },
+    );
+    await refresh();
+  };
 
   return (
     <div className="glass rules-card">
@@ -286,67 +383,87 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
         <span className="faint small">version {coin.constitution_version}</span>
       </div>
       <blockquote className="rules-text">{coin.constitution}</blockquote>
+      <MoveWords />
       {!coin.house && (
         <>
           <div className="rules-head" style={{ marginTop: 22 }}>
             <h3>Change its rules</h3>
-            {!writing && (
-              <button className="btn ghost" style={{ padding: "8px 14px", fontSize: 13.5 }} onClick={() => (w.accountId ? (setDraft(coin.constitution), setWriting(true)) : w.setOpen(true))}>
+            {!writing && !proposed && (
+              <button className="btn ghost" style={{ padding: "8px 14px", fontSize: 13.5 }} onClick={() => (account ? (setDraft(coin.constitution), setWriting(true)) : w.setOpen(true))}>
                 Propose new rules
               </button>
             )}
           </div>
           <VoteGuide coin={coin.id} practice={brainOf(coin.model) === "practice"} />
           <p className="muted small vote-rules">
-            Holders vote with their shares. A change needs more yes than no, and yes votes from at least {Number(info?.config.quorum_bps ?? 2000) / 100}% of all shares.
+            Holders vote with their shares. A change needs more yes than no, and yes votes from at least {quorumBps / 100}% of all shares.
             <br />
             Then a short wait, so anyone who disagrees can sell first.
           </p>
           {writing && (
             <div className="propose">
-              <RuleBuilder value={draft} onChange={setDraft} limit={limit} />
+              <RuleBuilder value={draft} onChange={setDraft} limit={limit} legend={false} />
               <p className="faint small" style={{ margin: 0 }}>
-                You need at least {Number(info?.config.proposer_bps ?? 100) / 100}% of its shares to propose. Your shares count as the first yes votes.
+                {owned !== null && owned < stake
+                  ? `You need at least ${share(stake)} shares (${Number(info?.config.proposer_bps ?? 100) / 100}% of all) to propose. Buy some first.`
+                  : "Two quick steps: it sends your proposal, then votes yes with all your shares."}
               </p>
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn" disabled={busy || !draft.trim() || draft.trim() === coin.constitution.trim() || [...draft].length > limit} onClick={() => run("Proposing", () => w.arena()!.proposeAmendment(coin.id, draft.trim(), coin.model), "Proposed. Your shares count as the first yes votes.").then(() => (setWriting(false), setDraft("")))}>
-                  Put it to a vote
+                <button className="btn" disabled={busy || !draft.trim() || draft.trim() === coin.constitution.trim() || [...draft].length > limit || (owned !== null && owned < stake)} onClick={propose}>
+                  Propose and vote yes
                 </button>
-                <button className="btn ghost" onClick={() => setWriting(false)}>
+                <button className="btn ghost" disabled={busy} onClick={() => setWriting(false)}>
                   Cancel
                 </button>
               </div>
             </div>
           )}
+          {step && <div className="notice">{step}</div>}
           {amendments.map((a) => {
-            const total = BigInt(a.yes) + BigInt(a.no);
-            const yes = total ? Number((BigInt(a.yes) * 1000n) / total) / 10 : 0;
             const ended = BigInt(a.ends_at) / 1_000_000n <= BigInt(Date.now());
             const ready = a.status === "Passed" && BigInt(a.enact_after) / 1_000_000n <= BigInt(Date.now());
+            const ballot = lock?.ballots.find((b) => b.amendment_id === a.id);
+            const room = owned === null ? null : owned - BigInt(ballot?.shares ?? "0");
+            const open = a.status === "Voting" && !ended;
             return (
               <div key={a.id} className="amendment">
                 <div className="amendment-top">
-                  <span className={`pill ${a.status === "Passed" ? "" : "dim"}`}>{a.status === "Passed" ? "Passed" : "Voting"}</span>
-                  <span className="faint small">{a.status === "Voting" ? `closes ${until(a.ends_at)}` : `takes effect ${until(a.enact_after)}`}</span>
+                  <span className={`pill ${a.status === "Passed" ? "" : "dim"}`}>{a.status === "Passed" ? "Passed" : ended ? "Vote closed" : "Voting"}</span>
+                  <span className="faint small">{a.status === "Voting" ? (ended ? "waiting to be counted" : `closes ${until(a.ends_at)}`) : `takes effect ${until(a.enact_after)}`}</span>
                 </div>
                 <p className="amendment-text">“{a.constitution}”</p>
-                <div className="vote-bar">
-                  <i style={{ width: `${yes}%` }} />
-                </div>
-                <div className="mini">
-                  <span className="up">Yes {fmtNear(a.yes, 1)}</span>
-                  <span className="down">No {fmtNear(a.no, 1)}</span>
-                </div>
+                <Tally a={a} total={total} quorumBps={quorumBps} />
+                {ballot && (
+                  <p className={`my-ballot ${ballot.support ? "up" : "down"}`}>
+                    You voted {ballot.support ? "yes" : "no"} with {share(BigInt(ballot.shares))} shares.
+                  </p>
+                )}
                 <div className="amendment-actions">
-                  {a.status === "Voting" && !ended && (
+                  {open && !account && (
                     <>
-                      <button className="btn trust" disabled={busy} onClick={async () => run("Voting", async () => w.arena()!.vote(a.id, true, await mine()), "Voted yes with all your free shares.")}>
+                      <button className="btn trust" onClick={() => w.setOpen(true)}>
                         <TrustIcon size={16} /> Vote yes
                       </button>
-                      <button className="btn betray" disabled={busy} onClick={async () => run("Voting", async () => w.arena()!.vote(a.id, false, await mine()), "Voted no with all your free shares.")}>
+                      <button className="btn betray" onClick={() => w.setOpen(true)}>
                         <BetrayIcon size={16} /> Vote no
                       </button>
                     </>
+                  )}
+                  {open && account && owned === 0n && <span className="faint small">Buy shares to vote on this.</span>}
+                  {open && account && !ballot && owned !== 0n && (
+                    <>
+                      <button className="btn trust" disabled={busy || room === null || room <= 0n} onClick={() => room && run("Voting", () => w.arena()!.vote(a.id, true, room), `You voted yes with ${share(room)} shares.`)}>
+                        <TrustIcon size={16} /> Vote yes
+                      </button>
+                      <button className="btn betray" disabled={busy || room === null || room <= 0n} onClick={() => room && run("Voting", () => w.arena()!.vote(a.id, false, room), `You voted no with ${share(room)} shares.`)}>
+                        <BetrayIcon size={16} /> Vote no
+                      </button>
+                    </>
+                  )}
+                  {open && ballot && room !== null && room > 0n && (
+                    <button className="btn ghost small-btn" disabled={busy} onClick={() => run("Voting", () => w.arena()!.vote(a.id, ballot.support, room), `Added ${share(room)} more shares to your ${ballot.support ? "yes" : "no"}.`)}>
+                      Add your other {share(room)} shares
+                    </button>
                   )}
                   {a.status === "Voting" && ended && (
                     <button className="btn" disabled={busy} onClick={() => run("Counting", () => w.arena()!.finalizeAmendment(a.id), "Votes counted.")}>
@@ -369,26 +486,41 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
   );
 }
 
+const PAGES_PER_CLICK = 8;
+
 function LiveCoin({ id }: { id: string }) {
   const { info, ready } = useArenaInfo();
   const w = useWallet();
-  const [coin, setCoin] = useState<Coin | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [all, setAll] = useState<Coin[]>([]);
+  const [all, setAll] = useState<Coin[] | null>(() => reads.peekCoins(info) ?? null);
+  const [single, setSingle] = useState<Coin | null | undefined>(undefined);
+  const [recent, setRecent] = useState<Parley[]>(() => reads.peekRecent(info) ?? []);
+  const [older, setOlder] = useState<Parley[]>([]);
+  const [paging, setPaging] = useState(false);
+  const [atStart, setAtStart] = useState(false);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!info) return;
-    const arena = readArena(info);
-    const load = async () => {
-      const [c, all, parleys] = await Promise.all([arena.coin(id), arena.coins(), arena.parleys(0, 50)]);
-      setCoin(c);
-      setAll(all);
-      setMatches(parleys.map((p) => fromParley(p)).filter((m) => m.settled && (m.a === id || m.b === id)).reverse());
+    let live = true;
+    const load = () => {
+      reads.coins(info).then(
+        (list) => {
+          if (!live) return;
+          setAll(list);
+          if (!list.some((c) => c.id === id)) reads.coin(info, id).then((one) => live && setSingle(one), () => {});
+        },
+        () => {},
+      );
+      reads.recent(info).then((p) => live && setRecent(p), () => {});
     };
-    load().catch(() => {});
-    const timer = setInterval(() => load().catch(() => {}), 5000);
-    return () => clearInterval(timer);
+    load();
+    const timer = setInterval(load, 5000);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
   }, [info, id, tick]);
+
+  const coin = all?.find((c) => c.id === id) ?? single ?? null;
   if (!ready) return <p className="muted loading-line">Connecting…</p>;
   if (!info)
     return (
@@ -396,12 +528,55 @@ function LiveCoin({ id }: { id: string }) {
         Season 1 replays still work.
       </Empty>
     );
-  if (!coin) return <p className="muted loading-line">Loading…</p>;
-  const name = (cid: string) => all.find((x) => x.id === cid)?.name ?? cid.toUpperCase();
+  if (!coin) {
+    if (single === null)
+      return (
+        <Empty id={id} mood="thinking" title="No coin by that name" action={<Link to="/coins" className="btn ghost">See all coins</Link>}>
+          It may have a different link. Every live coin is on the Coins page.
+        </Empty>
+      );
+    return <p className="muted loading-line">Loading…</p>;
+  }
+
+  const name = (cid: string) => all?.find((x) => x.id === cid)?.name ?? cid.toUpperCase();
+  const byId = new Map<number, Parley>();
+  for (const p of [...older, ...recent]) byId.set(p.id, p);
+  const matches = [...byId.values()]
+    .filter((p) => p.status === "Settled" && (p.a === id || p.b === id))
+    .sort((x, y) => x.id - y.id)
+    .map((p) => fromParley(p));
+  const played = coin.stats.matches;
+  const oldest = byId.size ? Math.min(...byId.keys()) : 0;
+  const more = matches.length < played && !atStart && oldest > 0;
+
+  const loadOlder = async () => {
+    if (paging || !recent.length) return;
+    setPaging(true);
+    const newest = recent[0]!.id;
+    let before = oldest;
+    let found = 0;
+    const got: Parley[] = [];
+    let start = false;
+    try {
+      for (let n = 0; n < PAGES_PER_CLICK && found < 10 && !start; n++) {
+        const page = await parleysBefore(info, before, newest);
+        got.push(...page);
+        found += page.filter((p) => p.status === "Settled" && (p.a === id || p.b === id)).length;
+        const last = page.at(-1);
+        if (!last || last.id === 0 || BigInt(last.opened_at) < BigInt(coin.created_at)) start = true;
+        else before = last.id;
+      }
+    } catch {}
+    setOlder((o) => [...o, ...got]);
+    if (start) setAtStart(true);
+    setPaging(false);
+  };
+
   const mine = !!w.accountId && coin.creator === w.accountId;
-  const challengers = madeBy(all, w.accountId)
+  const challengers = madeBy(all ?? [], w.accountId)
     .filter((c) => c.id !== coin.id)
     .sort((x, y) => Number(x.in_match !== null) - Number(y.in_match !== null));
+  const wallet = w.accountId ?? "";
   return (
     <>
       <div className="crumbs">
@@ -414,26 +589,36 @@ function LiveCoin({ id }: { id: string }) {
           <ShareButton path={`/coin/${coin.id}`} text={`Meet ${coin.name}, my coin in Parley. Its AI follows the rules I wrote, and every word it says is signed by NEAR AI.`} />
         </div>
       )}
-      {challengers.length > 0 && <Challenge key={coin.id} mine={challengers} rival={coin.id} name={name} />}
+      {challengers.length > 0 && <Challenge key={wallet} mine={challengers} rival={coin.id} name={name} />}
       <YourMatches coins={[coin.id]} name={name} title={`Next up for ${coin.name}`} />
       <div className="coin-body">
-        <Rules coin={coin} onDone={() => setTick((t) => t + 1)} />
-        <Trade coin={coin} onDone={() => setTick((t) => t + 1)} />
+        <Rules key={`rules:${wallet}`} coin={coin} onDone={() => setTick((t) => t + 1)} />
+        <Trade key={`trade:${wallet}`} coin={coin} onDone={() => setTick((t) => t + 1)} />
       </div>
       <section style={{ marginTop: 40 }}>
         <div className="section-head">
-          <h2 style={{ fontSize: 30 }}>Its matches</h2>
+          <div>
+            <h2 style={{ fontSize: 30 }}>Its matches</h2>
+            {played > 0 && <p>{matches.length >= played ? `All ${played}, newest first.` : `Its last ${matches.length} of ${played}, newest first.`}</p>}
+          </div>
         </div>
         <div className="match-list">
           {[...matches].reverse().map((m) => (
             <MatchRow key={m.id} match={m} to={`/match/${m.id}`} name={name} />
           ))}
-          {!matches.length && (
+          {!matches.length && !played && (
             <Empty id={coin.id} mood="thinking" title="No matches yet">
               {info.autoplay ? "New coins rest a moment, then the arena pairs them." : "It plays when a new coin picks it as a rival."}
             </Empty>
           )}
         </div>
+        {more && (
+          <div className="more-row">
+            <button className="btn ghost" disabled={paging} onClick={loadOlder}>
+              {paging ? "Looking back…" : "Show older matches"}
+            </button>
+          </div>
+        )}
       </section>
     </>
   );
@@ -458,6 +643,7 @@ function SeasonCoin({ id }: { id: string }) {
             <h3>Its rules</h3>
           </div>
           <blockquote className="rules-text">{coin.rules}</blockquote>
+          <MoveWords />
           <p className="muted small">This is a Season 1 replay. To buy or vote, open it in the live arena.</p>
         </div>
         <div className="glass trade">
@@ -501,5 +687,5 @@ function SeasonCoin({ id }: { id: string }) {
 
 export function CoinView({ season = false }: { season?: boolean }) {
   const id = useParams().id ?? "";
-  return season ? <SeasonCoin id={id} /> : <LiveCoin id={id} />;
+  return season ? <SeasonCoin key={id} id={id} /> : <LiveCoin key={id} id={id} />;
 }

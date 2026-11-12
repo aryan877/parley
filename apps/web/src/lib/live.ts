@@ -1,7 +1,7 @@
-import { Arena } from "@parley/sdk/src/arena.ts";
 import type { Coin, Config, Model, Overview, Parley, SignedReply } from "@parley/sdk/src/types.ts";
 import { useEffect, useRef, useState } from "react";
 import { type Match, fromParley } from "./model.ts";
+import { forget, reads } from "./near.ts";
 
 const configured = (import.meta.env.VITE_ARENA_API as string | undefined)?.trim().replace(/\/+$/, "");
 
@@ -37,18 +37,33 @@ export type LiveEvent =
 
 let info: Promise<ArenaInfo | null> | null = null;
 
+async function fetchArenaInfo(): Promise<ArenaInfo | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
+    const found = await fetch(`${ARENA_API}/api/arena`, { signal: AbortSignal.timeout(5000) })
+      .then((r) => (r.ok ? (r.json() as Promise<ArenaInfo>) : null))
+      .catch(() => null);
+    if (found) return found;
+  }
+  return null;
+}
+
+let known: ArenaInfo | null | undefined;
+
 export function loadArenaInfo(): Promise<ArenaInfo | null> {
-  info ??= fetch(`${ARENA_API}/api/arena`, { signal: AbortSignal.timeout(4000) })
-    .then((r) => (r.ok ? (r.json() as Promise<ArenaInfo>) : null))
-    .catch(() => null);
+  info ??= fetchArenaInfo().then((found) => {
+    known = found;
+    if (!found) setTimeout(() => (info = null), 15_000);
+    return found;
+  });
   return info;
 }
 
 export function useArenaInfo(): { info: ArenaInfo | null; ready: boolean } {
-  const [state, setState] = useState<{ info: ArenaInfo | null; ready: boolean }>({ info: null, ready: false });
+  const [state, setState] = useState<{ info: ArenaInfo | null; ready: boolean }>(() => (known === undefined ? { info: null, ready: false } : { info: known, ready: true }));
   useEffect(() => {
     let live = true;
-    loadArenaInfo().then((i) => live && setState({ info: i, ready: true }));
+    loadArenaInfo().then((i) => live && setState((s) => (s.ready && s.info === i ? s : { info: i, ready: true })));
     return () => {
       live = false;
     };
@@ -69,33 +84,36 @@ export function accountLink(i: ArenaInfo | null | undefined, account: string): s
 
 export const networkName = (i: ArenaInfo | null | undefined) => (i?.network === "testnet" ? "NEAR testnet" : i?.network === "local" ? "a local test chain" : `NEAR ${i?.network ?? ""}`.trim());
 
-export const readArena = (i: ArenaInfo) => new Arena({ rpcUrl: i.rpcUrl, contractId: i.contractId });
-
-/** Live coins and recent matches, refreshed every few seconds. */
+/** Live coins and the newest 50 matches, refreshed every few seconds. A failed read keeps the last good answer. */
 export function useLiveArena(every = 5000) {
   const { info: arenaInfo, ready } = useArenaInfo();
-  const [coins, setCoins] = useState<Coin[] | null>(null);
-  const [parleys, setParleys] = useState<Parley[]>([]);
+  const [coins, setCoins] = useState<Coin[] | null>(() => reads.peekCoins(arenaInfo) ?? null);
+  const [parleys, setParleys] = useState<Parley[]>(() => reads.peekRecent(arenaInfo) ?? []);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!arenaInfo) return;
-    const arena = readArena(arenaInfo);
     let live = true;
-    const load = async () => {
-      const [c, p] = await Promise.all([arena.coins(), arena.parleys(0, 50)]);
-      if (live) {
-        setCoins(c);
-        setParleys(p);
-      }
+    const load = () => {
+      reads.coins(arenaInfo).then((c) => live && setCoins(c), () => {});
+      reads.recent(arenaInfo).then((p) => live && setParleys(p), () => {});
     };
-    load().catch(() => {});
-    const timer = setInterval(() => load().catch(() => {}), every);
+    load();
+    const timer = setInterval(load, every);
     return () => {
       live = false;
       clearInterval(timer);
     };
   }, [arenaInfo, every, tick]);
-  return { info: arenaInfo, ready, coins, parleys, refresh: () => setTick((t) => t + 1) };
+  return {
+    info: arenaInfo,
+    ready,
+    coins,
+    parleys,
+    refresh: () => {
+      if (arenaInfo) forget(arenaInfo, "get_coins", "get_parleys");
+      setTick((t) => t + 1);
+    },
+  };
 }
 
 interface LiveListener {
@@ -207,7 +225,7 @@ export function useLiveMatch(filter?: (p: Parley) => boolean) {
 
 /** A finished live match with the signed replies the arena server kept, when it played it. */
 export async function loadLiveMatch(i: ArenaInfo, id: number): Promise<Match | null> {
-  const parley = await readArena(i).parley(id);
+  const parley = await reads.parley(i, id);
   if (!parley) return null;
   const kept = await fetch(`${ARENA_API}/api/match/${id}`)
     .then((r) => (r.ok ? (r.json() as Promise<{ turns: Evidence[] }>) : null))

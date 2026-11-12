@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { type CoinInfo, fmtNear, nearNumber, sharePrice, trustRate } from "../lib/model.ts";
+import { type CoinInfo, fmtNear, nearNumber, pctText, sharePrice, sinceLaunch, trustRate } from "../lib/model.ts";
 import { tagline } from "../lib/words.ts";
 import { Mascot, mascotColor } from "./Mascot.tsx";
 
@@ -26,14 +26,13 @@ export function Sparkline({ values, width = 120, height = 34, color, fluid = fal
 }
 
 export function CoinCard({ coin, rank, history, start, curve, to, price }: { coin: CoinInfo; rank?: number; history: ("t" | "b")[]; start: string; curve?: number[]; to: string; price?: boolean }) {
-  const change = nearNumber(BigInt(coin.treasury) - BigInt(start));
-  const pct = (change / nearNumber(start)) * 100;
+  const pct = (price ? sinceLaunch(coin) : null) ?? (nearNumber(BigInt(coin.treasury) - BigInt(start)) / nearNumber(start)) * 100;
   const color = mascotColor(coin.id);
   return (
     <Link to={to} className="coin-card" style={{ "--c": color } as React.CSSProperties}>
       {rank !== undefined && <span className="rank">#{rank}</span>}
       <div className="top">
-        <Mascot id={coin.id} size={64} mood={change > 0 ? "win" : change < 0 ? "lose" : "idle"} />
+        <Mascot id={coin.id} size={64} mood={pct > 0 ? "win" : pct < 0 ? "lose" : "idle"} />
         <div>
           <h3>{coin.name}</h3>
           <div className="tag">{tagline(coin.id, coin.rules)}</div>
@@ -43,8 +42,8 @@ export function CoinCard({ coin, rank, history, start, curve, to, price }: { coi
         <div>
           <div className="price">{price ? `${sharePrice(coin).toFixed(3)}` : fmtNear(coin.treasury)}</div>
           <div className="faint" style={{ fontSize: 11.5 }}>{price ? "NEAR per share" : "NEAR in its treasury"}</div>
-          <div className={`change ${change >= 0 ? "up" : "down"}`}>
-            {change >= 0 ? "▲" : "▼"} {Math.abs(pct).toFixed(1)}%
+          <div className={`change ${pct >= 0 ? "up" : "down"}`}>
+            {pctText(pct)} <span className="since">since launch</span>
           </div>
         </div>
         {curve && <Sparkline values={curve} color={color} />}

@@ -11,11 +11,12 @@ import { RuleBuilder } from "../components/RuleBuilder.tsx";
 import { ShareButton } from "../components/Share.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
 import { ArrowIcon, BoltIcon, BrainIcon, RestartIcon, WalletIcon } from "../components/icons.tsx";
-import { ARENA_API, readArena, useLiveMatch } from "../lib/live.ts";
+import { ARENA_API, loadLiveMatch, useLiveMatch, useSchedule } from "../lib/live.ts";
 import { type Look, look, lookId, randomSalt } from "../lib/look.ts";
-import { type Match, fmtNear, fromParley, nearNumber } from "../lib/model.ts";
+import { type Match, fmtNear, fromParley, nearNumber, plainNear } from "../lib/model.ts";
+import { forget, reads } from "../lib/near.ts";
 import { type Plan, writeRules } from "../lib/rules.ts";
-import { useWallet } from "../lib/wallet.tsx";
+import { noteCoin, useWallet } from "../lib/wallet.tsx";
 import { BRAIN_LABEL, PRACTICE_NOTE, SIGNED_NOTE, brainOf, tagline } from "../lib/words.ts";
 
 const STARTERS: { name: string; plan: Plan; look: Look }[] = [
@@ -42,6 +43,7 @@ const STARTERS: { name: string; plan: Plan; look: Look }[] = [
 ];
 
 const NAME_MAX = 16;
+const HOLD_MS = 9000;
 const GAS = 15n * 10n ** 22n;
 
 const BRAIN_NOTE = {
@@ -82,7 +84,8 @@ export function Launch() {
   const info = w.info;
   useEffect(() => {
     if (!info) return;
-    readArena(info).coins().then(setCoins);
+    if (launched) forget(info, "get_coins");
+    reads.coins(info).then(setCoins, () => {});
     if (!model) setModel(info.models.find((m) => !m.id.includes("Qwen") && !m.id.startsWith("local/"))?.id ?? info.models[0]?.id ?? "");
   }, [info, launched]);
 
@@ -120,30 +123,57 @@ export function Launch() {
   const [finished, setFinished] = useState<Match[]>([]);
   const settledAt = useRef(0);
 
+  const { schedule } = useSchedule(4000);
+  const holding = () => Math.max(0, settledAt.current + HOLD_MS - Date.now());
+
   useEffect(() => {
     const next = stream.match;
     if (!next) return;
     if (!shown || next.id === shown.id) {
-      if (next.settled && !shown?.settled) settledAt.current = Date.now();
+      if ((next.settled || next.void) && !(shown?.settled || shown?.void)) settledAt.current = Date.now();
       setShown(next);
       return;
     }
-    const wait = shown.settled ? Math.max(0, settledAt.current + 15_000 - Date.now()) : 0;
-    const timer = setTimeout(() => setShown(next), wait);
+    if (next.id < shown.id) return;
+    const timer = setTimeout(() => setShown(next), shown.settled || shown.void ? holding() : 0);
     return () => clearTimeout(timer);
   }, [stream.match]);
 
+  const playing = schedule?.current && launched && (schedule.current.a === launched.id || schedule.current.b === launched.id) ? schedule.current.id : null;
+  useEffect(() => {
+    if (!info || playing === null || shown?.id === playing || (shown && !shown.settled && !shown.void)) return;
+    let live = true;
+    const timer = setTimeout(
+      () => loadLiveMatch(info, playing).then((m) => live && m && setShown((s) => (s && s.id >= m.id ? s : m)), () => {}),
+      shown ? holding() : 0,
+    );
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [info, playing, shown?.id, shown?.settled]);
+
+  useEffect(() => {
+    if (!info || !shown || shown.settled || shown.void || !schedule || schedule.current?.id === shown.id) return;
+    let live = true;
+    loadLiveMatch(info, shown.id).then((m) => {
+      if (!live || !m || (!m.settled && !m.void)) return;
+      settledAt.current = Date.now();
+      setShown((s) => (s?.id === m.id ? m : s));
+    }, () => {});
+    return () => {
+      live = false;
+    };
+  }, [info, shown?.id, shown?.settled, schedule?.current?.id]);
+
   useEffect(() => {
     if (!info || !shown) return;
-    if (snapshot?.id !== shown.id) readArena(info).coins().then((c) => setSnapshot({ id: shown.id, coins: c }));
+    if (snapshot?.id !== shown.id) reads.coins(info).then((c) => setSnapshot({ id: shown.id, coins: c }), () => {});
   }, [info, shown?.id]);
 
   useEffect(() => {
     if (!info || !launched) return;
-    const load = () =>
-      readArena(info)
-        .parleys(0, 30)
-        .then((ps) => setFinished(ps.map((p) => fromParley(p)).filter((m) => m.settled && (m.a === launched.id || m.b === launched.id))));
+    const load = () => reads.recent(info).then((ps) => setFinished(ps.map((p) => fromParley(p)).filter((m) => m.settled && (m.a === launched.id || m.b === launched.id))), () => {});
     load();
     const timer = setInterval(load, 5000);
     return () => clearInterval(timer);
@@ -161,6 +191,9 @@ export function Launch() {
   const nameProblem = !name.trim() ? "Give it a name." : !plainName(name) ? "Use plain letters, numbers and spaces." : nameTaken ? "That name is taken. Try another." : null;
 
   const fitted = useRef(false);
+  useEffect(() => {
+    fitted.current = false;
+  }, [w.accountId]);
   useEffect(() => {
     if (fitted.current || !w.balance || !info) return;
     fitted.current = true;
@@ -181,6 +214,7 @@ export function Launch() {
       if (/coin id taken/.test(made.error ?? "")) setSalt(randomSalt());
       return setError(refusal(made.error));
     }
+    noteCoin(w.accountId, id);
     const res = await fetch(`${ARENA_API}/api/challenge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ coin: id, opponents: rivals }) });
     const body = (await res.json()) as { error?: string };
     setBusy(false);
@@ -229,7 +263,10 @@ export function Launch() {
         <YourMatches coins={[launched.id]} name={nameOf} watch={false} />
         {error && <div className="notice bad">{error}</div>}
         {live ? (
-          <Stage key={live.id} match={live} a={fighter(live.a)} b={fighter(live.b)} live autoplay={false} label={`Match ${live.id}`} explorer={info?.explorerTx ?? null} callKey={info ? `live:${info.contractId}:${live.id}` : undefined} />
+          <>
+            <Stage key={live.id} match={live} a={fighter(live.a)} b={fighter(live.b)} live autoplay={false} label={`Match ${live.id}`} explorer={info?.explorerTx ?? null} callKey={info ? `live:${info.contractId}:${live.id}` : undefined} />
+            {(live.settled || live.void) && <p className="hint-line">When {launched.name}'s next match starts, it plays right here.</p>}
+          </>
         ) : (
           <div className="glass waiting">
             <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}>
@@ -344,7 +381,7 @@ export function Launch() {
             <p className="muted small">
               This is its treasury, and you get one share per NEAR.
               <br />
-              Each match risks 2% of the smaller treasury. The {fmtNear(fee, 0)} NEAR launch fee goes to the shared pot.
+              Each match risks 2% of the smaller treasury. The {plainNear(fee)} NEAR launch fee goes to the shared pot.
             </p>
           </div>
 

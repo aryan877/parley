@@ -35,10 +35,10 @@ export function WalletModal() {
                   </span>
                   <ArrowIcon size={18} className="wallet-go" />
                 </motion.button>
-                <p className="wallet-note">The key stays in this browser. Meteor, HOT and other NEAR wallets are coming soon.</p>
+                <p className="wallet-note">The key stays in this browser.</p>
               </>
             ) : (
-              <div className="notice">Wallets for NEAR {network} are coming soon.</div>
+              <div className="notice">Play wallets work on NEAR testnet only.</div>
             )}
             {w.error && <div className="notice bad">{w.error}</div>}
           </motion.div>

@@ -1,9 +1,10 @@
 import type { Coin } from "@parley/sdk/src/types.ts";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { accountLink, readArena, useArenaInfo, useLiveArena } from "../lib/live.ts";
+import { accountLink, useArenaInfo, useLiveArena } from "../lib/live.ts";
+import { reads } from "../lib/near.ts";
 import { fmtNear, fromParley, nearNumber, signedNear } from "../lib/model.ts";
-import { useWallet } from "../lib/wallet.tsx";
+import { noteCoin, notedCoins, useWallet } from "../lib/wallet.tsx";
 import { moveWord, tagline } from "../lib/words.ts";
 import { YourMatches } from "./ArenaNow.tsx";
 import { Empty } from "./Empty.tsx";
@@ -11,42 +12,74 @@ import { MineGuide } from "./Guide.tsx";
 import { Mascot, mascotColor } from "./Mascot.tsx";
 import { ArrowIcon, BetrayIcon, TrustIcon, WalletIcon } from "./icons.tsx";
 
-/** Shares the account holds in each coin, counting shares locked in a vote. Only coins with some are kept. */
+const swept = new Set<string>();
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Shares the account holds, counting shares locked in a vote. Coins it made or used from this browser are read
+ * every 30 seconds; the rest are checked once per visit. A failed read keeps the last answer, or null.
+ */
 function useHoldings(coins: Coin[] | null, account: string | null) {
   const { info } = useArenaInfo();
-  const [held, setHeld] = useState<Map<string, bigint> | null>(null);
+  const [held, setHeld] = useState<Map<string, bigint | null> | null>(null);
+  const [searching, setSearching] = useState(false);
   const latest = useRef(coins);
   latest.current = coins;
-  const count = coins?.length ?? 0;
+  const ready = !!coins;
   useEffect(() => {
-    if (!info || !account || !count) return;
-    const arena = readArena(info);
+    setHeld(null);
+    if (!info || !account || !ready) return;
     let live = true;
-    const load = async () => {
-      const list = latest.current ?? [];
-      const out = new Map<string, bigint>();
-      for (let i = 0; i < list.length; i += 6) {
-        await Promise.all(
-          list.slice(i, i + 6).map(async (c) => {
-            const [shares, vote] = await Promise.all([
-              arena.shares(c.id, account).catch(() => "0"),
-              arena.view<{ locked: string } | null>("get_vote", { coin: c.id, account }).catch(() => null),
-            ]);
-            const total = BigInt(shares) + BigInt(vote?.locked ?? "0");
-            if (total > 0n) out.set(c.id, total);
-          }),
-        );
-      }
-      if (live) setHeld(out);
+    const known = new Map<string, bigint | null>();
+    const read = async (id: string) => {
+      const [s, v] = await Promise.allSettled([reads.shares(info, id, account), reads.vote(info, id, account)]);
+      if (s.status === "rejected" || v.status === "rejected") return known.get(id) ?? null;
+      return BigInt(s.value) + BigInt(v.value?.locked ?? "0");
     };
-    load().catch(() => {});
-    const timer = setInterval(() => load().catch(() => {}), 30_000);
+    const load = async () => {
+      const noted = notedCoins(account);
+      const relevant = (latest.current ?? []).filter((c) => c.creator === account || noted.has(c.id));
+      for (let i = 0; i < relevant.length; i += 4) {
+        const batch = relevant.slice(i, i + 4);
+        const values = await Promise.all(batch.map((c) => read(c.id)));
+        batch.forEach((c, k) => known.set(c.id, values[k]!));
+      }
+      if (live) setHeld(new Map(known));
+    };
+    const sweep = async () => {
+      if (swept.has(account) || !live) return;
+      swept.add(account);
+      setSearching(true);
+      const noted = notedCoins(account);
+      const rest = (latest.current ?? []).filter((c) => !c.house && c.creator !== account && !noted.has(c.id));
+      for (let i = 0; i < rest.length; i += 4) {
+        if (!live) {
+          swept.delete(account);
+          return;
+        }
+        const batch = rest.slice(i, i + 4);
+        const values = await Promise.all(batch.map((c) => reads.shares(info, c.id, account).then(BigInt, () => null)));
+        batch.forEach((c, k) => {
+          const shares = values[k];
+          if (shares === null || shares === undefined) swept.delete(account);
+          else if (shares > 0n) {
+            noteCoin(account, c.id);
+            known.set(c.id, shares);
+          }
+        });
+        if (live) setHeld(new Map(known));
+        await pause(200);
+      }
+      if (live) setSearching(false);
+    };
+    load().then(sweep);
+    const timer = setInterval(load, 30_000);
     return () => {
       live = false;
       clearInterval(timer);
     };
-  }, [info, account, count]);
-  return held;
+  }, [info, account, ready]);
+  return { held, searching };
 }
 
 function Forget() {
@@ -82,8 +115,13 @@ export const madeBy = (coins: Coin[], account: string | null) => (account ? coin
 /** The coins this browser's play wallet made or holds shares in. */
 export function MyCoins() {
   const w = useWallet();
+  return <Mine key={w.accountId ?? ""} />;
+}
+
+function Mine() {
+  const w = useWallet();
   const live = useLiveArena();
-  const held = useHoldings(live.coins, w.accountId);
+  const { held, searching } = useHoldings(live.coins, w.accountId);
 
   if (!w.accountId) {
     return (
@@ -104,12 +142,13 @@ export function MyCoins() {
 
   const account = w.accountId;
   const coins = live.coins ?? [];
-  const mine = [...madeBy(coins, account), ...coins.filter((c) => c.creator !== account && held?.has(c.id)).sort(richest)];
+  const holds = (id: string) => held?.has(id) && held.get(id) !== 0n;
+  const mine = [...madeBy(coins, account), ...coins.filter((c) => c.creator !== account && holds(c.id)).sort(richest)];
   const matches = live.parleys.map((p) => fromParley(p)).filter((m) => m.settled);
   const names = new Map(coins.map((c) => [c.id, c.name]));
   const name = (id: string) => names.get(id) ?? id.toUpperCase();
   const explorer = accountLink(live.info, account);
-  const loading = !live.coins || (held === null && !coins.some((c) => c.creator === account));
+  const loading = !live.coins || searching || (held === null && !coins.some((c) => c.creator === account));
 
   return (
     <>
@@ -138,7 +177,7 @@ export function MyCoins() {
           const move = last && (side === "A" ? last.aMove : last.bMove);
           const delta = last ? BigInt(side === "A" ? last.aDelta : last.bDelta) : 0n;
           const rival = last && (side === "A" ? last.b : last.a);
-          const shares = held?.get(c.id) ?? 0n;
+          const shares = held?.get(c.id);
           const price = BigInt(c.total_shares) > 0n ? nearNumber(c.treasury) / nearNumber(c.total_shares) : 0;
           return (
             <Link key={c.id} to={`/coin/${c.id}`} className="my-coin" style={{ "--c": mascotColor(c.id) } as React.CSSProperties}>
@@ -155,8 +194,8 @@ export function MyCoins() {
                 <small>NEAR treasury</small>
               </span>
               <span className="my-stat">
-                <b>{fmtNear(shares)}</b>
-                <small>{shares > 0n ? `your shares, about ${(nearNumber(shares) * price).toFixed(2)} NEAR` : "your shares"}</small>
+                <b>{typeof shares === "bigint" ? fmtNear(shares) : "…"}</b>
+                <small>{typeof shares === "bigint" && shares > 0n ? `your shares, about ${(nearNumber(shares) * price).toFixed(2)} NEAR` : "your shares"}</small>
               </span>
               <span className="my-last">
                 {last && move && rival ? (

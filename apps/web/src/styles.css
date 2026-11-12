@@ -615,6 +615,7 @@ section.tight {
 }
 
 .now-col {
+  min-width: 0;
   padding: 22px;
   border-radius: var(--r-lg);
   background: var(--surface);
@@ -661,8 +662,10 @@ section.tight {
 
 .now-names {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: baseline;
-  gap: 8px;
+  gap: 0 8px;
   font: 800 19px var(--display);
 }
 
@@ -870,11 +873,18 @@ section.tight {
   background: rgba(167, 139, 250, 0.12);
 }
 
+.treasury-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 8px;
+  min-height: 34px;
+}
+
 .delta {
-  position: absolute;
-  top: 8px;
-  font: 800 22px var(--mono);
-  padding: 4px 11px;
+  font: 800 17px var(--mono);
+  padding: 4px 9px;
   border-radius: 10px;
 }
 
@@ -1544,6 +1554,12 @@ section.tight {
 
 .change {
   font: 650 13px var(--mono);
+}
+
+.change .since {
+  font: 500 11.5px var(--sans);
+  color: var(--faint);
+  white-space: nowrap;
 }
 
 .card-foot {
@@ -2299,6 +2315,10 @@ section.tight {
     width: 150px;
     height: 160px;
   }
+  .fighter-art svg {
+    width: 146px;
+    height: 146px;
+  }
   .how-steps,
   .stakes,
   .steps3,
@@ -2448,6 +2468,20 @@ section.tight {
 
 .guide.compact {
   margin: 0;
+}
+
+.guide-note {
+  margin: 10px 4px 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+  text-align: center;
+}
+
+.guide.compact .guide-note {
+  margin-top: 8px;
+  font-size: 13px;
+  text-align: left;
 }
 
 .guide.compact .guide-row {
@@ -2740,6 +2774,17 @@ section.tight {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.now-sub {
+  margin-bottom: -4px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--faint);
+}
+
+.now-result {
+  margin: 0;
 }
 
 .now-idle p {
@@ -3797,6 +3842,19 @@ a.mono-line:hover {
   margin: 0;
 }
 
+.oc-lock .oc-owner {
+  margin-top: 8px;
+  max-width: 720px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.oc-owner a {
+  font: 600 13px var(--mono);
+  color: var(--text);
+}
+
 .oc-links,
 .oc-steps {
   display: flex;
@@ -4127,4 +4185,155 @@ section.fake {
   flex: none;
   width: 38px;
   height: 38px;
+}
+
+.move-words {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--faint);
+}
+
+.mind-card .move-words {
+  margin: 0 0 8px;
+  font: 500 12.5px/1.5 var(--sans);
+  color: var(--faint);
+}
+
+.move-words b {
+  font: 700 11px var(--mono);
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.move-words b.t {
+  color: var(--trust);
+  background: rgba(52, 211, 153, 0.1);
+}
+
+.move-words b.b {
+  color: var(--betray);
+  background: rgba(255, 84, 104, 0.1);
+}
+
+.tally {
+  margin: 4px 0 2px;
+}
+
+.tally-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.tally-fill {
+  display: flex;
+  height: 100%;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.tally-fill i {
+  display: block;
+  height: 100%;
+  transition: width 0.6s ease;
+}
+
+.tally-fill i.yes {
+  background: var(--trust);
+}
+
+.tally-fill i.no {
+  background: var(--betray);
+}
+
+.tally-line {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--text);
+  opacity: 0.7;
+}
+
+.tally-scale {
+  position: relative;
+  height: 18px;
+  margin-top: 4px;
+}
+
+.tally-scale span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.tally-text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font: 650 13px var(--mono);
+}
+
+.tally-text .faint {
+  font: 500 12.5px var(--sans);
+}
+
+.tally-verdict {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.my-ballot {
+  margin: 10px 0 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.more-row {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.next-live {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px 18px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--lift);
+  color: var(--text);
+  font-size: 14.5px;
+}
+
+.next-live > span:nth-child(2) {
+  flex: 1;
+}
+
+.next-live:hover {
+  background: var(--surface-2);
+}
+
+.near-trouble {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 10px);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  color: var(--text);
+  background: var(--surface-3);
+  box-shadow: var(--lift);
 }
