@@ -175,7 +175,7 @@ export const RulesGuide = ({ coin }: { coin: string }) => (
   />
 );
 
-export const MineGuide = ({ coin }: { coin: string }) => (
+export const MineGuide = ({ coin, own = false }: { coin: string; own?: boolean }) => (
   <Guide
     compact
     label="Your coins"
@@ -186,7 +186,7 @@ export const MineGuide = ({ coin }: { coin: string }) => (
             <WalletIcon size={22} />
           </Tile>
         ),
-        text: "Kept in this browser",
+        text: own ? "Your own NEAR wallet" : "Kept in this browser",
       },
       { art: <Face id={coin} mood="win" />, text: "Coins you made or hold" },
       {

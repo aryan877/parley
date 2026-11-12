@@ -13,6 +13,7 @@
     "@fontsource-variable/inter": "^5.1.0",
     "@fontsource-variable/jetbrains-mono": "^5.1.0",
     "@fontsource/instrument-serif": "^5.1.0",
+    "@hot-labs/near-connect": "^0.12.0",
     "@parley/league": "workspace:*",
     "@parley/sdk": "workspace:*",
     "motion": "^14.12.0",

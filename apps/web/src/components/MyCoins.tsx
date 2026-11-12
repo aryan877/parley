@@ -112,7 +112,7 @@ const richest = (x: Coin, y: Coin) => (BigInt(y.treasury) > BigInt(x.treasury) ?
 /** Coins the account launched, richest first. */
 export const madeBy = (coins: Coin[], account: string | null) => (account ? coins.filter((c) => c.creator === account).sort(richest) : []);
 
-/** The coins this browser's play wallet made or holds shares in. */
+/** The coins the connected wallet made or holds shares in. */
 export function MyCoins() {
   const w = useWallet();
   return <Mine key={w.accountId ?? ""} />;
@@ -155,7 +155,13 @@ function Mine() {
       <div className="my-wallet">
         <Mascot id={account} size={44} />
         <div className="my-wallet-text">
-          <b>Your play wallet</b>
+          {w.kind === "near" ? (
+            <b>
+              Your NEAR wallet {w.walletName && <span className="wallet-by">{w.walletName}</span>}
+            </b>
+          ) : (
+            <b>Your play wallet</b>
+          )}
           {explorer ? (
             <a href={explorer} target="_blank" rel="noreferrer" className="mono-line">
               {account}
@@ -165,9 +171,27 @@ function Mine() {
           )}
         </div>
         <span className="my-balance">{w.balance ? fmtNear(w.balance) : "…"} NEAR</span>
-        <Forget />
+        {w.kind === "near" ? (
+          <span className="my-wallet-tools">
+            <button className="tiny" onClick={() => w.setOpen(true)}>
+              Switch
+            </button>
+            <button className="tiny" onClick={w.disconnect}>
+              Sign out
+            </button>
+          </span>
+        ) : (
+          <>
+            {w.nearReady && (
+              <button className="tiny" onClick={() => w.setOpen(true)}>
+                Use my NEAR wallet
+              </button>
+            )}
+            <Forget />
+          </>
+        )}
       </div>
-      <MineGuide coin={mine[0]?.id ?? account} />
+      <MineGuide coin={mine[0]?.id ?? account} own={w.kind === "near"} />
       <div style={{ height: 14 }} />
       <YourMatches coins={mine.map((c) => c.id)} name={name} />
       <div className="my-list">

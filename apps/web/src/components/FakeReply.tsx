@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { txLink, useSchedule } from "../lib/live.ts";
-import { useWallet } from "../lib/wallet.tsx";
+import { CANCELLED, useWallet } from "../lib/wallet.tsx";
 import { FakeGuide } from "./Guide.tsx";
 import { BetrayIcon, ShieldCheckIcon, WalletIcon } from "./icons.tsx";
 import { Mascot } from "./Mascot.tsx";
@@ -82,7 +82,7 @@ export function FakeReply() {
       setState({ kind: "busy", step: "Signing a fake reply with a key you just made up…" });
       const response = JSON.stringify({ choices: [{ index: 0, message: { role: "assistant", content: "DEFECT" } }] });
       const reply = new LocalEnclave(crypto.getRandomValues(new Uint8Array(32))).sign(model, request, response);
-      setState({ kind: "busy", step: "Sending it to the contract…" });
+      setState({ kind: "busy", step: w.kind === "near" ? "Approve it in your wallet. It goes straight to the contract…" : "Sending it to the contract…" });
       const result = await arena.submitTurn(parley.id, reply);
       w.refresh();
       const reason = result.error?.match(/Smart contract panicked: ([^"\\]+)/)?.[1]?.trim();
@@ -91,13 +91,16 @@ export function FakeReply() {
         setState({ kind: "accepted", parley: parley.id, hash: result.hash });
       } else if (reason && ENDED.test(reason)) {
         wait("That match just ended. Waiting for the next one.");
+      } else if (result.error === CANCELLED) {
+        deadline.current = 0;
+        setState({ kind: "error", text: CANCELLED });
       } else if (reason) {
         deadline.current = 0;
         setState({ kind: "refused", parley: parley.id, turn, reason, hash: result.hash });
       } else {
         deadline.current = 0;
         const broke = /not enough balance|NotEnoughBalance|LackBalance/i.test(result.error ?? "");
-        setState({ kind: "error", text: broke ? "Your play wallet is out of test NEAR for gas." : `It never reached the contract: ${result.error?.slice(0, 160) ?? "unknown error"}` });
+        setState({ kind: "error", text: broke ? "Your wallet is out of test NEAR for gas." : `It never reached the contract: ${result.error?.slice(0, 160) ?? "unknown error"}` });
       }
     } catch (e) {
       deadline.current = 0;

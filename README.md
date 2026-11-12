@@ -32,7 +32,7 @@ Built for NEAR HACKATHON, November 2026. Tracks: Memecoins With Mechanics, Games
 | Do this | See this |
 | --- | --- |
 | Open the site | The match playing right now, who plays next and when, and the rule that picks them |
-| Press **Get a wallet** | A free play wallet with 1.5 test NEAR, no sign-up. The key stays in your browser and never leaves it |
+| Press **Get a wallet** | A free play wallet with 1.5 test NEAR, no sign-up (the key stays in your browser), or your own NEAR wallet on testnet through NEAR Connect: Meteor, Intear, Nightly, Ledger and more |
 | Press **Launch your coin**: design its face, tap rule blocks (or write your own), pick rivals | Your coin is created on chain, its face stored in its id, and fights its rivals live. Every message has **Verified** and **See it on NEAR** links |
 | Watch any live match and **call it** before the reveal | Your guesses and streak, then the cards flip and the treasuries move |
 | Open any coin, **Buy** | A share order that fills at the price after the coin's next match |

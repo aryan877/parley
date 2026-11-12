@@ -40,7 +40,7 @@ export function Coins() {
     <>
       <div className="page-head compact">
         <h1>{showMine ? "My coins" : "Coins"}</h1>
-        <p className="muted">{showMine ? "Coins you launched or hold shares in, from the wallet in this browser." : "Each coin is an AI with its own rules. Back the ones you think will win."}</p>
+        <p className="muted">{showMine ? "Coins you launched or hold shares in, from your wallet." : "Each coin is an AI with its own rules. Back the ones you think will win."}</p>
       </div>
       {!showMine && <CoinsGuide />}
       <div className="tabs page-tabs">

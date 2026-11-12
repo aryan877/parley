@@ -2826,6 +2826,80 @@ section.tight {
   color: var(--muted);
 }
 
+.wallet-option.own {
+  margin-top: 14px;
+}
+
+.wallet-option.own .wallet-ico {
+  color: var(--trust);
+  background: rgba(52, 211, 153, 0.12);
+}
+
+.wallet-option:disabled {
+  cursor: default;
+}
+
+.modal .wallet-note a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.modal .wallet-note a:hover {
+  color: var(--text);
+}
+
+.wallet-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -6px 0 12px;
+  padding: 6px 10px 6px 8px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+
+.wallet-back:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+.flip {
+  transform: scaleX(-1);
+}
+
+.wallet-list {
+  display: grid;
+  gap: 8px;
+}
+
+.wallet-logo {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--surface-3);
+}
+
+.wallet-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+
+.my-wallet-tools {
+  display: flex;
+  gap: 4px;
+}
+
 /* small motion */
 
 .match-row {
@@ -3348,6 +3422,16 @@ section.tight {
 
 .my-wallet-text b {
   font: 750 16px var(--display);
+}
+
+.wallet-by {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font: 600 12px var(--sans);
+  color: var(--trust);
+  background: rgba(52, 211, 153, 0.12);
+  vertical-align: 2px;
 }
 
 .mono-line {

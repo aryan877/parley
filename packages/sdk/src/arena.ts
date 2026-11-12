@@ -133,7 +133,7 @@ export class Arena {
   }
 
   private at(contractId: string): Arena {
-    return new Arena({ rpcUrl: this.rpcUrl, contractId, signer: this.signer });
+    return new Arena({ rpcUrl: this.rpcUrl, contractId, signer: this.signer, wallet: this.wallet });
   }
 }
 

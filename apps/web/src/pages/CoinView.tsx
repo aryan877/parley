@@ -18,7 +18,7 @@ import { type CoinInfo, type Match, fmtNear, fromCoin, fromParley, nearNumber, p
 import { ARENA_API, useArenaInfo } from "../lib/live.ts";
 import { type VoteLock, forget, parleysBefore, reads, view } from "../lib/near.ts";
 import { useSeason } from "../lib/season.ts";
-import { noteCoin, useWallet } from "../lib/wallet.tsx";
+import { CANCELLED, noteCoin, useWallet } from "../lib/wallet.tsx";
 import { BRAIN_LABEL, PRACTICE_NOTE, brainOf, tagline } from "../lib/words.ts";
 
 const YOCTO = 10n ** 24n;
@@ -37,9 +37,12 @@ function until(ns: string): string {
   return `in ${Math.round(s / 3600)} h`;
 }
 
-const why = (error?: string) =>
-  /Not enough balance|NotEnoughBalance|LackBalance/i.test(error ?? "") ? "not enough NEAR in your wallet for gas" : (error?.match(/panicked: ([^"\\]+)/)?.[1] ?? error?.slice(0, 140) ?? "unknown error");
-const refusal = (label: string, error?: string) => `${label} failed: ${why(error)}.`;
+const why = (error?: string) => {
+  if (error === CANCELLED) return "you cancelled in your wallet";
+  if (/Not enough balance|NotEnoughBalance|LackBalance/i.test(error ?? "")) return "not enough NEAR in your wallet for gas";
+  return error?.match(/panicked: ([^"\\]+)/)?.[1] ?? error?.slice(0, 140) ?? "unknown error";
+};
+const refusal = (label: string, error?: string) => (error === CANCELLED ? CANCELLED : `${label} failed: ${why(error)}.`);
 
 /** Treasury after each match, oldest first, counted back from the treasury now. */
 function curveOf(id: string, treasury: string, matches: Match[]): number[] {
@@ -137,6 +140,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
 
   const price = Number((BigInt(coin.treasury) * 1_000_000n) / (BigInt(coin.total_shares) || 1n)) / 1_000_000;
   const value = toYocto(amount);
+  const sending = w.kind === "near" ? "Approve it in your wallet…" : "Sending…";
   const run = async (label: string, action: () => Promise<{ ok: boolean; error?: string }>, done: string) => {
     setBusy(true);
     setNote(null);
@@ -220,7 +224,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
             Your order fills after its next match.
           </p>
           <button className="btn trust big" disabled={busy || !value || order === undefined} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Buying", () => w.arena()!.placeMint(coin.id, value), "Order placed. It fills after the next match.")}>
-            {busy ? "Sending…" : `Buy ${coin.name}`}
+            {busy ? sending : `Buy ${coin.name}`}
           </button>
         </>
       ) : (
@@ -236,7 +240,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
             Your sale fills after its next match.
           </p>
           <button className="btn betray big" disabled={busy || !value || held === null || value > held || order === undefined} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Selling", () => w.arena()!.placeRedeem(coin.id, value), "Sell order placed. It fills after the next match.")}>
-            {busy ? "Sending…" : `Sell for about ${value ? (nearNumber(value) * price).toFixed(2) : "0"} NEAR`}
+            {busy ? sending : `Sell for about ${value ? (nearNumber(value) * price).toFixed(2) : "0"} NEAR`}
           </button>
         </>
       )}
@@ -346,7 +350,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     if (!arena || !info || !account) return w.setOpen(true);
     setBusy(true);
     setNote(null);
-    setStep("Step 1 of 2: sending your proposal…");
+    setStep(w.kind === "near" ? "Step 1 of 2: approve your proposal in your wallet…" : "Step 1 of 2: sending your proposal…");
     const made = await arena.proposeAmendment(coin.id, draft.trim(), coin.model);
     if (!made.ok) {
       setBusy(false);
@@ -358,7 +362,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     noteCoin(account, coin.id);
     setWriting(false);
     setDraft("");
-    setStep("Step 2 of 2: voting yes with all your shares…");
+    setStep(w.kind === "near" ? "Step 2 of 2: approve your yes vote in your wallet…" : "Step 2 of 2: voting yes with all your shares…");
     const [mine, held] = await Promise.all([
       view<VoteLock | null>(info, "get_vote", { coin: coin.id, account }).catch(() => null),
       view<string>(info, "get_shares", { coin: coin.id, account }).catch(() => null),

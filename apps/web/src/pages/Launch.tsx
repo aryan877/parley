@@ -16,7 +16,7 @@ import { type Look, look, lookId, randomSalt } from "../lib/look.ts";
 import { type Match, fmtNear, fromParley, nearNumber, plainNear } from "../lib/model.ts";
 import { forget, reads } from "../lib/near.ts";
 import { type Plan, writeRules } from "../lib/rules.ts";
-import { noteCoin, useWallet } from "../lib/wallet.tsx";
+import { CANCELLED, launching, noteCoin, useWallet } from "../lib/wallet.tsx";
 import { BRAIN_LABEL, PRACTICE_NOTE, SIGNED_NOTE, brainOf, tagline } from "../lib/words.ts";
 
 const STARTERS: { name: string; plan: Plan; look: Look }[] = [
@@ -55,6 +55,7 @@ const BRAIN_NOTE = {
 const plainName = (name: string) => /^[\x20-\x7E]{1,24}$/.test(name.trim());
 
 function refusal(error?: string): string {
+  if (error === CANCELLED || /your (NEAR )?wallet/i.test(error ?? "")) return error!;
   if (/Not enough balance/.test(error ?? "")) return "Not enough NEAR in your wallet. Keep about 0.1 NEAR for gas.";
   const panic = error?.match(/panicked: ([^"\\]+)/)?.[1];
   if (panic === "coin name taken") return "Someone just took that name. Pick another one.";
@@ -208,7 +209,9 @@ export function Launch() {
     if (!arena || !info) return;
     setBusy(true);
     setError(null);
+    launching({ account: w.accountId, coin: id, rivals, at: Date.now() });
     const made = await arena.createCoin({ id, name: name.trim().toUpperCase(), constitution: rules.trim(), model }, asYocto(money) + fee);
+    if (made.ok || !/did not (arrive|say)/.test(made.error ?? "")) launching(null);
     if (!made.ok) {
       setBusy(false);
       if (/coin id taken/.test(made.error ?? "")) setSalt(randomSalt());
@@ -434,7 +437,7 @@ export function Launch() {
               </button>
             ) : (
               <button className="btn big" style={{ width: "100%", justifyContent: "center" }} disabled={busy || short || !!nameProblem || tooLong || !rules.trim() || !rivals.length} onClick={launch}>
-                {busy ? "Launching…" : `Launch for ${tenth(money + nearNumber(fee))} NEAR`}
+                {busy ? (w.kind === "near" ? "Approve it in your wallet…" : "Launching…") : `Launch for ${tenth(money + nearNumber(fee))} NEAR`}
               </button>
             )}
             {(nameProblem || tooLong || !rivals.length) && w.accountId && (
