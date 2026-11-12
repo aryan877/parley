@@ -17,10 +17,21 @@ async function patient<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
+/** A function call for a browser wallet to sign and send. It returns the final outcome, as near-api-js does. */
+export interface WalletCall {
+  receiverId: string;
+  methodName: string;
+  args: Record<string, unknown>;
+  deposit: bigint;
+  gas: bigint;
+}
+
 export interface ArenaOptions {
   rpcUrl: string;
   contractId: string;
   signer?: { accountId: string; privateKey: string };
+  /** Signs with someone's own wallet (NEAR Connect and similar) instead of a key held here. */
+  wallet?: { accountId: string; send: (call: WalletCall) => Promise<unknown> };
 }
 
 export interface CallResult {
@@ -36,15 +47,21 @@ export class Arena {
   readonly rpcUrl: string;
   private readonly account?: Account;
   private readonly signer?: ArenaOptions["signer"];
+  private readonly wallet?: ArenaOptions["wallet"];
 
   constructor(options: ArenaOptions) {
     this.signer = options.signer;
+    this.wallet = options.wallet;
     this.rpcUrl = options.rpcUrl;
     this.provider = new JsonRpcProvider({ url: options.rpcUrl });
     this.contractId = options.contractId;
     if (options.signer) {
       this.account = new Account(options.signer.accountId, this.provider, options.signer.privateKey as KeyPairString);
     }
+  }
+
+  get accountId(): string | undefined {
+    return this.signer?.accountId ?? this.wallet?.accountId;
   }
 
   as(signer: { accountId: string; privateKey: string }): Arena {
@@ -56,16 +73,15 @@ export class Arena {
   }
 
   async call(method: string, args: Record<string, unknown> = {}, options: { deposit?: bigint; gas?: bigint } = {}): Promise<CallResult> {
-    if (!this.account) throw new Error("this Arena client has no signer");
+    if (!this.account && !this.wallet) throw new Error("this Arena client has no signer");
     try {
-      const outcome = await patient(() => this.account!.callFunctionRaw({
-        contractId: this.contractId,
-        methodName: method,
-        args,
-        deposit: options.deposit ?? 0n,
-        gas: options.gas ?? 100n * TGAS,
-        waitUntil: "EXECUTED_OPTIMISTIC",
-      }));
+      const request = { contractId: this.contractId, methodName: method, args, deposit: options.deposit ?? 0n, gas: options.gas ?? 100n * TGAS };
+      const outcome = (this.wallet
+        ? await this.wallet.send({ receiverId: request.contractId, methodName: method, args, deposit: request.deposit, gas: request.gas })
+        : await patient(() => this.account!.callFunctionRaw({ ...request, waitUntil: "EXECUTED_OPTIMISTIC" }))) as {
+        status: unknown;
+        transaction: { hash: string };
+      };
       const status = outcome.status as { SuccessValue?: string; Failure?: unknown };
       const hash = outcome.transaction.hash as string;
       if (status.SuccessValue === undefined) return { ok: false, hash, error: JSON.stringify(status.Failure ?? status) };
