@@ -1,10 +1,11 @@
 import { useId } from "react";
 import type { JSX, ReactNode } from "react";
+import { BROWS, type BrowKey, COLORS, EXTRAS, EYES, type ExtraKey, type EyeKey, GEARS, type GearKey, MOUTHS, type MouthKey, lookOf } from "../lib/look.ts";
 
 export type Mood = "idle" | "thinking" | "trust" | "betray" | "win" | "lose";
 
 type House = "saint" | "snake" | "mirror" | "grudge" | "pavlov" | "diplomat" | "skeptic" | "gambler";
-type Gear = "star" | "crown" | "antenna" | "leaf" | "bolt";
+type Gear = GearKey;
 
 const HOUSE: Record<House, string> = {
   saint: "#FFC857",
@@ -41,10 +42,11 @@ type Eye =
   | { k: "ring"; x?: number; y?: number; p?: number; lid?: Lid }
   | { k: "slit"; x?: number; y?: number; lid?: Lid }
   | { k: "dice"; n: number; lid?: Lid }
+  | { k: "robot" | "heart"; x?: number; y?: number; lid?: Lid }
   | { k: "happy" | "line" | "squeeze" | "x" | "spiral" };
-type Brow = { y?: number; t?: number; a?: number };
+type Brow = { y?: number; t?: number; a?: number; w?: number };
 type Mouth = {
-  k: "smile" | "open" | "smirk" | "flat" | "frown" | "o" | "pursed" | "teeth" | "evil" | "wavy" | "cat";
+  k: "smile" | "open" | "smirk" | "flat" | "frown" | "o" | "pursed" | "teeth" | "evil" | "wavy" | "cat" | "blep" | "fang" | "buck";
   w?: number;
   x?: number;
   y?: number;
@@ -119,10 +121,34 @@ function generated(id: string): Gen {
   };
 }
 
+type Player = { color: string; gear: Gear | "none"; eyes: EyeKey; mouth: MouthKey; brows: BrowKey; extra: ExtraKey };
+
+const LEGACY_EYES = ["dot", "bean", "googly", "sparkle"] as const;
+const LEGACY_MOUTHS = ["smile", "cat", "open", "smirk"] as const;
+
+/** A player coin's face: designed at launch and kept in its id, or hashed from the id for older coins. */
+function playerOf(id: string): Player {
+  const look = lookOf(id);
+  if (look) {
+    return {
+      color: COLORS[look.color]!.hex,
+      gear: GEARS[look.gear]!.key,
+      eyes: EYES[look.eyes]!.key,
+      mouth: MOUTHS[look.mouth]!.key,
+      brows: BROWS[look.brows]!.key,
+      extra: EXTRAS[look.extra]!.key,
+    };
+  }
+  const g = generated(id);
+  return { color: g.color, gear: g.gear, eyes: LEGACY_EYES[g.eye]!, mouth: LEGACY_MOUTHS[g.mouth]!, brows: g.brow === 0 ? "arched" : "flat", extra: "none" };
+}
+
 export function mascotColor(id: string): string {
   const house = houseOf(id);
-  return house ? HOUSE[house] : generated(id).color;
+  return house ? HOUSE[house] : playerOf(id).color;
 }
+
+const HOT = new Set<string>([HOUSE.gambler, HOUSE.grudge, "#FF6B6B", "#FF8FC7"]);
 
 const H: Eye = { k: "happy" };
 const dot = (x = 0, y = 0, lid?: Lid): Eye => ({ k: "dot", x, y, lid });
@@ -404,53 +430,88 @@ const FACES: Record<House, (m: Mood) => Face> = {
   },
 };
 
-function genFace(g: Gen, m: Mood): Face {
+const IDLE_MOUTH: Record<MouthKey, Mouth> = {
+  smile: { k: "smile", w: 6.5 },
+  grin: { k: "open", w: 7.5, teeth: true },
+  cat: { k: "cat" },
+  smirk: { k: "smirk", w: 6 },
+  blep: { k: "blep", w: 5.5 },
+  fang: { k: "fang", w: 6.5 },
+  buck: { k: "buck", w: 6 },
+  o: { k: "o", w: 2.8, y: 1 },
+  grimace: { k: "teeth", w: 6.5 },
+  open: { k: "open", w: 6, tongue: true },
+};
+
+function genFace(p: Player, m: Mood): Face {
   const eye = (x = 0, y = 0, lid?: Lid): Eye => {
-    switch (g.eye) {
-      case 1:
+    switch (p.eyes) {
+      case "bean":
         return { k: "dot", x, y, sx: 0.8, sy: 1.16, lid };
-      case 2:
-        return { k: "ring", x, y, p: 3.4, lid };
-      case 3:
+      case "beady":
+        return { k: "dot", x, y, sx: 0.66, sy: 0.66, lid };
+      case "sparkle":
         return { k: "dot", x, y, sx: 1.12, sy: 1.08, lid, g2: true };
+      case "googly":
+        return { k: "ring", x, y, p: 3.4, lid };
+      case "sleepy":
+        return { k: "dot", x, y: y + 0.6, lid: lid ?? { a: 0.46, t: -0.4 } };
+      case "fierce":
+        return { k: "dot", x, y: y + 0.5, lid: lid ?? { a: 0.3, t: 1.8 } };
+      case "robot":
+        return { k: "robot", x, y, lid };
+      case "hearts":
+        return { k: "heart", x, y, lid };
       default:
         return { k: "dot", x, y, lid };
     }
   };
-  const arch = g.brow === 0 ? 1 : 0.2;
+  const arch = p.brows === "flat" ? 0.2 : p.brows === "arched" ? 1 : 0.6;
+  const calm: Brow =
+    p.brows === "angry" ? { y: -1, t: 2.4, a: 0 } : p.brows === "worried" ? { y: 2.2, t: -2.2, a: 0.6 } : { y: 1, t: -0.4, a: arch };
+  const happy = p.eyes === "hearts" ? eye() : H;
+  let face: Face;
   switch (m) {
-    case "idle": {
-      const mouths: [Mouth, ...Mouth[]] = [
-        { k: "smile", w: 6.5 },
-        { k: "cat" },
-        { k: "open", w: 6, tongue: true },
-        { k: "smirk", w: 6 },
-      ];
-      return { l: eye(), r: eye(), ...both({ y: 1, t: -0.4, a: arch }), m: pick(mouths, g.mouth) };
-    }
+    case "idle":
+      face = { l: eye(), r: p.eyes === "wink" ? H : eye(), ...both(calm), m: IDLE_MOUTH[p.mouth] };
+      break;
     case "thinking":
-      return {
+      face = {
         l: eye(1.8, -2.4),
         r: eye(1.8, -2.4),
-        bl: { y: 2, t: -0.5, a: arch },
+        bl: p.brows === "angry" ? { y: -1, t: 2.6, a: 0 } : { y: 2, t: -0.5, a: arch },
         br: { y: 4, t: -1.6, a: 1.3 },
         m: { k: "flat", w: 4, x: 3 },
         fx: ["think"],
       };
+      break;
     case "trust":
-      return { l: H, r: H, ...both({ y: 2.5, t: -1, a: 1 }), m: { k: "open", w: 7.5, tongue: true }, fx: ["blush", "heart"] };
+      face = { l: happy, r: happy, ...both({ y: 2.5, t: -1, a: 1 }), m: { k: "open", w: 7.5, tongue: true }, fx: ["blush", "heart"] };
+      break;
     case "betray":
-      return {
+      face = {
         l: eye(0, 0.5, { a: 0.48, t: 2.6 }),
         r: eye(0, 0.5, { a: 0.48, t: 2.6 }),
         ...both({ y: -1.5, t: 3.2, a: 0 }),
         m: { k: "evil", w: 9.5, slant: 1.5 },
       };
+      break;
     case "win":
-      return { l: H, r: H, ...both({ y: 3, t: -1, a: arch }), m: { k: "open", w: 9.5, teeth: true, tongue: true }, fx: ["sparkle"] };
+      face = { l: H, r: H, ...both({ y: 3, t: -1, a: arch }), m: { k: "open", w: 9.5, teeth: true, tongue: true }, fx: ["sparkle"] };
+      break;
     case "lose":
-      return { l: { k: "x" }, r: { k: "x" }, ...both({ y: 1, t: -2.6 }), m: { k: "wavy", w: 6 }, fx: ["sweat"] };
+      face = { l: { k: "x" }, r: { k: "x" }, ...both({ y: 1, t: -2.6 }), m: { k: "wavy", w: 6 }, fx: ["sweat"] };
+      break;
   }
+  if (p.brows === "none") {
+    face.bl = undefined;
+    face.br = undefined;
+  } else if (p.brows === "bushy") {
+    face.bl = face.bl && { ...face.bl, w: 1.75 };
+    face.br = face.br && { ...face.br, w: 1.75 };
+  }
+  if (p.extra === "blush" && !face.fx?.includes("blush")) face.fx = ["blush", ...(face.fx ?? [])];
+  return face;
 }
 
 function eyeBox(e: Eye): { hw: number; hh: number } {
@@ -463,6 +524,10 @@ function eyeBox(e: Eye): { hw: number; hh: number } {
       return { hw: 6.2, hh: 7 };
     case "dice":
       return { hw: 7.2, hh: 7.2 };
+    case "robot":
+      return { hw: 5.2, hh: 5.8 };
+    case "heart":
+      return { hw: 6.2, hh: 6 };
     default:
       return { hw: 5, hh: 5 };
   }
@@ -501,7 +566,7 @@ function openEye(e: Eye, cx: number, cy: number, side: Side, c: Ctx): ReactNode 
       return (
         <>
           <ellipse cx={n(x)} cy={n(y)} rx={n(rx)} ry={n(ry)} fill={INK} />
-          <circle cx={n(x + rx * 0.34)} cy={n(y - ry * 0.4)} r={n(c.lod === 0 ? 1.9 : 1.7)} fill={WHITE} />
+          <circle cx={n(x + rx * 0.34)} cy={n(y - ry * 0.4)} r={n((c.lod === 0 ? 1.9 : 1.7) * ((e.sx ?? 1) < 0.75 ? 0.72 : 1))} fill={WHITE} />
           {e.g2 && c.lod > 0 && <circle cx={n(x - rx * 0.36)} cy={n(y + ry * 0.38)} r="0.95" fill={WHITE} />}
         </>
       );
@@ -527,6 +592,26 @@ function openEye(e: Eye, cx: number, cy: number, side: Side, c: Ctx): ReactNode 
           <ellipse cx={n(cx)} cy={n(cy)} rx="6.2" ry="7" fill="#F4FF7A" stroke={INK} strokeWidth={n(c.f * 0.85)} />
           <ellipse cx={n(x)} cy={n(y)} rx={c.lod === 0 ? "2.3" : "1.7"} ry="5.2" fill={INK} />
           {c.lod > 0 && <circle cx={n(x + 2.6)} cy={n(y - 3)} r="1.2" fill={WHITE} />}
+        </>
+      );
+    }
+    case "robot": {
+      const x = cx + (e.x ?? 0);
+      const y = cy + (e.y ?? 0);
+      return (
+        <>
+          <rect x={n(x - 4.6)} y={n(y - 5.2)} width="9.2" height="10.4" rx="2.4" fill={INK} />
+          <rect x={n(x + 0.2)} y={n(y - 3.6)} width="2.6" height="2.6" rx="0.7" fill={WHITE} />
+        </>
+      );
+    }
+    case "heart": {
+      const x = cx + (e.x ?? 0);
+      const y = cy + (e.y ?? 0) + 0.6;
+      return (
+        <>
+          <path d={heart(x, y, 5.7)} fill="#FF4F86" stroke={INK} strokeWidth={n(c.f * 0.62)} strokeLinejoin="round" />
+          {c.lod > 0 && <path d={`M${n(x - 3.6)} ${n(y - 2.4)}q0.6-1.6 2.2-1.9`} fill="none" stroke={WHITE} strokeWidth="1.2" strokeLinecap="round" opacity="0.9" />}
         </>
       );
     }
@@ -587,7 +672,7 @@ function eyeNode(e: Eye, side: Side, c: Ctx): ReactNode {
       const body = openEye(e, cx, cy, side, c);
       if (!e.lid) return body;
       const { hw, hh } = eyeBox(e);
-      const ey = cy + (e.k === "dot" ? e.y ?? 0 : 0);
+      const ey = cy + (e.k === "dot" || e.k === "robot" || e.k === "heart" ? e.y ?? 0 : 0);
       const lidY = ey - hh + e.lid.a * hh * 2;
       const t = e.lid.t ?? 0;
       const at = (x: number) => lidY + ((x - cx) * inward * t) / hw;
@@ -625,7 +710,7 @@ function browNode(b: Brow | undefined, side: Side, c: Ctx): ReactNode {
       d={`M${n(ox)} ${n(oy)}Q${n((ix + ox) / 2)} ${n((iy + oy) / 2 - a * 2)} ${n(ix)} ${n(iy)}`}
       fill="none"
       stroke={INK}
-      strokeWidth={n(c.f * 1.15)}
+      strokeWidth={n(c.f * 1.15 * (b.w ?? 1))}
       strokeLinecap="round"
     />
   );
@@ -655,6 +740,52 @@ function mouthNode(mo: Mouth, c: Ctx, tongueColor: string): ReactNode {
       );
     case "flat":
       return <path d={`M${n(mx - w)} ${n(my)}L${n(mx + w)} ${n(my)}`} {...line} />;
+    case "blep": {
+      const tx = mx + 1.6;
+      return (
+        <>
+          <path
+            d={`M${n(tx - 3)} ${n(my + 0.6)}L${n(tx - 3)} ${n(my + 4.4)}A3 3 0 0 0 ${n(tx + 3)} ${n(my + 4.4)}L${n(tx + 3)} ${n(my + 0.4)}Z`}
+            fill={tongueColor}
+            stroke={INK}
+            strokeWidth={n(c.f * 0.6)}
+            strokeLinejoin="round"
+          />
+          {c.lod > 0 && <path d={`M${n(tx)} ${n(my + 2)}L${n(tx)} ${n(my + 4.6)}`} stroke={mix(tongueColor, INK, 0.35)} strokeWidth="1" strokeLinecap="round" />}
+          <path d={`M${n(mx - w)} ${n(my - 1.2)}Q${n(mx)} ${n(my + 3.4)} ${n(mx + w)} ${n(my - 1.2)}`} {...line} />
+        </>
+      );
+    }
+    case "fang": {
+      const t = 0.27;
+      const fx = mx + w * (2 * t - 1);
+      const fy = my - 1.5 * ((1 - t) ** 2 + t ** 2) + 5.2 * 2 * t * (1 - t);
+      return (
+        <>
+          <path
+            d={`M${n(fx - 2)} ${n(fy - 0.8)}L${n(fx + 2)} ${n(fy)}L${n(fx - 0.3)} ${n(fy + 4.4)}Z`}
+            fill={WHITE}
+            stroke={INK}
+            strokeWidth={n(c.f * 0.5)}
+            strokeLinejoin="round"
+          />
+          <path d={`M${n(mx - w)} ${n(my - 1.5)}Q${n(mx)} ${n(my + 5.2)} ${n(mx + w)} ${n(my - 1.5)}`} {...line} />
+        </>
+      );
+    }
+    case "buck":
+      return (
+        <>
+          <path
+            d={`M${n(mx - 3)} ${n(my + 0.6)}h2.9v3.6q0 0.9-0.9 0.9h-1.1q-0.9 0-0.9-0.9ZM${n(mx + 0.1)} ${n(my + 0.6)}h2.9v3.6q0 0.9-0.9 0.9h-1.1q-0.9 0-0.9-0.9Z`}
+            fill={WHITE}
+            stroke={INK}
+            strokeWidth={n(c.f * 0.5)}
+            strokeLinejoin="round"
+          />
+          <path d={`M${n(mx - w)} ${n(my - 1.5)}Q${n(mx)} ${n(my + 5.2)} ${n(mx + w)} ${n(my - 1.5)}`} {...line} />
+        </>
+      );
     case "frown":
       return <path d={`M${n(mx - w)} ${n(my + 3)}Q${n(mx)} ${n(my - 3.6)} ${n(mx + w)} ${n(my + 3)}`} {...line} />;
     case "wavy": {
@@ -774,7 +905,7 @@ function heart(x: number, y: number, s: number): string {
 function extrasBehindFace(fx: Extra[], c: Ctx): ReactNode {
   if (!fx.includes("blush")) return null;
   return (
-    <g fill={c.base === HOUSE.gambler || c.base === HOUSE.grudge ? "#C2124F" : "#FF6F9C"} opacity={c.base === HOUSE.gambler || c.base === HOUSE.grudge ? 0.4 : 0.6}>
+    <g fill={HOT.has(c.base) ? "#C2124F" : "#FF6F9C"} opacity={HOT.has(c.base) ? 0.4 : 0.6}>
       <ellipse cx={n(CX - EYE_DX - 3.4)} cy="64.6" rx="4.6" ry="2.6" />
       <ellipse cx={n(CX + EYE_DX + 3.4)} cy="64.6" rx="4.6" ry="2.6" />
     </g>
@@ -881,9 +1012,39 @@ function star(cx: number, cy: number, ro: number, ri: number): string {
   return `M${pts.join("L")}Z`;
 }
 
-function gearBack(gear: Gear, c: Ctx): ReactNode {
+function gearBack(gear: Gear | "none", c: Ctx): ReactNode {
   const o = n(c.o * 0.8);
   switch (gear) {
+    case "horns":
+      return (
+        <>
+          <path d="M32 31C25.5 25 22.5 16 25.5 4.5C28.5 12.5 35 17.5 43.5 21.5ZM68 31C74.5 25 77.5 16 74.5 4.5C71.5 12.5 65 17.5 56.5 21.5Z" fill="#FF4D5E" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+          {c.lod > 0 && <path d="M28.4 19.6Q26.8 15 27.4 10.6M71.6 19.6Q73.2 15 72.6 10.6" fill="none" stroke={WHITE} strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />}
+        </>
+      );
+    case "ears": {
+      const inner = mix(c.base, "#FF6F9C", 0.55);
+      return (
+        <>
+          <path d="M20.5 40L22.5 5.5L47 21ZM79.5 40L77.5 5.5L53 21Z" fill={c.base} stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+          <path d="M25 31L26.4 13.4L39.6 21.6ZM75 31L73.6 13.4L60.4 21.6Z" fill={inner} strokeLinejoin="round" />
+        </>
+      );
+    }
+    case "mohawk":
+      return (
+        <>
+          <path d="M37.5 33L33 13.5L41.5 18L42.5 3L50.5 13.5L58 1.5L59.5 17L67 12.5L63.5 33Z" fill="#FF5FA2" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+          {c.lod > 0 && <path d="M44.2 8.4L45.4 14.2M57.4 7.4L56.4 13.6" fill="none" stroke={WHITE} strokeWidth="1.4" strokeLinecap="round" opacity="0.55" />}
+        </>
+      );
+    case "headphones":
+      return (
+        <>
+          <path d="M15.5 54C15.5 -2 84.5 -2 84.5 54" fill="none" stroke={INK} strokeWidth={n(4.4 + c.o * 1.6)} strokeLinecap="round" />
+          <path d="M15.5 54C15.5 -2 84.5 -2 84.5 54" fill="none" stroke="#5B6274" strokeWidth="4.4" strokeLinecap="round" />
+        </>
+      );
     case "antenna":
       return (
         <>
@@ -908,9 +1069,99 @@ function gearBack(gear: Gear, c: Ctx): ReactNode {
   }
 }
 
-function gearFront(gear: Gear, c: Ctx): ReactNode {
+function gearFront(gear: Gear | "none", c: Ctx): ReactNode {
   const o = n(c.o * 0.8);
   switch (gear) {
+    case "party": {
+      const cone = "M36 25L50 2.5L64 25Q50 29.5 36 25Z";
+      return (
+        <g transform="rotate(14 50 23)">
+          <clipPath id={`${c.uid}-party`}>
+            <path d={cone} />
+          </clipPath>
+          <path d={cone} fill="#7C83FF" />
+          <path d="M34 11Q50 13.6 66 11M34 19Q50 21.8 66 19" fill="none" stroke="#FFD84D" strokeWidth="3.6" clipPath={`url(#${c.uid}-party)`} />
+          <path d={cone} fill="none" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+          <circle cx="50" cy="3.6" r="3.9" fill="#FF5FA2" stroke={INK} strokeWidth={o} />
+        </g>
+      );
+    }
+    case "tophat": {
+      const crown = "M35.5 23L37 2.6Q50 0.6 63 2.6L64.5 23Z";
+      return (
+        <g transform="rotate(-7 50 24)">
+          <clipPath id={`${c.uid}-hat`}>
+            <path d={crown} />
+          </clipPath>
+          <path d={crown} fill="#4B5263" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+          <rect x="28" y="14.8" width="44" height="5.6" fill="#FF5468" clipPath={`url(#${c.uid}-hat)`} />
+          <path d={crown} fill="none" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+          {c.lod > 0 && <path d="M41.4 5.6L41 11.6" stroke={WHITE} strokeWidth="2" strokeLinecap="round" opacity="0.35" />}
+          <path d="M25.5 23Q50 18.4 74.5 23Q74.5 27.2 50 27.6Q25.5 27.2 25.5 23Z" fill="#3C4250" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+        </g>
+      );
+    }
+    case "cap":
+      return (
+        <>
+          <path d="M71 29.6Q84 24.8 95.6 29.6Q93.8 35.6 75.5 34.6Z" fill="#D93349" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+          <path d="M24 33.5Q23 12 50 10.5Q77 12 76 33.5Q50 26 24 33.5Z" fill="#FF5468" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+          {c.lod > 0 && <path d="M50 11.5Q48.6 20 49.4 28.2" fill="none" stroke="#C42A40" strokeWidth="1.2" strokeLinecap="round" />}
+          {c.lod > 0 && <path d="M31 22Q36 15.6 44 13.4" fill="none" stroke={WHITE} strokeWidth="1.6" strokeLinecap="round" opacity="0.45" />}
+        </>
+      );
+    case "flower": {
+      const petals = [0, 1, 2, 3, 4].map((i) => {
+        const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+        return `M${n(Math.cos(a) * 5.6 + 4.7)} ${n(Math.sin(a) * 5.6)}a4.7 4.7 0 1 0 -9.4 0a4.7 4.7 0 1 0 9.4 0Z`;
+      });
+      const d = petals.join("");
+      return (
+        <g transform="translate(68.5 18) rotate(14)">
+          <path d={d} fill={WHITE} stroke={INK} strokeWidth={n(c.o * 1.6)} strokeLinejoin="round" />
+          <path d={d} fill={WHITE} />
+          <circle r="3.8" fill="#FFC93C" stroke={INK} strokeWidth={o} />
+        </g>
+      );
+    }
+    case "propeller": {
+      const dome = "M27.5 31Q26.5 11 50 11Q73.5 11 72.5 31Q50 25.5 27.5 31Z";
+      return (
+        <>
+          <clipPath id={`${c.uid}-cap`}>
+            <path d={dome} />
+          </clipPath>
+          <g clipPath={`url(#${c.uid}-cap)`}>
+            <rect x="20" y="0" width="22.5" height="40" fill="#FF5468" />
+            <rect x="42.5" y="0" width="15" height="40" fill="#FFD84D" />
+            <rect x="57.5" y="0" width="25" height="40" fill="#38BDF8" />
+          </g>
+          <path d={dome} fill="none" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+          <path d="M50 11.5V5.5" stroke={INK} strokeWidth={n(2.2 + c.o * 1.4)} strokeLinecap="round" />
+          <g transform="rotate(-8 50 5)">
+            <path d="M50 5Q45 1 37 2.6Q34.4 5 37 7.4Q45 9 50 5ZM50 5Q55 1 63 2.6Q65.6 5 63 7.4Q55 9 50 5Z" fill="#38BDF8" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+            <circle cx="50" cy="5" r="2.6" fill="#FFD84D" stroke={INK} strokeWidth={n(c.o * 0.6)} />
+          </g>
+        </>
+      );
+    }
+    case "bow":
+      return (
+        <g transform="translate(69.5 23) rotate(22)">
+          <path d="M0 0C-3.5 -7.5 -12.5 -8 -12.5 -0.5C-12.5 7 -3.5 7 0 0ZM0 0C3.5 -7.5 12.5 -8 12.5 -0.5C12.5 7 3.5 7 0 0Z" fill="#FF5FA2" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+          {c.lod > 0 && <path d="M-3.4 -1.4Q-7.4 -3.4 -10 -1.2M3.4 -1.4Q7.4 -3.4 10 -1.2" fill="none" stroke="#C42C74" strokeWidth="1.1" strokeLinecap="round" />}
+          <rect x="-3.5" y="-3.7" width="7" height="7.4" rx="2.6" fill="#E23D85" stroke={INK} strokeWidth={o} />
+        </g>
+      );
+    case "headphones":
+      return (
+        <>
+          <path d="M14.5 43.5H19.8A3 3 0 0 1 22.8 46.5V61.5A3 3 0 0 1 19.8 64.5H14.5ZM85.5 43.5H80.2A3 3 0 0 0 77.2 46.5V61.5A3 3 0 0 0 80.2 64.5H85.5Z" fill="#3C4250" stroke={INK} strokeWidth={o} strokeLinejoin="round" />
+          <rect x="7.5" y="41" width="10" height="26" rx="5" fill="#FF5468" stroke={INK} strokeWidth={o} />
+          <rect x="82.5" y="41" width="10" height="26" rx="5" fill="#FF5468" stroke={INK} strokeWidth={o} />
+          {c.lod > 0 && <path d="M10.6 46V52.6M85.6 46V52.6" stroke={WHITE} strokeWidth="1.6" strokeLinecap="round" opacity="0.5" />}
+        </>
+      );
     case "crown":
       return (
         <>
@@ -935,6 +1186,103 @@ function gearFront(gear: Gear, c: Ctx): ReactNode {
     default:
       return null;
   }
+}
+
+function accessory(extra: ExtraKey, layer: "under" | "mouth" | "eyes" | "top", c: Ctx): ReactNode {
+  const o = n(c.o * 0.8);
+  if (layer === "under" && extra === "laser") {
+    const beam = (side: Side, w0: number, w1: number) => {
+      const ex = CX + side * EYE_DX;
+      const dx = side * 0.92;
+      const dy = 0.39;
+      const len = 72;
+      const p = (t: number, w: number) => `${n(ex + dx * t - dy * w)} ${n(EYE_Y + dy * t + dx * w)}`;
+      return `M${p(0, w0)}L${p(len, w1)}L${p(len, -w1)}L${p(0, -w0)}Z`;
+    };
+    const both = (w0: number, w1: number) => beam(-1, w0, w1) + beam(1, w0, w1);
+    return (
+      <g mask={`url(#${c.uid}-fade)`}>
+        <mask id={`${c.uid}-fade`} maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+          <radialGradient id={`${c.uid}-fadeg`} gradientUnits="userSpaceOnUse" cx="50" cy="56" r="50">
+            <stop offset="0.55" stopColor={WHITE} />
+            <stop offset="1" stopColor={WHITE} stopOpacity="0" />
+          </radialGradient>
+          <rect width="100" height="100" fill={`url(#${c.uid}-fadeg)`} />
+        </mask>
+        <path d={both(3.6, 9.5)} fill="#FF2D45" opacity="0.3" />
+        <path d={both(2, 5.4)} fill="#FF3B52" />
+        <path d={both(0.8, 2.2)} fill="#FFE3E6" />
+        <circle cx={CX - EYE_DX} cy={EYE_Y} r="7.4" fill="#FF2D45" opacity="0.35" />
+        <circle cx={CX + EYE_DX} cy={EYE_Y} r="7.4" fill="#FF2D45" opacity="0.35" />
+      </g>
+    );
+  }
+  if (layer === "mouth" && extra === "mustache") {
+    const d =
+      "M50 63.2C47.6 60.8 42.6 60.4 39.6 63.2C38.4 64.4 36.6 64.8 35.2 64C36.2 67.4 41.4 68.4 45.2 66.6C47.4 65.6 48.8 65.2 50 65.8C51.2 65.2 52.6 65.6 54.8 66.6C58.6 68.4 63.8 67.4 64.8 64C63.4 64.8 61.6 64.4 60.4 63.2C57.4 60.4 52.4 60.8 50 63.2Z";
+    return (
+      <>
+        <path d={d} fill="#4A3426" stroke={INK} strokeWidth={n(c.f * 0.55)} strokeLinejoin="round" />
+        {c.lod > 0 && <path d="M41.6 63.4Q44.6 62 47.2 63.4" fill="none" stroke={WHITE} strokeWidth="1.1" strokeLinecap="round" opacity="0.35" />}
+      </>
+    );
+  }
+  if (layer === "eyes" && extra === "shades") {
+    const d = "M23.5 48.6H76.5V52.4H23.5ZM26.8 50H47.6V53.6Q47.6 61.4 39.6 61.4H35Q26.8 61.4 26.8 53.6ZM52.4 50H73.2V53.6Q73.2 61.4 65 61.4H60.4Q52.4 61.4 52.4 53.6Z";
+    return (
+      <>
+        <path d={d} fill={INK} stroke={INK} strokeWidth={n(c.o * 1.2)} strokeLinejoin="round" />
+        <path d={d} fill="#1A1D26" />
+        {c.lod > 0 && <path d="M31 55.6L35.4 51.6M35.2 58.6L41.6 52.6M56.6 55.6L61 51.6M60.8 58.6L67.2 52.6" fill="none" stroke={WHITE} strokeWidth="1.4" strokeLinecap="round" opacity="0.5" />}
+      </>
+    );
+  }
+  if (layer === "eyes" && extra === "specs") {
+    const sw = n(c.f * 0.8);
+    return (
+      <g fill="none" stroke={INK} strokeLinecap="round">
+        <circle cx={CX - EYE_DX} cy="55.4" r="8.6" fill={WHITE} fillOpacity="0.16" strokeWidth={sw} />
+        <circle cx={CX + EYE_DX} cy="55.4" r="8.6" fill={WHITE} fillOpacity="0.16" strokeWidth={sw} />
+        <path d="M46.7 53.4Q50 50.8 53.3 53.4M29.9 53.6L17.5 50.6M70.1 53.6L82.5 50.6" strokeWidth={n(c.f * 0.65)} />
+        {c.lod > 0 && <path d="M33.4 51.6Q35.2 49.4 38 49M56.4 51.6Q58.2 49.4 61 49" stroke={WHITE} strokeWidth="1.2" opacity="0.7" />}
+      </g>
+    );
+  }
+  if (layer === "top" && extra === "eyepatch") {
+    return (
+      <>
+        <path d="M40.5 21L61.5 55.5L86.5 67.5" fill="none" stroke={INK} strokeWidth={n(c.f * 0.7)} strokeLinecap="round" strokeLinejoin="round" clipPath={`url(#${c.uid}-face)`} />
+        <ellipse cx={CX + EYE_DX} cy="55.6" rx="8.2" ry="8.8" fill="#1A1D26" stroke={INK} strokeWidth={o} />
+        {c.lod > 0 && <path d="M56.6 51.4Q59.4 48.8 63 48.8" fill="none" stroke={WHITE} strokeWidth="1.2" strokeLinecap="round" opacity="0.4" />}
+      </>
+    );
+  }
+  if (layer === "top" && extra === "bandage") {
+    return (
+      <g transform="translate(73.8 67.4) rotate(-32)">
+        <rect x="-7.4" y="-3" width="14.8" height="6" rx="3" fill="#FFDCAE" />
+        <rect x="-2.5" y="-3" width="5" height="6" fill="#EDB679" />
+        <rect x="-7.4" y="-3" width="14.8" height="6" rx="3" fill="none" stroke={INK} strokeWidth={n(c.f * 0.55)} />
+      </g>
+    );
+  }
+  return null;
+}
+
+function chain(c: Ctx): ReactNode {
+  const d = "M19 73Q50 101 81 73";
+  return (
+    <>
+      <g clipPath={`url(#${c.uid}-face)`} fill="none" strokeLinecap="round">
+        <path d={d} stroke={INK} strokeWidth={n(3.2 + c.o * 1.4)} />
+        <path d={d} stroke={BRASS} strokeWidth="3.2" />
+        {c.lod > 0 && <path d={d} stroke={BRASS_DARK} strokeWidth="1.2" strokeDasharray="2.4 2.2" strokeLinecap="butt" />}
+      </g>
+      <circle cx="50" cy="88" r="6" fill={BRASS} stroke={INK} strokeWidth={n(c.o * 0.8)} />
+      {c.lod > 0 && <circle cx="50" cy="88" r="3.3" fill="none" stroke={BRASS_DARK} strokeWidth="1.2" />}
+      {c.lod > 0 && <path d="M46.4 86Q47.2 84.2 49 83.6" fill="none" stroke={WHITE} strokeWidth="1.2" strokeLinecap="round" opacity="0.85" />}
+    </>
+  );
 }
 
 function houseBack(house: House, c: Ctx): ReactNode {
@@ -1078,11 +1426,12 @@ export function Mascot(props: { id: string; size?: number; mood?: Mood; classNam
   const { id, size = 96, mood = "idle", className, title } = props;
   const uid = `m${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const house = houseOf(id);
-  const gen = house ? null : generated(id);
-  const base = house ? HOUSE[house] : (gen as Gen).color;
+  const player = house ? null : playerOf(id);
+  const base = house ? HOUSE[house] : player!.color;
+  const extra = player?.extra ?? "none";
   const lod: 0 | 1 | 2 = size < 48 ? 0 : size < 160 ? 1 : 2;
   const c: Ctx = { uid, base, o: Math.max(3.2, 135 / size), f: Math.max(2.9, 112 / size), lod };
-  const face = house ? FACES[house](mood) : genFace(gen as Gen, mood);
+  const face = house ? FACES[house](mood) : genFace(player!, mood);
   const tongueColor = house === "gambler" || house === "grudge" ? "#FF8FA3" : TONGUE;
   const faceId = `${uid}-face`;
   const rimId = `${uid}-rim`;
@@ -1112,7 +1461,7 @@ export function Mascot(props: { id: string; size?: number; mood?: Mood; classNam
           <stop offset="1" stopColor={mix(base, WHITE, 0.55)} />
         </linearGradient>
       </defs>
-      {house ? houseBack(house, c) : gearBack((gen as Gen).gear, c)}
+      {house ? houseBack(house, c) : gearBack(player!.gear, c)}
       <circle cx={CX} cy={CY + DEPTH} r={R} fill={edge} stroke={INK} strokeWidth={n(c.o)} />
       <circle cx={CX} cy={CY} r={R} fill={base} stroke={INK} strokeWidth={n(c.o)} />
       <g clipPath={`url(#${faceId})`}>
@@ -1133,17 +1482,22 @@ export function Mascot(props: { id: string; size?: number; mood?: Mood; classNam
         strokeWidth={lod === 0 ? "4.2" : "3.6"}
         strokeLinecap="round"
       />
+      {extra === "chain" && chain(c)}
       <g transform={lod === 0 ? "matrix(1.1 0 0 1.1 -5 -6.2)" : undefined}>
         {extrasBehindFace(face.fx ?? [], c)}
         {mouthNode(face.m, c, tongueColor)}
         {forkNode(face, c)}
+        {accessory(extra, "mouth", c)}
+        {accessory(extra, "under", c)}
         {eyeNode(face.l, -1, c)}
         {eyeNode(face.r, 1, c)}
+        {accessory(extra, "eyes", c)}
         {browNode(face.bl, -1, c)}
         {browNode(face.br, 1, c)}
+        {accessory(extra, "top", c)}
         {house === "diplomat" && monocle(c)}
       </g>
-      {house ? houseFront(house, c) : gearFront((gen as Gen).gear, c)}
+      {house ? houseFront(house, c) : gearFront(player!.gear, c)}
       {extrasFront(face, c)}
     </svg>
   );

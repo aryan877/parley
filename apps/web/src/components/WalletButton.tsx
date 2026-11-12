@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
+import { Link } from "react-router-dom";
 import { fmtNear } from "../lib/model.ts";
 import { shortAccount, useWallet } from "../lib/wallet.tsx";
 import { WalletGuide } from "./Guide.tsx";
@@ -51,18 +52,15 @@ export function WalletButton() {
   const w = useWallet();
   if (w.accountId) {
     return (
-      <div className="wallet-chip" title={w.accountId}>
+      <Link to="/coins?tab=mine" className="wallet-chip" title={`${shortAccount(w.accountId)}: see your coins`}>
         <Mascot id={w.accountId} size={26} />
-        <span className="acct">{shortAccount(w.accountId)}</span>
+        <span className="acct">My coins</span>
         <span className="bal">{w.balance ? fmtNear(w.balance) : "…"} NEAR</span>
-        <button className="tiny" onClick={w.disconnect}>
-          Disconnect
-        </button>
-      </div>
+      </Link>
     );
   }
   return (
-    <button className="btn" style={{ padding: "9px 16px", fontSize: 14 }} onClick={() => w.setOpen(true)}>
+    <button className="btn top-wallet" onClick={() => w.setOpen(true)}>
       <WalletIcon size={16} /> Get a wallet
     </button>
   );

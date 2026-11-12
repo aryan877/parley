@@ -236,7 +236,27 @@ function Bubble({ line, fighter, fresh, onProof, explorer }: { line: Line; fight
   );
 }
 
-function Thinking({ fighter, side, hint }: { fighter: Fighter; side: Side; hint: string }) {
+/** How long a reply usually takes, in the words a first-time viewer needs. */
+function waitNote(model: string): string {
+  const brain = brainOf(model);
+  if (brain === "deep") return "Thinking it over, up to 30 seconds";
+  if (brain === "quick") return "Typing, a few seconds";
+  return "thinking…";
+}
+
+function useSeconds(run: boolean) {
+  const [start] = useState(Date.now);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!run) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [run]);
+  return Math.max(0, Math.round((now - start) / 1000));
+}
+
+function Thinking({ fighter, side, hint, live }: { fighter: Fighter; side: Side; hint: string; live: boolean }) {
+  const seconds = useSeconds(live);
   return (
     <motion.div
       className={`bubble-row ${side === "B" ? "right" : ""}`}
@@ -253,6 +273,7 @@ function Thinking({ fighter, side, hint }: { fighter: Fighter; side: Side; hint:
           <i />
         </span>
         <span className="hint">{hint}</span>
+        {live && seconds >= 3 && <span className="hint-time">{seconds}s</span>}
       </div>
     </motion.div>
   );
@@ -358,10 +379,14 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
     beat.phase === "intro"
       ? `${fmtNear(match.stake)} NEAR each on the line. They talk first, then each picks Trust or Betray in secret.`
       : beat.phase === "choosing"
-        ? "Both are choosing in secret. Neither can see the other's choice."
+        ? live && !match.settled && (brainOf(match.aModel) === "deep" || brainOf(match.bModel) === "deep")
+          ? "Both are choosing in secret. A coin that thinks first can take up to 30 seconds."
+          : "Both are choosing in secret. Neither can see the other's choice."
         : beat.phase === "locked"
           ? !match.settled && match.lines.filter((l) => l.kind === "Decide").length < 2
-            ? "One has chosen. The other is still choosing in secret."
+            ? live && brainOf(match.lines.some((l) => l.kind === "Decide" && l.side === "A") ? match.bModel : match.aModel) === "deep"
+              ? "One has chosen. The other is still thinking it over in secret, up to 30 seconds."
+              : "One has chosen. The other is still choosing in secret."
             : "Both locked in. The chain checks each answer before it counts."
           : beat.phase === "reveal" || beat.phase === "money" || beat.phase === "done"
             ? headline(match, name)
@@ -416,7 +441,8 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
                   key={`t${beat.said}`}
                   fighter={fighterOf(beat.thinking)}
                   side={beat.thinking}
-                  hint={live && brainOf(beat.thinking === "A" ? match.aModel : match.bModel) !== "practice" ? "asking NEAR AI…" : "thinking…"}
+                  live={live}
+                  hint={live ? waitNote(beat.thinking === "A" ? match.aModel : match.bModel) : "thinking…"}
                 />
               )}
             </AnimatePresence>

@@ -1,16 +1,21 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CoinCard } from "../components/CoinCard.tsx";
 import { CoinsGuide } from "../components/Guide.tsx";
+import { MyCoins } from "../components/MyCoins.tsx";
 import { fromCoin, fromParley } from "../lib/model.ts";
 import { useLiveArena } from "../lib/live.ts";
 import { useSeason } from "../lib/season.ts";
+import { useWallet } from "../lib/wallet.tsx";
 
 export function Coins() {
   const season = useSeason();
   const live = useLiveArena();
-  const [tab, setTab] = useState<"live" | "season">("live");
+  const w = useWallet();
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") === "mine" ? "mine" : params.get("tab") === "season" ? "season" : "live";
+  const setTab = (next: "live" | "season" | "mine") => setParams(next === "live" ? {} : { tab: next }, { replace: true });
   const showLive = tab === "live" && !!live.info;
+  const showMine = tab === "mine";
 
   const liveCards = () => {
     const coins = (live.coins ?? []).map(fromCoin);
@@ -34,24 +39,32 @@ export function Coins() {
   return (
     <>
       <div className="page-head compact">
-        <h1>Coins</h1>
-        <p className="muted">Each coin is an AI with its own rules. Back the ones you think will win.</p>
+        <h1>{showMine ? "My coins" : "Coins"}</h1>
+        <p className="muted">{showMine ? "Coins you launched or hold shares in, from the wallet in this browser." : "Each coin is an AI with its own rules. Back the ones you think will win."}</p>
       </div>
-      <CoinsGuide />
+      {!showMine && <CoinsGuide />}
       <div className="tabs page-tabs">
         {live.info && (
-          <button className={tab === "live" ? "on" : ""} onClick={() => setTab("live")}>
+          <button className={showLive ? "on" : ""} onClick={() => setTab("live")}>
             Live
           </button>
         )}
-        <button className={!showLive ? "on" : ""} onClick={() => setTab("season")}>
+        <button className={!showLive && !showMine ? "on" : ""} onClick={() => setTab("season")}>
           Season 1 replays
         </button>
+        {live.info && (w.accountId || showMine) && (
+          <button className={showMine ? "on" : ""} onClick={() => setTab("mine")}>
+            My coins
+          </button>
+        )}
         <span className="spacer" />
         <Link to="/launch" className="btn" style={{ padding: "9px 16px", fontSize: 14 }}>
           Launch a coin
         </Link>
       </div>
+      {showMine ? (
+        <MyCoins />
+      ) : (
       <div className="cards">
         {showLive
           ? liveCards()
@@ -59,6 +72,7 @@ export function Coins() {
               .sort((x, y) => (BigInt(y.treasury) > BigInt(x.treasury) ? 1 : -1))
               .map((c, i) => <CoinCard key={c.id} coin={c} rank={i + 1} history={season!.history(c.id)} start={season!.start} curve={season!.curve(c.id)} to={`/season/coin/${c.id}`} />)}
       </div>
+      )}
     </>
   );
 }

@@ -130,7 +130,7 @@ export function Arena() {
           <div className="section-head">
             <div>
               <h2>The arena right now</h2>
-              <p>{info.autoplay ? `One match at a time, nonstop, on ${networkName(info)}.` : `One match at a time, on ${networkName(info)}.`}</p>
+              <p>{info.autoplay ? `One match at a time, all day, on ${networkName(info)}.` : `One match at a time, on ${networkName(info)}.`}</p>
             </div>
             <Link to="/matches" className="btn ghost">
               All matches <ArrowIcon size={16} />

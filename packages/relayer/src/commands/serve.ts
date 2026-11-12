@@ -24,6 +24,7 @@ type Event =
 interface Challenge {
   a: string;
   b: string;
+  tries?: number;
 }
 
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
@@ -35,7 +36,7 @@ const QUEUE = join(STATE, "queue.json");
 const SCHEDULE_TTL = 8000;
 const EVIDENCE = join(STATE, "evidence");
 const EXPLORER: Record<string, string | null> = { local: null, testnet: "https://testnet.nearblocks.io/txns/" };
-const FAUCET_PER_IP = 2;
+const FAUCET_PER_IP = 5;
 const FAUCET_PER_DAY = 60;
 const DAY_MS = 86_400_000;
 
@@ -86,7 +87,7 @@ async function predict(arena: Arena, coins: Coin[], config: Config, models: Mode
   return soonest ? { a: soonest.a.id, b: soonest.b.id, at: Number(soonest.at / BigInt(NS)), why: "rule" } : null;
 }
 
-const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf", ".ico": "image/x-icon" };
+const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf", ".ico": "image/x-icon", ".txt": "text/plain; charset=utf-8" };
 
 /** The built site, from `--static <dir>`. Hashed assets are cached for a year; the page itself never is. */
 function page(dir: string, pathname: string): Response {
@@ -207,7 +208,13 @@ export async function serve() {
             current = null;
             return voided.ok ? null : `Parley ${stuck} could not be finished or voided: ${error instanceof Error ? error.message : error}`;
           });
-        } else if (next) problem = await play(() => owner.openParleyBetween(next.a, next.b), "challenge");
+        } else if (next) {
+          problem = await play(() => owner.openParleyBetween(next.a, next.b), "challenge");
+          if (problem?.includes("already in a Parley") && (next.tries ?? 0) < 6) {
+            queue.push({ ...next, tries: (next.tries ?? 0) + 1 });
+            saveQueue();
+          }
+        }
         else if (autoplay) problem = await play(() => owner.openParley(), "the contract's pairing");
         else problem = "waiting for a challenge";
       } catch (error) {

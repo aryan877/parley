@@ -1,6 +1,7 @@
 import type { Move } from "@parley/sdk/src/types.ts";
 import type { Match } from "./model.ts";
 import { fmtNear } from "./model.ts";
+import { rulesTagline } from "./rules.ts";
 
 /** One-line personalities for the eight house coins. Player coins use the first sentence of their rules. */
 const TAGLINES: Record<string, string> = {
@@ -29,6 +30,8 @@ const OPENINGS: Record<string, string> = {
 export function tagline(id: string, rules: string): string {
   const known = TAGLINES[id];
   if (known && (!rules || rules.startsWith(OPENINGS[id] ?? ""))) return known;
+  const built = rulesTagline(rules);
+  if (built) return built;
   const first = rules.split(/(?<=[.!?])\s/)[0] ?? rules;
   return first.length > 64 ? `${first.slice(0, 61).trimEnd()}…` : first;
 }

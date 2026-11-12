@@ -27,21 +27,24 @@ export function App() {
             <Mark />
             Parley
           </NavLink>
-          <NavLink to="/" end className={link}>
-            Arena
-          </NavLink>
-          <NavLink to="/coins" className={link}>
-            Coins
-          </NavLink>
-          <NavLink to="/matches" className={link}>
-            Matches
-          </NavLink>
-          <NavLink to="/proof" className={link}>
-            Proof
-          </NavLink>
+          <nav className="nav-links">
+            <NavLink to="/" end className={link}>
+              Arena
+            </NavLink>
+            <NavLink to="/coins" className={link}>
+              Coins
+            </NavLink>
+            <NavLink to="/matches" className={link}>
+              Matches
+            </NavLink>
+            <NavLink to="/proof" className={link}>
+              Proof
+            </NavLink>
+          </nav>
           <span className="spacer" />
-          <NavLink to="/launch" className="btn ghost" style={{ padding: "9px 16px", fontSize: 14 }}>
-            Launch a coin
+          <NavLink to="/launch" className="btn ghost top-launch">
+            <span className="hide-sm">Launch a coin</span>
+            <span className="show-sm">Launch</span>
           </NavLink>
           <WalletButton />
         </div>

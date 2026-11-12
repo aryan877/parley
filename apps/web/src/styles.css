@@ -174,6 +174,22 @@ code {
   flex: 1;
 }
 
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.top-launch,
+.top-wallet {
+  padding: 9px 16px;
+  font-size: 14px;
+}
+
+.show-sm {
+  display: none;
+}
+
 /* buttons */
 
 .btn {
@@ -892,7 +908,7 @@ section.tight {
   gap: 12px;
   height: 320px;
   overflow-y: auto;
-  padding: 6px 4px;
+  padding: 6px 4px 18px;
   scrollbar-width: none;
   mask: linear-gradient(to bottom, transparent, black 24px, black calc(100% - 10px), transparent);
 }
@@ -2330,8 +2346,39 @@ section.tight {
     grid-template-columns: 1fr;
   }
   .topbar-inner {
-    padding: 10px 16px;
-    overflow-x: auto;
+    padding: 8px 16px 4px;
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .brand {
+    margin-right: 8px;
+  }
+  .brand svg {
+    width: 30px;
+    height: 30px;
+  }
+  .nav-links {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: space-between;
+    margin: 0 -10px;
+  }
+  .navlink {
+    padding: 8px 10px;
+  }
+  .top-launch,
+  .top-wallet {
+    padding: 8px 12px;
+    font-size: 13.5px;
+  }
+  .wallet-chip .acct {
+    display: none;
+  }
+  .block {
+    padding: 18px;
+  }
+  .look-random {
+    margin-left: auto;
   }
   .stake {
     display: none;
@@ -2345,39 +2392,6 @@ section.tight {
     animation: none !important;
     transition: none !important;
   }
-}
-
-.your-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin: -6px 0 16px;
-}
-
-.your-line .now-label {
-  margin-right: 6px;
-}
-
-.your-match {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 14px 6px 6px;
-  border-radius: 14px;
-  background: var(--surface);
-  font-size: 14px;
-}
-
-.your-match em {
-  font-style: normal;
-  font-size: 12.5px;
-  font-weight: 650;
-  color: var(--faint);
-}
-
-.your-match em.now {
-  color: var(--betray);
 }
 
 #watch,
@@ -2816,4 +2830,656 @@ section.tight {
 .rules-head .btn {
   flex: none;
   white-space: nowrap;
+}
+
+/* queue: where your coins stand */
+
+.your-line {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+.your-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 0 4px 4px;
+}
+
+.your-head b {
+  font: 750 17px var(--display);
+}
+
+.your-head span {
+  font-size: 13px;
+  color: var(--faint);
+}
+
+.your-match {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 8px 8px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  font-size: 14px;
+}
+
+.your-match.now {
+  background: rgba(255, 84, 104, 0.08);
+}
+
+.your-pair {
+  display: inline-flex;
+  flex: none;
+}
+
+.your-pair > svg + svg {
+  margin-left: -10px;
+}
+
+.your-names {
+  flex: 1;
+  min-width: 0;
+}
+
+.your-match em {
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.your-match.now em {
+  color: #ffd5da;
+}
+
+/* face editor */
+
+.look-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.look-mobile-preview {
+  display: none;
+  justify-content: center;
+  padding: 4px 0 2px;
+}
+
+.look-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.look-tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  contain: inline-size;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.look-tabs button,
+.look-moods button {
+  flex: none;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--muted);
+  background: var(--surface-2);
+  transition: background 0.15s, color 0.15s;
+}
+
+.look-tabs button:hover,
+.look-moods button:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+.look-tabs button.on,
+.look-moods button.on {
+  color: #0b0d14;
+  background: var(--text);
+}
+
+.look-random {
+  flex: none;
+}
+
+.look-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 8px;
+}
+
+.look-opt {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px transparent;
+  transition: box-shadow 0.15s, background 0.15s, transform 0.15s;
+}
+
+.look-opt:hover {
+  background: var(--surface-3);
+  transform: translateY(-2px);
+}
+
+.look-opt.on {
+  box-shadow: inset 0 0 0 2px var(--mind);
+  background: rgba(167, 139, 250, 0.1);
+}
+
+.look-opt small {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.2;
+  text-align: center;
+}
+
+.look-opt.on small {
+  color: var(--text);
+}
+
+.look-thumb {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.look-grid.zoom .look-thumb svg {
+  transform: scale(1.45) translateY(-1px);
+}
+
+.look-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+}
+
+.look-moods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.look-moods button {
+  padding: 5px 10px;
+  font-size: 12.5px;
+}
+
+/* rule builder */
+
+.rb {
+  display: grid;
+  gap: 12px;
+}
+
+.rb-paper {
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  padding: 16px 18px 10px;
+}
+
+.rb-text {
+  margin: 0;
+  font: 500 16.5px/1.55 var(--display);
+  color: var(--text);
+}
+
+.rb-s {
+  border-radius: 6px;
+  transition: background 0.6s, color 0.6s;
+}
+
+.rb-s.talk {
+  color: #d9dcf2;
+}
+
+.rb-s.plain {
+  color: var(--muted);
+}
+
+.rb-s.fresh {
+  background: rgba(167, 139, 250, 0.22);
+  transition: none;
+}
+
+.rb-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.rb-count {
+  font: 11.5px var(--mono);
+  color: var(--faint);
+}
+
+.rb-count.over {
+  color: var(--betray);
+}
+
+.rb-paper.editing textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  resize: vertical;
+  font: 500 16.5px/1.55 var(--display);
+  color: var(--text);
+}
+
+.rb-note {
+  margin: -4px 2px 0;
+}
+
+.rb-group h4 {
+  margin: 4px 0 8px;
+  font: 700 12.5px var(--sans);
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.rb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rb-chip {
+  --tone: var(--mind);
+  display: inline-flex;
+  align-items: center;
+  border-radius: 12px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px transparent;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.rb-chip.trust {
+  --tone: var(--trust);
+}
+
+.rb-chip.betray {
+  --tone: var(--betray);
+}
+
+.rb-chip.talk {
+  --tone: #7aa7ff;
+}
+
+.rb-chip:hover {
+  background: var(--surface-3);
+}
+
+.rb-chip:active {
+  transform: scale(0.97);
+}
+
+.rb-chip.on {
+  background: color-mix(in srgb, var(--tone) 14%, var(--surface-2));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--tone) 70%, transparent);
+}
+
+.rb-main {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+}
+
+.rb-steps {
+  display: inline-flex;
+  gap: 2px;
+  margin-right: 6px;
+}
+
+.rb-steps button {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font: 700 12.5px var(--mono);
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.rb-steps button.on {
+  color: #0b0d14;
+  background: var(--tone);
+}
+
+.rb-fallback {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rb-fallback button {
+  --tone: var(--mind);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--muted);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px transparent;
+  transition: background 0.15s, box-shadow 0.15s, color 0.15s;
+}
+
+.rb-fallback button.trust {
+  --tone: var(--trust);
+}
+
+.rb-fallback button.betray {
+  --tone: var(--betray);
+}
+
+.rb-fallback button svg {
+  color: var(--tone);
+}
+
+.rb-fallback button.on {
+  color: var(--text);
+  background: color-mix(in srgb, var(--tone) 14%, var(--surface-2));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--tone) 70%, transparent);
+}
+
+.rb .guide {
+  margin: 0 0 2px;
+}
+
+.propose .rb-paper {
+  background: var(--surface-3);
+}
+
+.name-note {
+  margin: 8px 2px 0;
+}
+
+/* launched */
+
+.launched-head {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.launched-art {
+  flex: none;
+}
+
+.launched-head .tabs {
+  margin-top: 16px;
+}
+
+/* share and small action rows */
+
+.after-stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
+  margin-top: 14px;
+}
+
+.after-stage .hint-line {
+  margin: 0;
+}
+
+.coin-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin: 12px 0 0;
+}
+
+.coin-actions + .your-line,
+.coin-hero + .your-line {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.bubble .hint-time {
+  font: 600 11.5px var(--mono);
+  color: rgba(203, 184, 255, 0.7);
+}
+
+/* my coins */
+
+.my-wallet {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+.my-wallet > svg {
+  flex: none;
+}
+
+.my-wallet-text {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+
+.my-wallet-text b {
+  font: 750 16px var(--display);
+}
+
+.mono-line {
+  font: 12px var(--mono);
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.mono-line:hover {
+  color: var(--text);
+}
+
+.my-balance {
+  font: 650 13px var(--mono);
+  color: var(--gold);
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255, 200, 87, 0.1);
+}
+
+.forget {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 84, 104, 0.08);
+}
+
+.forget p {
+  flex: 1;
+  min-width: 220px;
+  margin: 0;
+  font-size: 13.5px;
+  color: #ffc6cd;
+}
+
+.forget div {
+  display: flex;
+  gap: 8px;
+}
+
+.my-list {
+  display: grid;
+  gap: 8px;
+}
+
+.my-coin {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.6fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px 12px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  transition: background 0.15s, transform 0.15s;
+}
+
+.my-coin:hover {
+  background: color-mix(in srgb, var(--c) 6%, var(--surface));
+  transform: translateY(-1px);
+}
+
+.my-coin:hover > svg:first-child {
+  animation: hop 0.55s ease;
+}
+
+.my-main,
+.my-stat,
+.my-last {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.my-main b {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font: 750 18px var(--display);
+}
+
+.my-main small,
+.my-stat small,
+.my-last small {
+  font-size: 12px;
+  color: var(--faint);
+  line-height: 1.35;
+}
+
+.my-tag {
+  font: 700 11px var(--sans);
+  padding: 3px 7px;
+  border-radius: 6px;
+  color: var(--gold);
+  background: rgba(255, 200, 87, 0.12);
+}
+
+.my-stat b {
+  font: 700 16px var(--mono);
+}
+
+.my-last > span {
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.my-go {
+  color: var(--faint);
+}
+
+@media (max-width: 900px) {
+  .launch {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .look-mobile-preview {
+    display: flex;
+  }
+  .my-coin {
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 10px 14px;
+  }
+  .my-main,
+  .my-last {
+    grid-column: 2 / 4;
+  }
+  .my-stat:nth-of-type(2) {
+    grid-column: 2;
+  }
+  .my-stat {
+    align-self: start;
+  }
+  .my-go {
+    grid-row: 1;
+    grid-column: 4;
+  }
+}
+
+@media (max-width: 600px) {
+  .look-bar {
+    flex-wrap: wrap;
+  }
+  .look-tabs {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .hide-sm {
+    display: none;
+  }
+  .show-sm {
+    display: inline;
+  }
+  .look-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .launched-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .your-match {
+    flex-wrap: wrap;
+  }
+  .rb-paper {
+    padding: 14px 14px 8px;
+  }
+  .rb-text,
+  .rb-paper.editing textarea {
+    font-size: 15.5px;
+  }
 }

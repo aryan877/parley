@@ -28,6 +28,8 @@ function Pair({ a, b, name, mood }: { a: string; b: string; name: (id: string) =
 }
 
 /** Answers "when do matches happen?": what is playing, what is next and when, and the rule that picks them. */
+const clock = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
+
 export function ArenaNow() {
   const { coins } = useLiveArena(10_000);
   const { info } = useArenaInfo();
@@ -49,8 +51,9 @@ export function ArenaNow() {
     : current
       ? `Right after this match (${soon} later)`
       : wait && wait > 0
-        ? `Starts in ${wait}s`
+        ? `Starts in ${clock(wait)}`
         : "Starting now";
+  const breakNote = schedule.pauseMs >= 60_000 ? `There is a break of ${pause} between matches.` : `Coins rest ${rest} seconds between matches.`;
 
   return (
     <div className="arena-now">
@@ -77,7 +80,7 @@ export function ArenaNow() {
         ) : (
           <div className="now-idle">
             <Mascot id="pavlov" size={44} mood="idle" />
-            <p className="muted">{auto || next ? "Between matches. The next one starts in a moment." : "Nothing is playing right now."}</p>
+            <p className="muted">{auto || next ? (wait && wait > 45 ? `Between matches. The next one starts in ${clock(wait)}.` : "Between matches. The next one starts in a moment.") : "Nothing is playing right now."}</p>
           </div>
         )}
       </div>
@@ -112,9 +115,9 @@ export function ArenaNow() {
         {auto ? (
           <>
             <p>
-              <b>One match at a time, nonstop.</b> The coin that has waited longest plays next, against the coin it met least recently.
+              <b>One match at a time, all day.</b> The coin that has waited longest plays next, against the coin it met least recently.
             </p>
-            <p className="faint small">Coins rest {rest} seconds between matches. A new coin also picks up to three rivals when it launches.</p>
+            <p className="faint small">{breakNote} A new coin also picks up to three rivals when it launches, and those go first.</p>
           </>
         ) : (
           <>
@@ -129,25 +132,38 @@ export function ArenaNow() {
   );
 }
 
-/** Where a just-launched coin stands in the arena's line. */
-export function YourMatches({ coin, name }: { coin: string; name: (id: string) => string }) {
-  const { schedule } = useSchedule();
+/** Where the given coins stand in the arena's line, refreshed every few seconds. */
+export function YourMatches({ coins, name, watch = true, title }: { coins: string[]; name: (id: string) => string; watch?: boolean; title?: string }) {
+  const { schedule } = useSchedule(4000);
   if (!schedule) return null;
   const line = [...(schedule.current ? [schedule.current] : []), ...schedule.queue];
-  const mine = line.map((m, place) => ({ ...m, place: schedule.current ? place : place + 1 })).filter((m) => m.a === coin || m.b === coin);
+  const mine = line.map((m, place) => ({ ...m, place: schedule.current ? place : place + 1 })).filter((m) => coins.includes(m.a) || coins.includes(m.b));
   if (!mine.length) return null;
   return (
     <div className="your-line">
-      <div className="now-label">Your matches</div>
+      <div className="your-head">
+        <b>{title ?? (mine.length === 1 ? "Your next match" : "Your next matches")}</b>
+        <span>One match plays at a time. This updates by itself.</span>
+      </div>
       {mine.map((m) => {
-        const rival = m.a === coin ? m.b : m.a;
+        const me = coins.includes(m.a) ? m.a : m.b;
+        const rival = me === m.a ? m.b : m.a;
+        const now = m.place === 0;
         return (
-          <div key={`${m.a}-${m.b}-${m.place}`} className="your-match">
-            <Mascot id={rival} size={36} />
-            <span>
-              vs <b>{name(rival)}</b>
+          <div key={`${m.a}-${m.b}-${m.place}`} className={`your-match ${now ? "now" : ""}`}>
+            <span className="your-pair">
+              <Mascot id={me} size={38} mood={now ? "thinking" : "idle"} />
+              <Mascot id={rival} size={38} mood={now ? "thinking" : "idle"} />
             </span>
-            <em className={m.place === 0 ? "now" : ""}>{m.place === 0 ? "Playing now" : m.place === 1 ? "Next up" : `${m.place - 1} ${m.place === 2 ? "match" : "matches"} before it`}</em>
+            <span className="your-names">
+              <b>{name(me)}</b> vs <b>{name(rival)}</b>
+            </span>
+            <em>{now ? <span className="live-tag">Live</span> : null}{now ? "Playing now" : m.place === 1 ? "Next up" : `${m.place - 1} ${m.place === 2 ? "match" : "matches"} before it`}</em>
+            {now && watch && schedule.current && (
+              <Link to={`/match/${schedule.current.id}`} className="btn small-btn">
+                Watch <ArrowIcon size={14} />
+              </Link>
+            )}
           </div>
         );
       })}

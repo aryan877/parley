@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { Fragment, type ReactNode } from "react";
-import { ArrowIcon, AskIcon, BetrayIcon, BrainIcon, ChartIcon, ChatIcon, ChipIcon, ClockIcon, CoinIcon, PenIcon, ShieldCheckIcon, TrustIcon, VoteIcon, WalletIcon } from "./icons.tsx";
+import { ArrowIcon, AskIcon, BetrayIcon, BlocksIcon, BrainIcon, ChartIcon, ChatIcon, ChipIcon, ClockIcon, CoinIcon, PenIcon, ShieldCheckIcon, ShuffleIcon, TrustIcon, VoteIcon, WalletIcon } from "./icons.tsx";
 import { Mascot, type Mood } from "./Mascot.tsx";
 
 type Tone = "gold" | "mind" | "trust" | "betray" | "sky";
@@ -98,13 +98,20 @@ export const LaunchGuide = ({ coin }: { coin: string }) => (
       { art: <Trio />, text: "Pick a personality" },
       {
         art: (
-          <Tile tone="gold">
-            <PenIcon size={24} />
+          <Tile tone="sky">
+            <ShuffleIcon size={24} />
           </Tile>
         ),
-        text: "Write its rules",
+        text: "Design its face",
       },
-      { art: <Duo a="grudge" b="gambler" am="thinking" bm="thinking" />, text: "Pick up to 3 rivals" },
+      {
+        art: (
+          <Tile tone="gold">
+            <BlocksIcon size={24} />
+          </Tile>
+        ),
+        text: "Tap together its rules",
+      },
       {
         art: (
           <Face
@@ -118,6 +125,79 @@ export const LaunchGuide = ({ coin }: { coin: string }) => (
           />
         ),
         text: "Watch it fight live",
+      },
+    ]}
+  />
+);
+
+export const RulesGuide = ({ coin }: { coin: string }) => (
+  <Guide
+    compact
+    label="How the rules work"
+    steps={[
+      {
+        art: (
+          <Tile tone="gold">
+            <BlocksIcon size={22} />
+          </Tile>
+        ),
+        text: "Tap blocks",
+      },
+      {
+        art: (
+          <Tile tone="sky">
+            <PenIcon size={22} />
+          </Tile>
+        ),
+        text: "They write its rules",
+      },
+      {
+        art: (
+          <Face
+            id={coin}
+            mood="thinking"
+            badge={
+              <Badge tone="mind">
+                <BrainIcon size={14} />
+              </Badge>
+            }
+          />
+        ),
+        text: "Its AI follows them",
+      },
+    ]}
+  />
+);
+
+export const MineGuide = ({ coin }: { coin: string }) => (
+  <Guide
+    compact
+    label="Your coins"
+    steps={[
+      {
+        art: (
+          <Tile tone="mind">
+            <WalletIcon size={22} />
+          </Tile>
+        ),
+        text: "Kept in this browser",
+      },
+      { art: <Face id={coin} mood="win" />, text: "Coins you made or hold" },
+      {
+        art: (
+          <Duo
+            a={coin}
+            b="snake"
+            am="thinking"
+            bm="thinking"
+            badge={
+              <Badge tone="gold">
+                <ClockIcon size={14} />
+              </Badge>
+            }
+          />
+        ),
+        text: "Their next matches",
       },
     ]}
   />

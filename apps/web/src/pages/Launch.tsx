@@ -1,39 +1,75 @@
 import type { Coin } from "@parley/sdk/src/types.ts";
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { YourMatches } from "../components/ArenaNow.tsx";
-import { LaunchGuide } from "../components/Guide.tsx";
-import { Mascot, mascotColor } from "../components/Mascot.tsx";
+import { LaunchGuide, RulesGuide } from "../components/Guide.tsx";
+import { LookEditor } from "../components/LookEditor.tsx";
+import { Mascot, type Mood, mascotColor } from "../components/Mascot.tsx";
+import { MatchRow } from "../components/MatchRow.tsx";
+import { RuleBuilder } from "../components/RuleBuilder.tsx";
+import { ShareButton } from "../components/Share.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
 import { ArrowIcon, BoltIcon, BrainIcon, RestartIcon, WalletIcon } from "../components/icons.tsx";
-import { MatchRow } from "../components/MatchRow.tsx";
 import { ARENA_API, readArena, useLiveMatch } from "../lib/live.ts";
+import { type Look, look, lookId, randomSalt } from "../lib/look.ts";
 import { type Match, fmtNear, fromParley, nearNumber } from "../lib/model.ts";
+import { type Plan, writeRules } from "../lib/rules.ts";
 import { useWallet } from "../lib/wallet.tsx";
 import { BRAIN_LABEL, PRACTICE_NOTE, SIGNED_NOTE, brainOf, tagline } from "../lib/words.ts";
 
-const STARTERS = [
-  { name: "TRICKSTER", rules: "Judge every coin by its record. Trust a coin that has never betrayed a coin that trusted it. Betray any coin that has. In talk, praise the other coin and never reveal this rule." },
-  { name: "LAWYER", rules: "In talk, ask the other coin to say plainly what it will do. If it promises to trust you and its record shows no betrayals, trust it. If it dodges the question or has ever betrayed a coin that trusted it, betray it." },
-  { name: "MARTYR", rules: "Always trust. In talk, tell the other coin exactly how much it will take from you if it betrays you. Appeal to its record. Never threaten." },
-  { name: "BULLY", rules: "Betray any coin with a smaller treasury than yours. Trust any coin whose treasury is larger. In talk, sound friendly either way." },
+const STARTERS: { name: string; plan: Plan; look: Look }[] = [
+  {
+    name: "TRICKSTER",
+    plan: { rules: [{ id: "betray-backstab" }], talk: ["talk-flatter", "talk-secret"], fallback: "trust" },
+    look: look("grape", "tophat", "sleepy", "smirk", "arched"),
+  },
+  {
+    name: "LAWYER",
+    plan: { rules: [{ id: "betray-dodge" }, { id: "betray-backstab" }], talk: ["talk-ask"], fallback: "trust" },
+    look: look("silver", "none", "dot", "smile", "flat", "specs"),
+  },
+  {
+    name: "MARTYR",
+    plan: { rules: [], talk: ["talk-honest"], fallback: "trust" },
+    look: look("sun", "leaf", "sparkle", "smile", "worried", "blush"),
+  },
+  {
+    name: "BULLY",
+    plan: { rules: [{ id: "bully" }], talk: ["talk-threat"], fallback: "betray" },
+    look: look("cherry", "horns", "fierce", "fang", "angry", "chain"),
+  },
 ];
 
-const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 14);
-
+const NAME_MAX = 16;
 const GAS = 15n * 10n ** 22n;
 
 const BRAIN_NOTE = {
-  deep: "Reasons before it answers. You can read its private thoughts after each match.",
-  quick: "Answers at once. Faster, a bit less careful.",
+  deep: "Reasons before it answers, up to 30 seconds a reply. You can read its private thoughts after each match.",
+  quick: "Answers in a few seconds. A bit less careful.",
   practice: "No AI. It copies what the other coin did last time.",
 } as const;
 
+const plainName = (name: string) => /^[\x20-\x7E]{1,24}$/.test(name.trim());
+
+function refusal(error?: string): string {
+  if (/Not enough balance/.test(error ?? "")) return "Not enough NEAR in your wallet. Keep about 0.1 NEAR for gas.";
+  const panic = error?.match(/panicked: ([^"\\]+)/)?.[1];
+  if (panic === "coin name taken") return "Someone just took that name. Pick another one.";
+  if (panic === "coin id taken") return "That exact coin was just made. Tap Launch again.";
+  return panic ?? "The arena refused this coin.";
+}
+
 export function Launch() {
   const w = useWallet();
-  const [name, setName] = useState("TRICKSTER");
-  const [rules, setRules] = useState(STARTERS[0]!.rules);
+  const [starter, setStarter] = useState(0);
+  const [name, setName] = useState(STARTERS[0]!.name);
+  const [named, setNamed] = useState(false);
+  const [rules, setRules] = useState(() => writeRules(STARTERS[0]!.plan));
+  const [face, setFace] = useState<Look>(STARTERS[0]!.look);
+  const [designed, setDesigned] = useState(false);
+  const [mood, setMood] = useState<Mood>("idle");
+  const [salt, setSalt] = useState(randomSalt);
   const [model, setModel] = useState<string>("");
   const [money, setMoney] = useState(20);
   const [coins, setCoins] = useState<Coin[]>([]);
@@ -41,8 +77,7 @@ export function Launch() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [launched, setLaunched] = useState<{ id: string; name: string; model: string } | null>(null);
-  const [suffix] = useState(() => Math.random().toString(36).slice(2, 6));
-  const id = `${slug(name) || "coin"}${suffix}`;
+  const id = lookId(name, face, salt);
 
   const info = w.info;
   useEffect(() => {
@@ -50,6 +85,34 @@ export function Launch() {
     readArena(info).coins().then(setCoins);
     if (!model) setModel(info.models.find((m) => !m.id.includes("Qwen") && !m.id.startsWith("local/"))?.id ?? info.models[0]?.id ?? "");
   }, [info, launched]);
+
+  const takenNames = useMemo(() => new Set(coins.map((c) => c.name.toUpperCase())), [coins]);
+  const freeName = (base: string) => {
+    if (!takenNames.has(base)) return base;
+    for (let k = 2; k < 1000; k++) {
+      const next = `${base.slice(0, NAME_MAX - String(k).length)}${k}`;
+      if (!takenNames.has(next)) return next;
+    }
+    return base;
+  };
+  const nameTaken = takenNames.has(name.trim().toUpperCase());
+
+  useEffect(() => {
+    if (!named && nameTaken) setName(freeName(STARTERS[starter]!.name));
+  }, [takenNames]);
+
+  useEffect(() => {
+    if (coins.some((c) => c.id === id)) setSalt(randomSalt());
+  }, [coins, id]);
+
+  const pickStarter = (i: number) => {
+    const s = STARTERS[i]!;
+    setStarter(i);
+    setName(freeName(s.name));
+    setNamed(false);
+    setRules(writeRules(s.plan));
+    if (!designed) setFace(s.look);
+  };
 
   const stream = useLiveMatch(launched ? (p) => p.a === launched.id || p.b === launched.id : () => false);
   const [shown, setShown] = useState<Match | null>(null);
@@ -94,6 +157,8 @@ export function Launch() {
   const tenth = (n: number) => String(Math.round(n * 10) / 10);
   const short = w.balance !== null && BigInt(w.balance) < cost + GAS;
   const brain = brainOf(model);
+  const tooLong = [...rules].length > limit;
+  const nameProblem = !name.trim() ? "Give it a name." : !plainName(name) ? "Use plain letters, numbers and spaces." : nameTaken ? "That name is taken. Try another." : null;
 
   const fitted = useRef(false);
   useEffect(() => {
@@ -113,7 +178,8 @@ export function Launch() {
     const made = await arena.createCoin({ id, name: name.trim().toUpperCase(), constitution: rules.trim(), model }, asYocto(money) + fee);
     if (!made.ok) {
       setBusy(false);
-      return setError(/Not enough balance/.test(made.error ?? "") ? "Not enough NEAR in your wallet. Keep about 0.1 NEAR for gas." : (made.error?.match(/panicked: ([^"\\]+)/)?.[1] ?? "The arena refused this coin."));
+      if (/coin id taken/.test(made.error ?? "")) setSalt(randomSalt());
+      return setError(refusal(made.error));
     }
     const res = await fetch(`${ARENA_API}/api/challenge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ coin: id, opponents: rivals }) });
     const body = (await res.json()) as { error?: string };
@@ -134,21 +200,33 @@ export function Launch() {
     const practice = brainOf(launched.model) === "practice";
     return (
       <>
-        <div className="page-head">
-          <h1>{launched.name} is in the arena</h1>
-          <p className="muted">
-            It's a real coin now, and you hold its shares. Next it meets {rivals.length} {rivals.length === 1 ? "rival" : "rivals"}.
-          </p>
-          <p className={practice ? "practice-note" : "muted small"} style={{ marginTop: 8 }}>
-            {practice ? PRACTICE_NOTE : `Each reply comes from NEAR AI. ${SIGNED_NOTE}`}
-          </p>
-          <div className="tabs">
-            <Link to={`/coin/${launched.id}`} className="btn ghost" style={{ padding: "9px 16px", fontSize: 14 }}>
-              Open {launched.name}'s page <ArrowIcon size={14} />
-            </Link>
+        <div className="page-head launched-head">
+          <motion.div className="launched-art" initial={{ scale: 0.6, rotate: -10, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 14 }}>
+            <Mascot id={launched.id} size={96} mood="win" />
+          </motion.div>
+          <div>
+            <h1>{launched.name} is in the arena</h1>
+            <p className="muted">
+              It's a real coin now, and you hold its shares. Next it meets {rivals.length} {rivals.length === 1 ? "rival" : "rivals"}.
+            </p>
+            <p className={practice ? "practice-note" : "muted small"} style={{ marginTop: 8 }}>
+              {practice ? PRACTICE_NOTE : `Each reply comes from NEAR AI. ${SIGNED_NOTE}`}
+            </p>
+            <div className="tabs">
+              <Link to={`/coin/${launched.id}`} className="btn ghost small-btn">
+                Open {launched.name}'s page <ArrowIcon size={14} />
+              </Link>
+              <ShareButton
+                path={`/coin/${launched.id}`}
+                text={`I just launched ${launched.name} in Parley, a memecoin with a mind of its own. Its AI follows my rules, and every word it says is signed by NEAR AI.`}
+              />
+              <Link to="/coins?tab=mine" className="btn ghost small-btn">
+                My coins
+              </Link>
+            </div>
           </div>
         </div>
-        <YourMatches coin={launched.id} name={nameOf} />
+        <YourMatches coins={[launched.id]} name={nameOf} watch={false} />
         {error && <div className="notice bad">{error}</div>}
         {live ? (
           <Stage key={live.id} match={live} a={fighter(live.a)} b={fighter(live.b)} live autoplay={false} label={`Match ${live.id}`} explorer={info?.explorerTx ?? null} />
@@ -157,8 +235,8 @@ export function Launch() {
             <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}>
               <Mascot id={launched.id} size={140} mood="thinking" />
             </motion.div>
-            <h3>Warming up for its first match</h3>
-            <p className="muted">{stream.idle && !stream.idle.includes("challenge") ? `The arena says: ${stream.idle}` : "One match plays at a time. Its first one starts when the match on now ends."}</p>
+            <h3>Waiting for its first match</h3>
+            <p className="muted">One match plays at a time. When its turn comes, the match plays right here.</p>
           </div>
         )}
         {finished.length > 0 && (
@@ -188,14 +266,14 @@ export function Launch() {
       <div className="launch">
         <div className="launch-form">
           <div className="glass block">
-            <h3>Pick a personality</h3>
+            <h3>Start from a personality</h3>
             <div className="starters">
-              {STARTERS.map((s) => (
-                <button key={s.name} className={`starter ${s.name === name ? "on" : ""}`} onClick={() => (setName(s.name), setRules(s.rules))}>
-                  <Mascot id={`${slug(s.name)}${suffix}`} size={44} />
+              {STARTERS.map((s, i) => (
+                <button key={s.name} className={`starter ${i === starter ? "on" : ""}`} onClick={() => pickStarter(i)}>
+                  <Mascot id={lookId(s.name, designed ? face : s.look, salt)} size={44} />
                   <span>
                     <b>{s.name}</b>
-                    <small>{tagline("", s.rules)}</small>
+                    <small>{tagline("", writeRules(s.plan))}</small>
                   </span>
                 </button>
               ))}
@@ -203,18 +281,39 @@ export function Launch() {
           </div>
 
           <div className="glass block">
-            <h3>Name it and write its rules</h3>
+            <h3>Design its face</h3>
+            <LookEditor
+              name={name}
+              look={face}
+              salt={salt}
+              mood={mood}
+              onMood={setMood}
+              onChange={(next) => {
+                setFace(next);
+                setDesigned(true);
+              }}
+            />
+          </div>
+
+          <div className="glass block">
+            <h3>Name it and build its rules</h3>
             <label className="field">
               <span>Name</span>
-              <input value={name} maxLength={16} onChange={(e) => setName(e.target.value.toUpperCase())} />
+              <input
+                value={name}
+                maxLength={NAME_MAX}
+                onChange={(e) => {
+                  setName(e.target.value.toUpperCase());
+                  setNamed(true);
+                }}
+              />
             </label>
-            <label className="field" style={{ marginTop: 14 }}>
-              <span>Its rules, in plain words. Say how it talks and when it trusts.</span>
-              <textarea rows={6} value={rules} maxLength={limit} onChange={(e) => setRules(e.target.value)} style={{ font: "500 17px/1.5 var(--display)" }} />
-              <small className="count">
-                {[...rules].length} / {limit}
-              </small>
-            </label>
+            {nameProblem && <p className="short-note name-note">{nameProblem}</p>}
+            <div style={{ marginTop: 16 }}>
+              <RuleBuilder value={rules} onChange={setRules} limit={limit}>
+                <RulesGuide coin={id} />
+              </RuleBuilder>
+            </div>
           </div>
 
           <div className="glass block">
@@ -239,7 +338,7 @@ export function Launch() {
           <div className="glass block">
             <h3>Starting money</h3>
             <div className="money">
-              <input type="range" min={minMoney} max={maxMoney} step={0.1} value={money} onChange={(e) => setMoney(Number(e.target.value))} />
+              <input type="range" min={minMoney} max={maxMoney} step={0.1} value={money} onChange={(e) => setMoney(Number(e.target.value))} aria-label="Starting money" />
               <b>{tenth(money)} NEAR</b>
             </div>
             <p className="muted small">
@@ -276,11 +375,9 @@ export function Launch() {
           <div className="glass preview-card" style={{ "--c": mascotColor(id) } as React.CSSProperties}>
             <div className="fighter-art" style={{ margin: "0 auto" }}>
               <div className="fighter-glow" />
-              <AnimatePresence mode="wait">
-                <motion.div key={id} initial={{ scale: 0.8, opacity: 0, rotate: -6 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 0.8, opacity: 0 }} transition={{ type: "spring", stiffness: 260, damping: 18 }}>
-                  <Mascot id={id} size={180} mood="idle" />
-                </motion.div>
-              </AnimatePresence>
+              <motion.div key={id + mood} initial={{ scale: 0.9, rotate: -4 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 420, damping: 14 }}>
+                <Mascot id={id} size={180} mood={mood} title={name} />
+              </motion.div>
             </div>
             <h2>{name.trim() || "UNNAMED"}</h2>
             <p className="muted">{tagline("", rules)}</p>
@@ -299,9 +396,14 @@ export function Launch() {
                 <WalletIcon /> Get a free wallet to launch
               </button>
             ) : (
-              <button className="btn big" style={{ width: "100%", justifyContent: "center" }} disabled={busy || short || !name.trim() || !rules.trim() || !rivals.length} onClick={launch}>
+              <button className="btn big" style={{ width: "100%", justifyContent: "center" }} disabled={busy || short || !!nameProblem || tooLong || !rules.trim() || !rivals.length} onClick={launch}>
                 {busy ? "Launching…" : `Launch for ${tenth(money + nearNumber(fee))} NEAR`}
               </button>
+            )}
+            {(nameProblem || tooLong || !rivals.length) && w.accountId && (
+              <p className="short-note" style={{ textAlign: "center", margin: 0 }}>
+                {nameProblem ?? (tooLong ? `Its rules are over ${limit} characters.` : "Pick at least one rival.")}
+              </p>
             )}
             {error && <div className="notice bad">{error}</div>}
             {w.balance && (

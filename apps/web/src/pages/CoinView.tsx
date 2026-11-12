@@ -2,10 +2,13 @@ import type { Amendment, Coin, Order } from "@parley/sdk/src/types.ts";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { YourMatches } from "../components/ArenaNow.tsx";
 import { Sparkline } from "../components/CoinCard.tsx";
 import { Empty } from "../components/Empty.tsx";
 import { TradeGuide, VoteGuide } from "../components/Guide.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
+import { RuleBuilder } from "../components/RuleBuilder.tsx";
+import { ShareButton } from "../components/Share.tsx";
 import { Mascot, mascotColor } from "../components/Mascot.tsx";
 import { BoltIcon, BrainIcon, RestartIcon, TrustIcon, BetrayIcon, WalletIcon } from "../components/icons.tsx";
 import { type CoinInfo, type Match, fmtNear, fromCoin, fromParley, nearNumber, sharePrice, trustRate } from "../lib/model.ts";
@@ -272,6 +275,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
   };
 
   const mine = async () => BigInt(await readArena(info!).shares(coin.id, w.accountId!));
+  const limit = info?.config.max_constitution_len ?? 1200;
 
   return (
     <div className="glass rules-card">
@@ -285,7 +289,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
           <div className="rules-head" style={{ marginTop: 22 }}>
             <h3>Change its rules</h3>
             {!writing && (
-              <button className="btn ghost" style={{ padding: "8px 14px", fontSize: 13.5 }} onClick={() => (w.accountId ? setWriting(true) : w.setOpen(true))}>
+              <button className="btn ghost" style={{ padding: "8px 14px", fontSize: 13.5 }} onClick={() => (w.accountId ? (setDraft(coin.constitution), setWriting(true)) : w.setOpen(true))}>
                 Propose new rules
               </button>
             )}
@@ -298,12 +302,12 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
           </p>
           {writing && (
             <div className="propose">
-              <textarea rows={4} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Write the new rules in plain words. Example: Trust coins that have never betrayed anyone. Betray the rest." />
+              <RuleBuilder value={draft} onChange={setDraft} limit={limit} />
               <p className="faint small" style={{ margin: 0 }}>
                 You need at least {Number(info?.config.proposer_bps ?? 100) / 100}% of its shares to propose. Your shares count as the first yes votes.
               </p>
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn" disabled={busy || !draft.trim()} onClick={() => run("Proposing", () => w.arena()!.proposeAmendment(coin.id, draft.trim(), coin.model), "Proposed. Your shares count as the first yes votes.").then(() => (setWriting(false), setDraft("")))}>
+                <button className="btn" disabled={busy || !draft.trim() || draft.trim() === coin.constitution.trim() || [...draft].length > limit} onClick={() => run("Proposing", () => w.arena()!.proposeAmendment(coin.id, draft.trim(), coin.model), "Proposed. Your shares count as the first yes votes.").then(() => (setWriting(false), setDraft("")))}>
                   Put it to a vote
                 </button>
                 <button className="btn ghost" onClick={() => setWriting(false)}>
@@ -365,6 +369,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
 
 function LiveCoin({ id }: { id: string }) {
   const { info, ready } = useArenaInfo();
+  const w = useWallet();
   const [coin, setCoin] = useState<Coin | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [names, setNames] = useState<Map<string, string>>(new Map());
@@ -391,12 +396,20 @@ function LiveCoin({ id }: { id: string }) {
     );
   if (!coin) return <p className="muted loading-line">Loading…</p>;
   const name = (cid: string) => names.get(cid) ?? cid.toUpperCase();
+  const mine = !!w.accountId && coin.creator === w.accountId;
   return (
     <>
       <div className="crumbs">
         <Link to="/coins">Coins</Link> / {coin.name}
       </div>
       <Hero coin={fromCoin(coin)} matches={matches} live />
+      {mine && (
+        <div className="coin-actions">
+          <span className="muted small">You made this coin.</span>
+          <ShareButton path={`/coin/${coin.id}`} text={`Meet ${coin.name}, my coin in Parley. Its AI follows the rules I wrote, and every word it says is signed by NEAR AI.`} />
+        </div>
+      )}
+      <YourMatches coins={[coin.id]} name={name} title={`Next up for ${coin.name}`} />
       <div className="coin-body">
         <Rules coin={coin} onDone={() => setTick((t) => t + 1)} />
         <Trade coin={coin} onDone={() => setTick((t) => t + 1)} />

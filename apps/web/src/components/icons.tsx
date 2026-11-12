@@ -260,3 +260,37 @@ export const AskIcon = ({ size = 18, className }: P) =>
       <path d="M10.55 17.6a1.45 1.45 0 1 0 2.9 0a1.45 1.45 0 1 0 -2.9 0Z" />
     </>,
   );
+
+export const ShuffleIcon = ({ size = 18, className }: P) =>
+  glyph(
+    size,
+    className,
+    <>
+      <g opacity=".35">
+        <path d="M3.4 7.4H7.2C11.2 7.4 12.4 16.6 16.4 16.6H17.6" fill="none" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round" />
+        <path d="M17.1 13.2L21.1 16.1A0.6 0.6 0 0 1 21.1 17.1L17.1 20A0.6 0.6 0 0 1 16.2 19.5V13.7A0.6 0.6 0 0 1 17.1 13.2Z" />
+      </g>
+      <path d="M3.4 16.6H7.2C11.2 16.6 12.4 7.4 16.4 7.4H17.6" fill="none" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round" />
+      <path d="M17.1 4L21.1 6.9A0.6 0.6 0 0 1 21.1 7.9L17.1 10.8A0.6 0.6 0 0 1 16.2 10.3V4.5A0.6 0.6 0 0 1 17.1 4Z" />
+    </>,
+  );
+
+export const ShareIcon = ({ size = 18, className }: P) =>
+  glyph(
+    size,
+    className,
+    <>
+      <path opacity=".35" d={rr(2.6, 6.4, 15, 15, 4.2)} />
+      <path d="M9.6 14.4L19.2 4.8M13.4 3.6H20.4V10.6" fill="none" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round" />
+    </>,
+  );
+
+export const BlocksIcon = ({ size = 18, className }: P) =>
+  glyph(
+    size,
+    className,
+    <>
+      <path opacity=".35" d={`${rr(1.8, 12.6, 9.6, 9, 2.6)}${rr(12.6, 12.6, 9.6, 9, 2.6)}`} />
+      <path d={rr(7.2, 2.4, 9.6, 9, 2.6)} />
+    </>,
+  );

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { ShareButton, matchShareLine } from "../components/Share.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
 import { ArrowIcon } from "../components/icons.tsx";
 import { type Match } from "../lib/model.ts";
 import { loadLiveMatch, readArena, useArenaInfo, useLiveMatch } from "../lib/live.ts";
 import { useSeason } from "../lib/season.ts";
+import { useWallet } from "../lib/wallet.tsx";
 import type { Coin } from "@parley/sdk/src/types.ts";
 
 function SeasonMatch({ id }: { id: number }) {
@@ -25,9 +27,12 @@ function SeasonMatch({ id }: { id: number }) {
         <Link to="/matches">Matches</Link> / Season 1 / match {match.id}
       </div>
       <Stage key={match.id} match={match} a={fighter(match.a)} b={fighter(match.b)} label={`Season 1 · match ${match.id}`} />
-      <p className="hint-line">
-        Tap <b>Verified</b> under any message to check its signature yourself.
-      </p>
+      <div className="after-stage">
+        <p className="hint-line">
+          Tap <b>Verified</b> under any message to check its signature yourself.
+        </p>
+        <ShareButton path={`/season/match/${match.id}`} text={matchShareLine(match, (cid) => season.coin(cid)?.name ?? cid.toUpperCase(), () => false)} />
+      </div>
       <div className="pager">
         {prev ? <Link to={`/season/match/${prev.id}`}>← match {prev.id}</Link> : <span />}
         {next ? (
@@ -48,6 +53,7 @@ function LiveMatch({ id }: { id: number }) {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [later, setLater] = useState<Map<string, bigint>>(new Map());
   const stream = useLiveMatch((p) => p.id === id);
+  const w = useWallet();
   useEffect(() => {
     if (!info) return;
     const arena = readArena(info);
@@ -87,11 +93,19 @@ function LiveMatch({ id }: { id: number }) {
         label={`Match ${shown.id}`}
         explorer={info.explorerTx ?? null}
       />
-      {shown.lines.some((l) => l.proof) && (
-        <p className="hint-line">
-          Tap <b>Verified</b> under any message to check its signature yourself.
-        </p>
-      )}
+      <div className="after-stage">
+        {shown.lines.some((l) => l.proof) && (
+          <p className="hint-line">
+            Tap <b>Verified</b> under any message to check its signature yourself.
+          </p>
+        )}
+        {shown.settled && (
+          <ShareButton
+            path={`/match/${shown.id}`}
+            text={matchShareLine(shown, (cid) => coins.find((x) => x.id === cid)?.name ?? cid.toUpperCase(), (cid) => !!w.accountId && coins.find((x) => x.id === cid)?.creator === w.accountId)}
+          />
+        )}
+      </div>
     </>
   );
 }
