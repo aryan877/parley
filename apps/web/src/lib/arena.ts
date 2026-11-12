@@ -58,3 +58,11 @@ export function modelLabel(model: Model): string {
   const name = model.id.split("/").pop() ?? model.id;
   return model.options.includes('"enable_thinking":false') ? `${name}: answers at once` : `${name}: reasons first, and you can read it`;
 }
+
+/** Puts a coin's matches against the given rivals in the arena's line. Returns how many matches play before them. */
+export async function sendChallenge(coin: string, opponents: string[]): Promise<number> {
+  const res = await fetch(`${ARENA_API}/api/challenge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ coin, opponents }) });
+  const body = (await res.json().catch(() => ({}))) as { ahead?: number; error?: string };
+  if (!res.ok || typeof body.ahead !== "number") throw new Error(body.error ?? "The arena could not take the challenge.");
+  return body.ahead;
+}

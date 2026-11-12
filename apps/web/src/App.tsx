@@ -1,6 +1,8 @@
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { Alerts } from "./components/Alerts.tsx";
 import { Mark } from "./components/Mark.tsx";
+import { TabBar } from "./components/TabBar.tsx";
 import { WalletButton } from "./components/WalletButton.tsx";
 import { accountLink, useArenaInfo } from "./lib/live.ts";
 import { Arena } from "./pages/Arena.tsx";
@@ -75,6 +77,8 @@ export function App() {
           <span>Test money only. Not audited.</span>
         </footer>
       </main>
+      <TabBar />
+      <Alerts />
     </>
   );
 }

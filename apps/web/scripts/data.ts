@@ -31,3 +31,32 @@ for (const name of existsSync(fixtures) ? readdirSync(fixtures) : []) {
 leagues.sort((a, b) => (a.mind === "near-ai" ? -1 : 1) - (b.mind === "near-ai" ? -1 : 1));
 writeFileSync(join(out, "index.json"), JSON.stringify(leagues));
 console.log(`web data: ${leagues.map((l) => `${l.name} (${l.parleys})`).join(", ") || "none"}`);
+
+const deployments = join(root, "deployments");
+if (existsSync(join(deployments, "testnet.json"))) {
+  const testnet = join(out, "testnet");
+  mkdirSync(testnet, { recursive: true });
+  const read = (path: string) => (existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : null);
+  for (const file of ["testnet.json", "testnet-forgeries.json", "testnet-amendment.json"]) {
+    if (existsSync(join(deployments, file))) cpSync(join(deployments, file), join(testnet, file));
+  }
+  const quotes = join(deployments, "testnet-attestation");
+  const attestations = existsSync(quotes) ? readdirSync(quotes).filter((f) => f.endsWith(".json")).sort() : [];
+  if (attestations.length) cpSync(quotes, join(testnet, "testnet-attestation"), { recursive: true });
+  const reask = join(fixtures, "near-ai-reask", "summary.json");
+  if (existsSync(reask)) cpSync(reask, join(testnet, "reask-summary.json"));
+  writeFileSync(
+    join(testnet, "onchain.json"),
+    JSON.stringify({
+      deployment: read(join(deployments, "testnet.json")),
+      forgeries: read(join(deployments, "testnet-forgeries.json")),
+      amendment: read(join(deployments, "testnet-amendment.json")),
+      reask: read(reask),
+      attestations: attestations.map((file) => {
+        const a = JSON.parse(readFileSync(join(quotes, file), "utf8")) as { model: string; publicKey: string; nonceText?: string };
+        return { file: `testnet-attestation/${file}`, model: a.model, publicKey: a.publicKey, nonceText: a.nonceText ?? null };
+      }),
+    }),
+  );
+  console.log(`testnet proof: ${attestations.length} hardware reports`);
+}

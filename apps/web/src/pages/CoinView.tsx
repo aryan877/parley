@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { YourMatches } from "../components/ArenaNow.tsx";
+import { Challenge } from "../components/Challenge.tsx";
+import { madeBy } from "../components/MyCoins.tsx";
 import { Sparkline } from "../components/CoinCard.tsx";
 import { Empty } from "../components/Empty.tsx";
 import { TradeGuide, VoteGuide } from "../components/Guide.tsx";
@@ -372,7 +374,7 @@ function LiveCoin({ id }: { id: string }) {
   const w = useWallet();
   const [coin, setCoin] = useState<Coin | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
-  const [names, setNames] = useState<Map<string, string>>(new Map());
+  const [all, setAll] = useState<Coin[]>([]);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!info) return;
@@ -380,7 +382,7 @@ function LiveCoin({ id }: { id: string }) {
     const load = async () => {
       const [c, all, parleys] = await Promise.all([arena.coin(id), arena.coins(), arena.parleys(0, 50)]);
       setCoin(c);
-      setNames(new Map(all.map((x) => [x.id, x.name])));
+      setAll(all);
       setMatches(parleys.map((p) => fromParley(p)).filter((m) => m.settled && (m.a === id || m.b === id)).reverse());
     };
     load().catch(() => {});
@@ -395,8 +397,11 @@ function LiveCoin({ id }: { id: string }) {
       </Empty>
     );
   if (!coin) return <p className="muted loading-line">Loading…</p>;
-  const name = (cid: string) => names.get(cid) ?? cid.toUpperCase();
+  const name = (cid: string) => all.find((x) => x.id === cid)?.name ?? cid.toUpperCase();
   const mine = !!w.accountId && coin.creator === w.accountId;
+  const challengers = madeBy(all, w.accountId)
+    .filter((c) => c.id !== coin.id)
+    .sort((x, y) => Number(x.in_match !== null) - Number(y.in_match !== null));
   return (
     <>
       <div className="crumbs">
@@ -409,6 +414,7 @@ function LiveCoin({ id }: { id: string }) {
           <ShareButton path={`/coin/${coin.id}`} text={`Meet ${coin.name}, my coin in Parley. Its AI follows the rules I wrote, and every word it says is signed by NEAR AI.`} />
         </div>
       )}
+      {challengers.length > 0 && <Challenge key={coin.id} mine={challengers} rival={coin.id} name={name} />}
       <YourMatches coins={[coin.id]} name={name} title={`Next up for ${coin.name}`} />
       <div className="coin-body">
         <Rules coin={coin} onDone={() => setTick((t) => t + 1)} />

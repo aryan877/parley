@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Rematch } from "../components/Challenge.tsx";
 import { ShareButton, matchShareLine } from "../components/Share.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
 import { ArrowIcon } from "../components/icons.tsx";
@@ -26,7 +27,7 @@ function SeasonMatch({ id }: { id: number }) {
       <div className="crumbs">
         <Link to="/matches">Matches</Link> / Season 1 / match {match.id}
       </div>
-      <Stage key={match.id} match={match} a={fighter(match.a)} b={fighter(match.b)} label={`Season 1 · match ${match.id}`} />
+      <Stage key={match.id} match={match} a={fighter(match.a)} b={fighter(match.b)} label={`Season 1 · match ${match.id}`} callKey={`season:${match.id}`} />
       <div className="after-stage">
         <p className="hint-line">
           Tap <b>Verified</b> under any message to check its signature yourself.
@@ -73,6 +74,9 @@ function LiveMatch({ id }: { id: number }) {
   if (!ready) return <p className="muted loading-line">Connecting…</p>;
   if (!info) return <p className="muted loading-line">The live arena is offline right now.</p>;
   if (!shown) return <p className="muted">Loading match {id}…</p>;
+  const nameOf = (cid: string) => coins.find((x) => x.id === cid)?.name ?? cid.toUpperCase();
+  const own = (cid: string) => !!w.accountId && coins.find((x) => x.id === cid)?.creator === w.accountId;
+  const mine = shown.settled ? [shown.a, shown.b].find(own) : undefined;
   const fighter = (cid: string): Fighter => {
     const c = coins.find((x) => x.id === cid);
     const now = BigInt(c?.treasury ?? "0");
@@ -92,6 +96,7 @@ function LiveMatch({ id }: { id: number }) {
         autoplay={!shown.settled}
         label={`Match ${shown.id}`}
         explorer={info.explorerTx ?? null}
+        callKey={`live:${info.contractId}:${shown.id}`}
       />
       <div className="after-stage">
         {shown.lines.some((l) => l.proof) && (
@@ -99,12 +104,8 @@ function LiveMatch({ id }: { id: number }) {
             Tap <b>Verified</b> under any message to check its signature yourself.
           </p>
         )}
-        {shown.settled && (
-          <ShareButton
-            path={`/match/${shown.id}`}
-            text={matchShareLine(shown, (cid) => coins.find((x) => x.id === cid)?.name ?? cid.toUpperCase(), (cid) => !!w.accountId && coins.find((x) => x.id === cid)?.creator === w.accountId)}
-          />
-        )}
+        {mine && <Rematch key={shown.id} mine={mine} rival={mine === shown.a ? shown.b : shown.a} name={nameOf} />}
+        {shown.settled && <ShareButton path={`/match/${shown.id}`} text={matchShareLine(shown, nameOf, own)} />}
       </div>
     </>
   );

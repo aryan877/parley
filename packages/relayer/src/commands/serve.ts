@@ -24,8 +24,10 @@ type Event =
 interface Challenge {
   a: string;
   b: string;
-  tries?: number;
+  since?: number;
 }
+
+const CHALLENGE_PATIENCE_MS = 10 * 60_000;
 
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
 const MAX_QUEUE = 12;
@@ -191,8 +193,8 @@ export async function serve() {
 
   /** A Parley left open by a restart is finished first, or voided once it can no longer be played. */
   async function unfinished(): Promise<number | null> {
-    const recent = await owner.parleys(0, 12);
-    return recent.find((p) => p.status === "Open")?.id ?? null;
+    const busy = (await owner.coins()).map((c) => c.in_match).filter((id): id is number => id !== null);
+    return busy.length ? Math.min(...busy) : null;
   }
 
   async function work() {
@@ -210,8 +212,9 @@ export async function serve() {
           });
         } else if (next) {
           problem = await play(() => owner.openParleyBetween(next.a, next.b), "challenge");
-          if (problem?.includes("already in a Parley") && (next.tries ?? 0) < 6) {
-            queue.push({ ...next, tries: (next.tries ?? 0) + 1 });
+          const since = next.since ?? Date.now();
+          if (problem?.includes("already in a Parley") && Date.now() - since < CHALLENGE_PATIENCE_MS) {
+            queue.push({ ...next, since });
             saveQueue();
           }
         }
@@ -222,7 +225,7 @@ export async function serve() {
         current = null;
       }
       if (problem) emit({ type: "idle", reason: problem });
-      const until = Date.now() + (queue.length ? 3000 : problem ? Math.max(pause, 3000) : pause);
+      const until = Date.now() + (stuck !== null && problem ? Math.max(pause, 30_000) : queue.length ? 3000 : problem ? Math.max(pause, 3000) : pause);
       while (Date.now() < until && !queue.length) {
         await govern().catch(() => {});
         await rest(Math.min(60_000, Math.max(0, until - Date.now())));

@@ -74,6 +74,11 @@ function Forget() {
   );
 }
 
+const richest = (x: Coin, y: Coin) => (BigInt(y.treasury) > BigInt(x.treasury) ? 1 : -1);
+
+/** Coins the account launched, richest first. */
+export const madeBy = (coins: Coin[], account: string | null) => (account ? coins.filter((c) => c.creator === account).sort(richest) : []);
+
 /** The coins this browser's play wallet made or holds shares in. */
 export function MyCoins() {
   const w = useWallet();
@@ -99,9 +104,7 @@ export function MyCoins() {
 
   const account = w.accountId;
   const coins = live.coins ?? [];
-  const mine = coins
-    .filter((c) => c.creator === account || held?.has(c.id))
-    .sort((x, y) => Number(y.creator === account) - Number(x.creator === account) || (BigInt(y.treasury) > BigInt(x.treasury) ? 1 : -1));
+  const mine = [...madeBy(coins, account), ...coins.filter((c) => c.creator !== account && held?.has(c.id)).sort(richest)];
   const matches = live.parleys.map((p) => fromParley(p)).filter((m) => m.settled);
   const names = new Map(coins.map((c) => [c.id, c.name]));
   const name = (id: string) => names.get(id) ?? id.toUpperCase();

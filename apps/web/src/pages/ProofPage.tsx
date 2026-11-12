@@ -1,7 +1,9 @@
 import { attestedKeys, checkLeague, type Finding } from "@parley/league/src/browser.ts";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { FakeReply } from "../components/FakeReply.tsx";
 import { ProofGuide } from "../components/Guide.tsx";
+import { OnChain } from "../components/OnChain.tsx";
 import { AskIcon, ChipIcon, ShieldCheckIcon } from "../components/icons.tsx";
 import { accountLink, networkName, useArenaInfo } from "../lib/live.ts";
 import { useSeason } from "../lib/season.ts";
@@ -62,6 +64,9 @@ export function ProofPage() {
           </div>
         </motion.div>
       )}
+
+      <OnChain />
+      <FakeReply />
 
       <section style={{ marginTop: 56 }}>
         <div className="section-head">

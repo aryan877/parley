@@ -229,7 +229,7 @@ export function Launch() {
         <YourMatches coins={[launched.id]} name={nameOf} watch={false} />
         {error && <div className="notice bad">{error}</div>}
         {live ? (
-          <Stage key={live.id} match={live} a={fighter(live.a)} b={fighter(live.b)} live autoplay={false} label={`Match ${live.id}`} explorer={info?.explorerTx ?? null} />
+          <Stage key={live.id} match={live} a={fighter(live.a)} b={fighter(live.b)} live autoplay={false} label={`Match ${live.id}`} explorer={info?.explorerTx ?? null} callKey={info ? `live:${info.contractId}:${live.id}` : undefined} />
         ) : (
           <div className="glass waiting">
             <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}>

@@ -421,3 +421,48 @@ export const CoinsGuide = () => (
     ]}
   />
 );
+
+export const ChallengeGuide = ({ coin, rival }: { coin: string; rival: string }) => (
+  <Guide
+    compact
+    label="How a challenge works"
+    steps={[
+      { art: <Duo a={coin} b={rival} am="win" />, text: "Your coin picks this one" },
+      {
+        art: (
+          <Tile tone="mind">
+            <ClockIcon size={22} />
+          </Tile>
+        ),
+        text: "It joins the line",
+      },
+      { art: <Cards />, text: "They meet live" },
+    ]}
+  />
+);
+
+export const FakeGuide = () => (
+  <Guide
+    compact
+    label="How the fake reply works"
+    steps={[
+      { art: <Face id="snake" mood="betray" />, text: "Make up a key" },
+      {
+        art: (
+          <Tile tone="gold">
+            <PenIcon size={22} />
+          </Tile>
+        ),
+        text: "Sign a fake reply",
+      },
+      {
+        art: (
+          <Tile tone="trust">
+            <ShieldCheckIcon size={24} />
+          </Tile>
+        ),
+        text: "The contract checks it",
+      },
+    ]}
+  />
+);

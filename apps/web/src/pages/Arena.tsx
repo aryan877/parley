@@ -159,7 +159,7 @@ export function Arena() {
           </div>
         </div>
         {featured ? (
-          <Stage key={featured.id} match={featured} a={fighter(featured, "A")} b={fighter(featured, "B")} label={`Season 1 · match ${featured.id}`} onDone={() => setTimeout(() => setPick((p) => p + 1), 12_000)} />
+          <Stage key={featured.id} match={featured} a={fighter(featured, "A")} b={fighter(featured, "B")} label={`Season 1 · match ${featured.id}`} callKey={`season:${featured.id}`} onDone={() => setTimeout(() => setPick((p) => p + 1), 12_000)} />
         ) : (
           <div className="surface" style={{ height: 520 }} />
         )}

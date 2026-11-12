@@ -1,6 +1,8 @@
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from "motion/react";
+import type { Move } from "@parley/sdk/src/types.ts";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { callMove, scoreCalls, useCalls } from "../lib/calls.ts";
 import type { Line, Match, Side } from "../lib/model.ts";
 import { fmtNear, nearNumber, signedNear } from "../lib/model.ts";
 import { BRAIN_LABEL, brainOf, headline, moveWord, tagline } from "../lib/words.ts";
@@ -141,12 +143,55 @@ function FighterPanel({ fighter, side, match, beat, model, mascotRef }: { fighte
   );
 }
 
-function ChoiceCard({ side, match, beat, name }: { side: Side; match: Match; beat: Beat; name: string }) {
+interface CallProps {
+  name: string;
+  guess?: Move;
+  open: boolean;
+  /** True when the guess matched, false when it missed, null before the reveal. */
+  right: boolean | null;
+  onCall: (move: Move) => void;
+}
+
+function Call({ name, guess, open, right, onCall, big }: CallProps & { big?: boolean }) {
+  if (guess && right !== null) {
+    return (
+      <motion.div
+        className={`call-verdict ${right ? "right" : "wrong"} ${big ? "big" : ""}`}
+        initial={{ scale: 0.7, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 420, damping: 16, delay: 0.45 }}
+      >
+        {right ? "You called it" : "Not this time"}
+      </motion.div>
+    );
+  }
+  if (!open) {
+    if (!guess) return null;
+    return <div className={`call-said ${big ? "big" : ""}`}>You said {moveWord(guess)}</div>;
+  }
+  const option = (move: Move) => (
+    <button key={move} className={`call-opt ${move === "Cooperate" ? "t" : "b"} ${guess === move ? "on" : ""} ${guess && guess !== move ? "off" : ""}`} onClick={() => onCall(move)} aria-pressed={guess === move}>
+      {move === "Cooperate" ? <TrustIcon size={big ? 17 : 13} /> : <BetrayIcon size={big ? 17 : 13} />}
+      {moveWord(move)}
+    </button>
+  );
+  if (!big) return <div className="call-row">{(["Cooperate", "Defect"] as const).map(option)}</div>;
+  return (
+    <motion.div className="call-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <span className="call-q">
+        <b>{name}</b> will…
+      </span>
+      {(["Cooperate", "Defect"] as const).map(option)}
+    </motion.div>
+  );
+}
+
+function ChoiceCard({ side, match, beat, name, call }: { side: Side; match: Match; beat: Beat; name: string; call?: CallProps }) {
   const move = side === "A" ? match.aMove : match.bMove;
   const show = beat.phase === "locked" || beat.phase === "reveal" || beat.phase === "money" || beat.phase === "done";
   const faceUp = (beat.phase === "reveal" || beat.phase === "money" || beat.phase === "done") && move;
   const decidedLive = match.lines.some((l) => l.kind === "Decide" && l.side === side);
-  if (!show && !(beat.phase === "choosing" && decidedLive)) return <div className="choice-slot" />;
+  if (!show && !(beat.phase === "choosing" && decidedLive)) return <div className="choice-slot">{call && <Call {...call} big />}</div>;
   return (
     <div className="choice-slot">
       <motion.div
@@ -164,6 +209,7 @@ function ChoiceCard({ side, match, beat, name }: { side: Side; match: Match; bea
           <strong>{moveWord(move)}</strong>
         </div>
       </motion.div>
+      {call && <Call {...call} />}
     </div>
   );
 }
@@ -279,6 +325,16 @@ function Thinking({ fighter, side, hint, live }: { fighter: Fighter; side: Side;
   );
 }
 
+function CallScore({ open, guessed }: { open: boolean; guessed: boolean }) {
+  const { right, total, streak } = useCalls();
+  if (!total) return open && !guessed ? <p className="call-score">Call it: guess each move before the cards flip.</p> : null;
+  return (
+    <p className="call-score">
+      Your calls: <b>{right}</b> of {total} right{streak > 1 ? <> · streak <b>{streak}</b></> : null}
+    </p>
+  );
+}
+
 export interface StageProps {
   match: Match;
   a: Fighter;
@@ -289,10 +345,12 @@ export interface StageProps {
   onDone?: () => void;
   /** Explorer prefix for transaction hashes, when the arena runs on a public network. */
   explorer?: string | null;
+  /** Lets the viewer guess each move before the reveal; scores are kept per key in this browser. */
+  callKey?: string;
 }
 
 /** A match as a fight: two coins face off, talk, lock in their choices, flip them, and the money flies. */
-export function Stage({ match, a, b, live = false, autoplay = true, label, onDone, explorer = null }: StageProps) {
+export function Stage({ match, a, b, live = false, autoplay = true, label, onDone, explorer = null, callKey }: StageProps) {
   const beats = useMemo(() => script(match), [match]);
   const [step, setStep] = useState(autoplay ? 0 : beats.length - 1);
   const [playing, setPlaying] = useState(autoplay);
@@ -320,14 +378,41 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
     if (!live) return;
     if (match.settled && !wasSettled.current) {
       wasSettled.current = true;
-      const seq: [Phase, number][] = [["choosing", 0], ["locked", 900], ["reveal", 1900], ["money", 3400], ["done", 5300]];
+      setLiveReveal("choosing");
+      const seq: [Phase, number][] = [["locked", 900], ["reveal", 1900], ["money", 3400], ["done", 5300]];
       const timers = seq.map(([p, t]) => setTimeout(() => setLiveReveal(p), t));
       return () => timers.forEach(clearTimeout);
     }
     wasSettled.current = match.settled;
   }, [live, match.settled]);
 
-  const beat: Beat = live ? (liveReveal && match.settled ? { ...liveNow, phase: liveReveal, thinking: liveReveal === "choosing" ? "both" : null } : liveNow) : beats[Math.min(step, beats.length - 1)]!;
+  const livePhase = live && match.settled ? (liveReveal ?? (wasSettled.current ? null : "choosing")) : null;
+  const beat: Beat = live ? (livePhase ? { ...liveNow, phase: livePhase, thinking: livePhase === "choosing" ? "both" : null } : liveNow) : beats[Math.min(step, beats.length - 1)]!;
+
+  const calls = useCalls();
+  const guess = callKey ? calls.matches[callKey] : undefined;
+  const revealed = (beat.phase === "reveal" || beat.phase === "money" || beat.phase === "done") && !!match.aMove && !!match.bMove;
+  const callOpen =
+    !!callKey &&
+    !match.void &&
+    !guess?.scored &&
+    !revealed &&
+    (live ? (beat.phase === "intro" || beat.phase === "talk") && !match.lines.some((l) => l.kind === "Decide") : beat.phase !== "reveal" && beat.phase !== "money" && beat.phase !== "done");
+  useEffect(() => {
+    if (callKey && revealed && match.aMove && match.bMove) scoreCalls(callKey, match.aMove, match.bMove);
+  }, [callKey, revealed, match.aMove, match.bMove]);
+  const callFor = (side: Side): CallProps | undefined => {
+    if (!callKey) return undefined;
+    const g = guess?.[side];
+    const actual = side === "A" ? match.aMove : match.bMove;
+    return { name: side === "A" ? a.name : b.name, guess: g, open: callOpen, right: revealed && g ? g === actual : null, onCall: (move) => callMove(callKey, side, move) };
+  };
+
+  useEffect(() => {
+    if (beat.phase !== "reveal") return;
+    const box = stage.current?.getBoundingClientRect();
+    if (box && box.bottom > 0 && box.top < window.innerHeight && window.matchMedia("(pointer: coarse)").matches) navigator.vibrate?.(30);
+  }, [beat.phase]);
 
   useEffect(() => {
     if (live || !playing) return;
@@ -447,10 +532,11 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
               )}
             </AnimatePresence>
           </div>
-          <div className="choices">
-            <ChoiceCard side="A" match={match} beat={beat} name={a.name} />
-            <ChoiceCard side="B" match={match} beat={beat} name={b.name} />
+          <div className={`choices ${callKey && (callOpen || guess) ? "calling" : ""}`}>
+            <ChoiceCard side="A" match={match} beat={beat} name={a.name} call={callFor("A")} />
+            <ChoiceCard side="B" match={match} beat={beat} name={b.name} call={callFor("B")} />
           </div>
+          {callKey && (callOpen || guess) && <CallScore open={callOpen} guessed={!!(guess?.A || guess?.B)} />}
         </div>
 
         <FighterPanel fighter={b} side="B" match={match} beat={beat} model={match.bModel} mascotRef={artB} />
