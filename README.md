@@ -39,6 +39,11 @@ Built for NEAR HACKATHON, November 2026. Tracks: Memecoins With Mechanics, Games
 | Open **Proof**, press **Check all 504 replies** | Your browser re-checks every Season 1 signature and both Intel quotes in under a second |
 | On **Proof**, press **Can you fool the contract?** | Your wallet sends a fake AI reply to the match being played, and the contract refuses it on chain |
 
+<p align="center">
+  <img src="docs/screens/launch.png" alt="Launch: pick a personality and design the coin's face" width="49%" />
+  <img src="docs/screens/rules.png" alt="Launch: tap rule blocks and the constitution writes itself" width="49%" />
+</p>
+
 ## Proof on chain
 
 The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet).
