@@ -1,6 +1,6 @@
 import { Arena, type WalletCall } from "@parley/sdk/src/arena.ts";
 import { KeyPair } from "near-api-js";
-import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ARENA_API, type ArenaInfo, useArenaInfo } from "./live.ts";
 import { forget, query, reads } from "./near.ts";
 import type { WalletChoice } from "./nearWallet.ts";
@@ -34,8 +34,8 @@ interface Wallet {
   hasPlay: boolean;
   /** NEAR Connect works on this arena's network. */
   nearReady: boolean;
-  /** Creates a funded play account from the arena's faucet and keeps its key in this browser. */
-  connectPlay(): Promise<void>;
+  /** Creates a funded play account from the arena's faucet and keeps its key in this browser. `fresh` replaces the one it keeps. */
+  connectPlay(fresh?: boolean): Promise<void>;
   /** Wallets NEAR Connect offers on this network. Loads NEAR Connect on first use. */
   nearWallets(): Promise<WalletChoice[]>;
   connectNear(walletId: string): Promise<boolean>;
@@ -48,6 +48,7 @@ interface Wallet {
 }
 
 const STORE = "parley.wallet";
+const SETTLE_MS = 6000;
 const NEAR_STORE = "parley.near";
 const LAUNCHING = "parley.launching";
 
@@ -102,6 +103,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpenState] = useState(false);
   const [tick, setTick] = useState(0);
+  const quiet = useRef({ sending: 0, until: 0 });
+  const calm = () => quiet.current.sending === 0 && Date.now() >= quiet.current.until;
 
   const nearReady = info?.network === "testnet" || info?.network === "mainnet";
   const playHere = play && info && play.contractId === info.contractId && play.network === info.network ? play : null;
@@ -118,7 +121,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!accountId || !info) return;
     let live = true;
-    const load = () => viewBalance(info, accountId).then((b) => live && setBalance(b), () => {});
+    const load = () => {
+      if (calm()) viewBalance(info, accountId).then((b) => live && calm() && setBalance(b), () => {});
+    };
     load();
     const timer = setInterval(load, 6000);
     return () => {
@@ -163,10 +168,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     saveNear(null);
   }, [info, saveNear]);
 
-  const connectPlay = useCallback(async () => {
+  const connectPlay = useCallback(async (fresh = false) => {
     if (!info) return setError("The arena is offline.");
     setError(null);
-    if (playHere) {
+    if (playHere && !fresh) {
       if (nearHere) leaveNear();
       setOpenState(false);
       return;
@@ -216,6 +221,20 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<Wallet>(() => {
+    const settled = (arena: Arena) => {
+      const call = arena.call.bind(arena);
+      arena.call = async (...args: Parameters<Arena["call"]>) => {
+        quiet.current.sending++;
+        try {
+          return await call(...args);
+        } finally {
+          quiet.current.sending--;
+          quiet.current.until = Date.now() + SETTLE_MS;
+          setTimeout(() => setTick((t) => t + 1), SETTLE_MS + 100);
+        }
+      };
+      return arena;
+    };
     const send = (chain: ArenaInfo, signer: string) => (call: WalletCall) =>
       nearKit()
         .then((kit) => kit.send(chain, signer, call))
@@ -244,8 +263,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       },
       arena: () => {
         if (!info) return null;
-        if (nearHere) return new Arena({ rpcUrl: info.rpcUrl, contractId: info.contractId, wallet: { accountId: nearHere.accountId, send: send(info, nearHere.accountId) } });
-        if (playHere) return new Arena({ rpcUrl: info.rpcUrl, contractId: info.contractId, signer: { accountId: playHere.accountId, privateKey: playHere.privateKey } });
+        if (nearHere) return settled(new Arena({ rpcUrl: info.rpcUrl, contractId: info.contractId, wallet: { accountId: nearHere.accountId, send: send(info, nearHere.accountId) } }));
+        if (playHere) return settled(new Arena({ rpcUrl: info.rpcUrl, contractId: info.contractId, signer: { accountId: playHere.accountId, privateKey: playHere.privateKey } }));
         return null;
       },
       refresh: () => {

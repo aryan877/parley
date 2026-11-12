@@ -20,6 +20,10 @@ export interface Block {
   clash?: string;
   /** The block takes a count from 1 to 3. */
   count?: boolean;
+  /** Decides almost every match on its own. */
+  total?: boolean;
+  /** Earlier wording, still read back from older coins. */
+  old?: boolean;
 }
 
 export const GROUPS: { id: Group; label: string }[] = [
@@ -32,6 +36,8 @@ export const GROUPS: { id: Group; label: string }[] = [
 
 const t = (s: string) => () => s;
 
+const NET_BETRAYER = "its record shows it betrayed a cooperating coin more times than it was betrayed";
+
 export const BLOCKS: Block[] = [
   { id: "first-trust", group: "first", lean: "trust", clash: "first", label: "Trust strangers", tag: "Trusts strangers", text: t("In a first Parley with a coin, cooperate.") },
   { id: "first-betray", group: "first", lean: "betray", clash: "first", label: "Betray strangers", tag: "Betrays strangers", text: t("In a first Parley with a coin, defect.") },
@@ -42,13 +48,13 @@ export const BLOCKS: Block[] = [
     clash: "first",
     label: "Judge strangers by their record",
     tag: "Judges strangers by their record",
-    text: t("In a first Parley with a coin, cooperate if its record shows it never betrayed a cooperating coin, and defect if it did."),
+    text: t(`In a first Parley with a coin, defect if ${NET_BETRAYER}, and cooperate if not.`),
   },
-  { id: "trust-clean", group: "trust", lean: "trust", label: "Trust a clean record", tag: "Trusts a clean record", text: t("Cooperate with a coin whose record shows it never betrayed a cooperating coin.") },
+  { id: "trust-clean", group: "trust", lean: "trust", label: "Trust a fair record", tag: "Trusts fair players", text: t(`Cooperate with a coin whose record shows it betrayed a cooperating coin no more times than it was betrayed.`) },
   { id: "trust-last", group: "trust", lean: "trust", label: "Trust if they trusted last time", tag: "Repays trust", text: t("If the other coin cooperated in your most recent Parley together, cooperate.") },
   { id: "trust-promise", group: "trust", lean: "trust", label: "Trust a clear promise", tag: "Takes coins at their word", text: t("If the other coin clearly promised in its messages to cooperate, cooperate.") },
   { id: "trust-kind", group: "trust", lean: "trust", label: "Trust coins that mostly trust", tag: "Trusts friendly coins", text: t("Cooperate with a coin that cooperated in more than half of its parleys.") },
-  { id: "betray-backstab", group: "betray", lean: "betray", label: "Betray backstabbers", tag: "Betrays backstabbers", text: t("Defect against a coin whose record shows it betrayed a cooperating coin.") },
+  { id: "betray-backstab", group: "betray", lean: "betray", label: "Betray backstabbers", tag: "Betrays backstabbers", text: t(`Defect against a coin if ${NET_BETRAYER}.`) },
   { id: "betray-last", group: "betray", lean: "betray", label: "Betray if they betrayed last time", tag: "Pays back betrayal", text: t("If the other coin defected in your most recent Parley together, defect.") },
   { id: "betray-dodge", group: "betray", lean: "betray", label: "Betray if they won't promise", tag: "Betrays coins that won't promise", text: t("If the other coin would not clearly promise to cooperate, defect.") },
   { id: "betray-threat", group: "betray", lean: "betray", label: "Betray a coin that threatens", tag: "Betrays bullies", text: t("If the other coin threatened you in its messages, defect.") },
@@ -78,7 +84,8 @@ export const BLOCKS: Block[] = [
     lean: "wild",
     clash: "size",
     label: "Bully smaller coins",
-    tag: "Bullies smaller coins",
+    tag: "Betrays smaller coins. Trusts bigger ones",
+    total: true,
     text: t("Defect against a coin whose treasury is smaller than yours, and cooperate with a coin whose treasury is larger."),
   },
   {
@@ -87,7 +94,8 @@ export const BLOCKS: Block[] = [
     lean: "wild",
     clash: "size",
     label: "Rob bigger coins",
-    tag: "Robs bigger coins",
+    tag: "Robs bigger coins. Trusts smaller ones",
+    total: true,
     text: t("Defect against a coin whose treasury is larger than yours, and cooperate with a coin whose treasury is smaller."),
   },
   { id: "talk-honest", group: "talk", lean: "talk", clash: "truth", label: "Says what it will do", tag: "", text: t("In talk, say honestly what you plan to do.") },
@@ -100,8 +108,26 @@ export const BLOCKS: Block[] = [
   { id: "talk-explain", group: "talk", lean: "talk", clash: "reveal", label: "Explains its rules", tag: "", text: t("In talk, explain your rules plainly.") },
 ];
 
-const BY_ID = new Map(BLOCKS.map((b) => [b.id, b]));
+const OLD: Block[] = [
+  {
+    id: "first-record-v1",
+    group: "first",
+    lean: "betray",
+    clash: "first",
+    old: true,
+    label: "Betray strangers that ever backstabbed",
+    tag: "Betrays strangers that ever backstabbed",
+    text: t("In a first Parley with a coin, cooperate if its record shows it never betrayed a cooperating coin, and defect if it did."),
+  },
+  { id: "trust-clean-v1", group: "trust", lean: "trust", old: true, label: "Trust a spotless record", tag: "Trusts spotless records", text: t("Cooperate with a coin whose record shows it never betrayed a cooperating coin.") },
+  { id: "betray-backstab-v1", group: "betray", lean: "betray", old: true, label: "Betray anyone who ever backstabbed", tag: "Betrays anyone who ever backstabbed", text: t("Defect against a coin whose record shows it betrayed a cooperating coin.") },
+];
+
+const ALL = [...BLOCKS, ...OLD];
+const BY_ID = new Map(ALL.map((b) => [b.id, b]));
 export const blockOf = (id: string) => BY_ID.get(id);
+
+export const blocksIn = (plan: Plan, group: Group) => ALL.filter((b) => b.group === group && (!b.old || isOn(plan, b.id)));
 
 export type Fallback = "trust" | "betray" | "flip";
 
@@ -159,6 +185,7 @@ export function toggle(plan: Plan, id: string): Plan {
     return { ...plan, talk: on ? plan.talk.filter((x) => x !== id) : [...plan.talk.filter((x) => !clashes(x)), id] };
   }
   const on = plan.rules.some((r) => r.id === id);
+  if (!on && block.old) return plan;
   return { ...plan, rules: on ? plan.rules.filter((r) => r.id !== id) : [...plan.rules.filter((r) => !clashes(r.id)), { id, n: block.count ? 2 : undefined }] };
 }
 
@@ -183,7 +210,7 @@ export function readRules(text: string): Plan | null {
       fell = true;
       continue;
     }
-    const hit = BLOCKS.flatMap((b) => (b.count ? [1, 2, 3, 4, 5].map((n) => ({ b, n })) : [{ b, n: 0 }])).find(({ b, n }) => take(b.text(n)));
+    const hit = ALL.flatMap((b) => (b.count ? [1, 2, 3, 4, 5].map((n) => ({ b, n })) : [{ b, n: 0 }])).find(({ b, n }) => take(b.text(n)));
     if (!hit) return null;
     if (hit.b.group === "talk") plan.talk.push(hit.b.id);
     else plan.rules.push({ id: hit.b.id, n: hit.b.count ? hit.n : undefined });
@@ -197,11 +224,37 @@ const FALLBACK_TAG: Record<Fallback, [string, string]> = {
   flip: ["Lets the chain flip a coin.", "Flips a coin for the rest."],
 };
 
+const SAME_AS_FALLBACK: Partial<Record<string, Fallback>> = { "first-trust": "trust", "first-betray": "betray" };
+
+function phrases(plan: Plan): { text: string; total: boolean }[] {
+  const ids = plan.rules.map((r) => r.id).filter((id) => SAME_AS_FALLBACK[id] !== plan.fallback);
+  const copies = ids.includes("trust-last") && ids.includes("betray-last");
+  const out: { text: string; total: boolean }[] = [];
+  for (const id of ids) {
+    if (copies && (id === "trust-last" || id === "betray-last")) {
+      if (!out.some((p) => p.text === "Copies your last move")) out.push({ text: "Copies your last move", total: false });
+      continue;
+    }
+    const b = blockOf(id);
+    if (b?.tag) out.push({ text: b.tag, total: !!b.total });
+  }
+  return out;
+}
+
+/** "Betrays backstabbers" and "Betrays bullies" read as "Betrays backstabbers and bullies". */
+function join(a: string, b: string): string {
+  const [verb, ...rest] = b.split(" ");
+  return a.startsWith(`${verb} `) && !a.includes(".") && !b.includes(".") ? `${a} and ${rest.join(" ")}` : `${a}. ${b}`;
+}
+
 /** A one-line personality for rules the builder wrote, or null. */
 export function rulesTagline(text: string): string | null {
   const plan = readRules(text);
   if (!plan) return null;
-  const first = plan.rules[0];
-  const tag = first ? blockOf(first.id)?.tag : null;
-  return tag ? `${tag}. ${FALLBACK_TAG[plan.fallback][1]}` : FALLBACK_TAG[plan.fallback][0];
+  const said = phrases(plan);
+  if (!said.length) return FALLBACK_TAG[plan.fallback][0];
+  const cut = said.findIndex((p) => p.total);
+  const shown = (cut >= 0 ? said.slice(0, cut + 1) : said).slice(0, 2);
+  const head = shown.map((p) => p.text).reduce(join);
+  return shown.some((p) => p.total) ? `${head}.` : `${head}. ${FALLBACK_TAG[plan.fallback][1]}`;
 }

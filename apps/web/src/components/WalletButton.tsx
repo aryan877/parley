@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fmtNear } from "../lib/model.ts";
 import { type WalletChoice, shortAccount, useWallet } from "../lib/wallet.tsx";
-import { WalletGuide } from "./Guide.tsx";
 import { ArrowIcon, WalletIcon } from "./icons.tsx";
 import { Mascot } from "./Mascot.tsx";
 
@@ -43,7 +42,7 @@ function NearPicker({ onBack }: { onBack: () => void }) {
   return (
     <>
       <button className="wallet-back" onClick={onBack}>
-        <ArrowIcon size={16} className="flip" /> Back
+        <ArrowIcon size={16} className="icon-mirror" /> Back
       </button>
       <h3>Pick your wallet</h3>
       <p className="muted">NEAR testnet. Some open a new window to sign, so keep this tab open.</p>
@@ -117,7 +116,6 @@ export function WalletModal() {
               <>
                 <h3>{w.accountId ? "Switch wallet" : "Get a wallet"}</h3>
                 <p className="muted">{w.accountId ? "Pick which one signs for you." : "You need one to launch a coin, buy shares or vote."}</p>
-                {!w.accountId && <WalletGuide />}
                 {!w.info ? (
                   <div className="notice">The arena is offline right now. You can still watch Season 1.</div>
                 ) : (

@@ -3,6 +3,7 @@ import type { Move } from "@parley/sdk/src/types.ts";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { callMove, scoreCalls, useCalls } from "../lib/calls.ts";
+import { useWatching } from "../lib/watching.ts";
 import type { Line, Match, Side } from "../lib/model.ts";
 import { fmtNear, nearNumber, signedNear } from "../lib/model.ts";
 import { BRAIN_LABEL, brainOf, headline, moveWord, tagline } from "../lib/words.ts";
@@ -10,6 +11,7 @@ import { Mascot, type Mood, mascotColor } from "./Mascot.tsx";
 import { BetrayIcon, BoltIcon, BrainIcon, EyeIcon, PauseIcon, PlayIcon, RestartIcon, SkipIcon, TrustIcon } from "./icons.tsx";
 import { MoveWords } from "./MoveWords.tsx";
 import { Proof } from "./Proof.tsx";
+import { RulesPill } from "./RulesPill.tsx";
 
 export interface Fighter {
   id: string;
@@ -116,7 +118,10 @@ function FighterPanel({ fighter, side, match, beat, model, mascotRef }: { fighte
         </motion.div>
         <div className="fighter-floor" />
       </div>
-      <h3 className="fighter-name">{fighter.name}</h3>
+      <h3 className="fighter-name title-line">
+        {fighter.name}
+        <RulesPill version={side === "A" ? match.aVersion : match.bVersion} />
+      </h3>
       <p className="fighter-tag">{tagline(fighter.id, fighter.rules)}</p>
       <div className="fighter-meta">
         <span className="treasury-row">
@@ -328,8 +333,9 @@ function Thinking({ fighter, side, hint, live }: { fighter: Fighter; side: Side;
   );
 }
 
-function CallScore({ open, guessed }: { open: boolean; guessed: boolean }) {
+function CallScore({ open, guessed, counts }: { open: boolean; guessed: boolean; counts: boolean }) {
   const { right, total, streak } = useCalls();
+  if (!counts) return <p className="call-score">{open && !guessed ? "Call it: guess each move before the cards flip." : "Practice call. Only live matches count toward your streak."}</p>;
   if (!total) return open && !guessed ? <p className="call-score">Call it: guess each move before the cards flip.</p> : null;
   return (
     <p className="call-score">
@@ -350,11 +356,14 @@ export interface StageProps {
   explorer?: string | null;
   /** Lets the viewer guess each move before the reveal; scores are kept per key in this browser. */
   callKey?: string;
+  /** False for replays, whose guesses don't count toward the score. */
+  callCounts?: boolean;
 }
 
 /** A match as a fight: two coins face off, talk, lock in their choices, flip them, and the money flies. */
-export function Stage({ match, a, b, live = false, autoplay = true, label, onDone, explorer = null, callKey }: StageProps) {
+export function Stage({ match, a, b, live = false, autoplay = true, label, onDone, explorer = null, callKey, callCounts = true }: StageProps) {
   const beats = useMemo(() => script(match), [match]);
+  useWatching(live ? match.id : null);
   const [step, setStep] = useState(autoplay ? 0 : beats.length - 1);
   const [playing, setPlaying] = useState(autoplay);
   const [speed, setSpeed] = useState(1);
@@ -402,8 +411,8 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
     !revealed &&
     (live ? (beat.phase === "intro" || beat.phase === "talk") && !match.lines.some((l) => l.kind === "Decide") : beat.phase !== "reveal" && beat.phase !== "money" && beat.phase !== "done");
   useEffect(() => {
-    if (callKey && revealed && match.aMove && match.bMove) scoreCalls(callKey, match.aMove, match.bMove);
-  }, [callKey, revealed, match.aMove, match.bMove]);
+    if (callKey && revealed && match.aMove && match.bMove) scoreCalls(callKey, match.aMove, match.bMove, callCounts);
+  }, [callKey, revealed, match.aMove, match.bMove, callCounts]);
   const callFor = (side: Side): CallProps | undefined => {
     if (!callKey) return undefined;
     const g = guess?.[side];
@@ -537,7 +546,7 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
             <ChoiceCard side="A" match={match} beat={beat} name={a.name} call={callFor("A")} />
             <ChoiceCard side="B" match={match} beat={beat} name={b.name} call={callFor("B")} />
           </div>
-          {callKey && (callOpen || guess) && <CallScore open={callOpen} guessed={!!(guess?.A || guess?.B)} />}
+          {callKey && (callOpen || guess) && <CallScore open={callOpen} guessed={!!(guess?.A || guess?.B)} counts={callCounts} />}
         </div>
 
         <FighterPanel fighter={b} side="B" match={match} beat={beat} model={match.bModel} mascotRef={artB} />

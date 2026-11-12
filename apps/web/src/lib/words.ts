@@ -32,8 +32,15 @@ export function tagline(id: string, rules: string): string {
   if (known && (!rules || rules.startsWith(OPENINGS[id] ?? ""))) return known;
   const built = rulesTagline(rules);
   if (built) return built;
-  const first = rules.split(/(?<=[.!?])\s/)[0] ?? rules;
-  return first.length > 64 ? `${first.slice(0, 61).trimEnd()}…` : first;
+  return clip(rules.split(/(?<=[.!?])\s/)[0] ?? rules, 64);
+}
+
+/** Cuts text to at most `max` characters at a word boundary, with an ellipsis. */
+export function clip(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const room = text.slice(0, max - 1);
+  const space = room.lastIndexOf(" ");
+  return `${(space > max / 2 ? room.slice(0, space) : room).replace(/[\s,;:.!?\-]+$/, "")}…`;
 }
 
 export const moveWord = (m: Move | null) => (m === "Cooperate" ? "Trust" : m === "Defect" ? "Betray" : "?");

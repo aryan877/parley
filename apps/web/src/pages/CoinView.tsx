@@ -1,21 +1,23 @@
 import type { Amendment, Coin, Order, Parley } from "@parley/sdk/src/types.ts";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { YourMatches } from "../components/ArenaNow.tsx";
 import { Challenge } from "../components/Challenge.tsx";
 import { madeBy } from "../components/MyCoins.tsx";
 import { Sparkline } from "../components/CoinCard.tsx";
 import { Empty } from "../components/Empty.tsx";
-import { TradeGuide, VoteGuide } from "../components/Guide.tsx";
+import { TradeGuide } from "../components/Guide.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
 import { MoveWords } from "../components/MoveWords.tsx";
 import { RuleBuilder } from "../components/RuleBuilder.tsx";
+import { RulesPill } from "../components/RulesPill.tsx";
 import { ShareButton } from "../components/Share.tsx";
 import { Mascot, mascotColor } from "../components/Mascot.tsx";
 import { BoltIcon, BrainIcon, RestartIcon, TrustIcon, BetrayIcon, WalletIcon } from "../components/icons.tsx";
 import { type CoinInfo, type Match, fmtNear, fromCoin, fromParley, nearNumber, pctText, sharePrice, sinceLaunch, trustRate } from "../lib/model.ts";
 import { ARENA_API, useArenaInfo } from "../lib/live.ts";
+import { holdings, setHolding } from "../lib/holdings.ts";
 import { type VoteLock, forget, parleysBefore, reads, view } from "../lib/near.ts";
 import { useSeason } from "../lib/season.ts";
 import { CANCELLED, noteCoin, useWallet } from "../lib/wallet.tsx";
@@ -29,12 +31,26 @@ function toYocto(text: string): bigint | null {
   return BigInt(whole || "0") * YOCTO + BigInt((frac + "0".repeat(24)).slice(0, 24));
 }
 
-function until(ns: string): string {
-  const s = Math.round((Number(BigInt(ns) / 1_000_000n) - Date.now()) / 1000);
-  if (s <= 0) return "now";
-  if (s < 90) return `in ${s}s`;
-  if (s < 5400) return `in ${Math.round(s / 60)} min`;
-  return `in ${Math.round(s / 3600)} h`;
+const msOf = (ns: string) => Number(BigInt(ns) / 1_000_000n);
+
+function countdown(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return s < 3600 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${Math.round(s / 3600)} h`;
+}
+
+const minutes = (ns: string | undefined, fallback: number) => {
+  const m = ns ? Number(BigInt(ns) / 60_000_000_000n) : fallback;
+  return `${m} ${m === 1 ? "minute" : "minutes"}`;
+};
+
+function useNow(run: boolean) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!run) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [run]);
+  return now;
 }
 
 const why = (error?: string) => {
@@ -82,7 +98,10 @@ function Hero({ coin, matches, live }: { coin: CoinInfo; matches: Match[]; live:
             </span>
           )}
         </div>
-        <h1>{coin.name}</h1>
+        <div className="coin-title">
+          <h1>{coin.name}</h1>
+          <RulesPill version={coin.version} />
+        </div>
         <p className="lead">{tagline(coin.id, coin.rules)}</p>
         {brain === "practice" && <p className="practice-note">{PRACTICE_NOTE}</p>}
         <div className="coin-stats">
@@ -126,10 +145,14 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
 
   const load = useCallback(async () => {
     if (!info || !w.accountId) return;
-    const [s, o, v] = await Promise.allSettled([reads.shares(info, coin.id, w.accountId), reads.order(info, coin.id, w.accountId), reads.vote(info, coin.id, w.accountId)]);
+    const account = w.accountId;
+    const [s, o, v] = await Promise.allSettled([reads.shares(info, coin.id, account), reads.order(info, coin.id, account), reads.vote(info, coin.id, account)]);
     if (s.status === "fulfilled") setHeld(BigInt(s.value));
     if (o.status === "fulfilled") setOrder(o.value);
     if (v.status === "fulfilled") setLocked(BigInt(v.value?.locked ?? "0"));
+    if (s.status !== "fulfilled" || o.status !== "fulfilled" || v.status !== "fulfilled") return;
+    const shares = BigInt(s.value) + BigInt(v.value?.locked ?? "0");
+    if (shares > 0n || o.value || holdings(account).has(coin.id)) setHolding(account, coin.id, { shares: shares.toString(), order: o.value ? { kind: o.value.kind, amount: o.value.amount } : null });
   }, [info, w.accountId, coin.id]);
 
   useEffect(() => {
@@ -141,11 +164,15 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
   const price = Number((BigInt(coin.treasury) * 1_000_000n) / (BigInt(coin.total_shares) || 1n)) / 1_000_000;
   const value = toYocto(amount);
   const sending = w.kind === "near" ? "Approve it in your wallet…" : "Sending…";
-  const run = async (label: string, action: () => Promise<{ ok: boolean; error?: string }>, done: string) => {
+  const run = async (label: string, action: () => Promise<{ ok: boolean; error?: string }>, done: string, placed?: Order["kind"] | null, amount?: bigint) => {
     setBusy(true);
     setNote(null);
     const result = await action();
     if (result.ok) noteCoin(w.accountId, coin.id);
+    if (result.ok && placed !== undefined) {
+      const known = holdings(w.accountId ?? "").get(coin.id)?.shares;
+      setHolding(w.accountId, coin.id, { shares: known ?? ((held ?? 0n) + (locked ?? 0n)).toString(), order: placed && amount ? { kind: placed, amount: amount.toString() } : null });
+    }
     if (result.ok && w.accountId && (label === "Buying" || label === "Selling")) {
       fetch(`${ARENA_API}/api/watch-order`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ coin: coin.id, account: w.accountId }) }).catch(() => {});
     }
@@ -208,7 +235,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
             <b>{order.kind === "Mint" ? `Buying with ${fmtNear(order.amount)} NEAR` : `Selling ${fmtNear(order.amount)} shares`}</b>
             <span>{due ? "Filling now at the price after its last match…" : `Your order fills after ${coin.name}'s next match, so nobody can buy knowing how a match ends.`}</span>
           </div>
-          <button className="btn ghost" disabled={busy} onClick={() => run("Cancel", () => w.arena()!.cancelOrder(coin.id), "Order cancelled. Your funds are back.")}>
+          <button className="btn ghost" disabled={busy} onClick={() => run("Cancel", () => w.arena()!.cancelOrder(coin.id), "Order cancelled. Your funds are back.", null)}>
             Cancel
           </button>
         </div>
@@ -223,7 +250,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
             <br />
             Your order fills after its next match.
           </p>
-          <button className="btn trust big" disabled={busy || !value || order === undefined} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Buying", () => w.arena()!.placeMint(coin.id, value), "Order placed. It fills after the next match.")}>
+          <button className="btn trust big" disabled={busy || !value || order === undefined} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Buying", () => w.arena()!.placeMint(coin.id, value), "Order placed. It fills after the next match.", "Mint", value)}>
             {busy ? sending : `Buy ${coin.name}`}
           </button>
         </>
@@ -239,7 +266,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
           <p className="muted small" style={{ margin: 0 }}>
             Your sale fills after its next match.
           </p>
-          <button className="btn betray big" disabled={busy || !value || held === null || value > held || order === undefined} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Selling", () => w.arena()!.placeRedeem(coin.id, value), "Sell order placed. It fills after the next match.")}>
+          <button className="btn betray big" disabled={busy || !value || held === null || value > held || order === undefined} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Selling", () => w.arena()!.placeRedeem(coin.id, value), "Sell order placed. It fills after the next match.", "Redeem", value)}>
             {busy ? sending : `Sell for about ${value ? (nearNumber(value) * price).toFixed(2) : "0"} NEAR`}
           </button>
         </>
@@ -257,14 +284,30 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
 
 const share = (n: bigint) => fmtNear(n, 2);
 
-function Tally({ a, total, quorumBps }: { a: Amendment; total: bigint; quorumBps: number }) {
+type Phase = "voting" | "counting" | "passed" | "enacting" | "inforce" | "failed" | "lapsed";
+
+function Tally({ a, total, quorumBps, phase }: { a: Amendment; total: bigint; quorumBps: number; phase: Phase }) {
   const yes = BigInt(a.yes);
   const no = BigInt(a.no);
   const quorum = (total * BigInt(quorumBps)) / 10_000n;
   const width = (v: bigint) => (total > 0n ? Math.min(100, Number((v * 10_000n) / total) / 100) : 0);
   const line = quorumBps / 100;
   const short = quorum > yes ? quorum - yes : 0n;
-  const verdict = short > 0n ? `Needs ${share(short)} more yes to pass.` : yes > no ? "Enough yes to pass if the vote closed now." : "More no than yes, so it would fail now.";
+  const why = yes <= no ? "more no than yes" : `${share(yes)} yes, ${share(quorum)} needed`;
+  const verdict =
+    phase === "voting"
+      ? short > 0n
+        ? `Needs ${share(short)} more yes to pass.`
+        : yes > no
+          ? "Enough yes to pass if the vote closed now."
+          : "More no than yes, so it would fail now."
+      : phase === "counting"
+        ? short === 0n && yes > no
+          ? `It has the votes: ${share(yes)} yes, ${share(quorum)} needed.`
+          : `It does not pass: ${why}.`
+        : phase === "failed"
+          ? `It did not pass: ${why}.`
+          : `Passed with ${share(yes)} yes (${share(quorum)} needed).`;
   return (
     <div className="tally">
       <div className="tally-bar" role="img" aria-label={`Yes ${share(yes)}, no ${share(no)}, ${share(quorum)} yes needed`}>
@@ -287,11 +330,15 @@ function Tally({ a, total, quorumBps }: { a: Amendment; total: bigint; quorumBps
   );
 }
 
+const LATE_MS = 120_000;
+
 function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
   const w = useWallet();
   const [amendments, setAmendments] = useState<Amendment[]>([]);
+  const [closed, setClosed] = useState<Amendment[]>([]);
+  const seen = useRef<Amendment[]>([]);
   const [free, setFree] = useState<bigint | null>(null);
-  const [lock, setLock] = useState<VoteLock | null | undefined>(undefined);
+  const [myVotes, setMyVotes] = useState<VoteLock | null | undefined>(undefined);
   const [draft, setDraft] = useState("");
   const [writing, setWriting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -307,9 +354,15 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
       account ? reads.shares(info, coin.id, account) : Promise.resolve(null),
       account ? reads.vote(info, coin.id, account) : Promise.resolve(null),
     ]);
-    if (list.status === "fulfilled") setAmendments(list.value);
+    if (list.status === "fulfilled") {
+      const open = new Set(list.value.map((a) => a.id));
+      const left = seen.current.filter((a) => !open.has(a.id));
+      if (left.length) setClosed((c) => [...c.filter((x) => !left.some((l) => l.id === x.id)), ...left]);
+      seen.current = list.value;
+      setAmendments(list.value);
+    }
     if (account && s.status === "fulfilled" && s.value !== null) setFree(BigInt(s.value));
-    if (account && v.status === "fulfilled") setLock(v.value);
+    if (account && v.status === "fulfilled") setMyVotes(v.value);
   }, [info, coin.id, account]);
 
   useEffect(() => {
@@ -335,7 +388,9 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     await refresh();
   };
 
-  const owned = free !== null && lock !== undefined ? free + BigInt(lock?.locked ?? "0") : null;
+  const owned = free !== null && myVotes !== undefined ? free + BigInt(myVotes?.locked ?? "0") : null;
+  const timelock = info ? msOf(info.config.timelock_ns) : 240_000;
+  const now = useNow(amendments.length > 0 || closed.length > 0);
   const total = BigInt(coin.total_shares);
   const stake = (() => {
     const s = (total * BigInt(info?.config.proposer_bps ?? 100)) / 10_000n;
@@ -398,11 +453,9 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
               </button>
             )}
           </div>
-          <VoteGuide coin={coin.id} practice={brainOf(coin.model) === "practice"} />
           <p className="muted small vote-rules">
-            Holders vote with their shares. A change needs more yes than no, and yes votes from at least {quorumBps / 100}% of all shares.
-            <br />
-            Then a short wait, so anyone who disagrees can sell first.
+            Holders vote with their shares for {minutes(info?.config.vote_period_ns, 2)}. A change needs more yes than no, and yes from at least {quorumBps / 100}% of all shares. It takes
+            effect {minutes(info?.config.timelock_ns, 4)} after it passes.
           </p>
           {writing && (
             <div className="propose">
@@ -423,20 +476,54 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
             </div>
           )}
           {step && <div className="notice">{step}</div>}
-          {amendments.map((a) => {
-            const ended = BigInt(a.ends_at) / 1_000_000n <= BigInt(Date.now());
-            const ready = a.status === "Passed" && BigInt(a.enact_after) / 1_000_000n <= BigInt(Date.now());
-            const ballot = lock?.ballots.find((b) => b.amendment_id === a.id);
+          {[...amendments, ...closed].map((a) => {
+            const gone = !amendments.includes(a);
+            const ends = msOf(a.ends_at);
+            const enact = msOf(a.enact_after);
+            const phase: Phase = gone
+              ? a.status === "Voting"
+                ? "failed"
+                : coin.constitution_version > a.base_version
+                  ? coin.constitution === a.constitution
+                    ? "inforce"
+                    : "lapsed"
+                  : now > enact + timelock
+                    ? "lapsed"
+                    : "enacting"
+              : a.status === "Voting"
+                ? now < ends
+                  ? "voting"
+                  : "counting"
+                : now < enact
+                  ? "passed"
+                  : "enacting";
+            const ballot = gone ? undefined : myVotes?.ballots.find((b) => b.amendment_id === a.id);
             const room = owned === null ? null : owned - BigInt(ballot?.shares ?? "0");
-            const open = a.status === "Voting" && !ended;
+            const open = phase === "voting";
+            const top: Record<Phase, [string, string]> = {
+              voting: ["Voting", `Closes in ${countdown(ends - now)}`],
+              counting: ["Vote closed", "Counting now"],
+              passed: ["Passed", `Takes effect in ${countdown(enact - now)}`],
+              enacting: ["Taking effect", "Being put in force"],
+              inforce: ["In force", `Rules version ${coin.constitution_version}`],
+              failed: ["Did not pass", ""],
+              lapsed: ["Lapsed", "Other rules took effect first"],
+            };
+            const say: Partial<Record<Phase, string>> = {
+              counting: "The arena counts the votes within about a minute.",
+              passed: "The wait lets anyone who disagrees sell first.",
+              enacting: "The arena puts it in force within about a minute, between matches.",
+              inforce: "Its AI follows these rules from its next match.",
+            };
             return (
-              <div key={a.id} className="amendment">
+              <div key={a.id} className={`amendment ${phase}`}>
                 <div className="amendment-top">
-                  <span className={`pill ${a.status === "Passed" ? "" : "dim"}`}>{a.status === "Passed" ? "Passed" : ended ? "Vote closed" : "Voting"}</span>
-                  <span className="faint small">{a.status === "Voting" ? (ended ? "waiting to be counted" : `closes ${until(a.ends_at)}`) : `takes effect ${until(a.enact_after)}`}</span>
+                  <span className={`pill ${phase === "passed" || phase === "enacting" || phase === "inforce" ? "" : "dim"}`}>{top[phase][0]}</span>
+                  {top[phase][1] && <span className="faint small">{top[phase][1]}</span>}
                 </div>
                 <p className="amendment-text">“{a.constitution}”</p>
-                <Tally a={a} total={total} quorumBps={quorumBps} />
+                {phase !== "inforce" && phase !== "lapsed" && <Tally a={a} total={total} quorumBps={quorumBps} phase={phase} />}
+                {say[phase] && <p className="amendment-note">{say[phase]}</p>}
                 {ballot && (
                   <p className={`my-ballot ${ballot.support ? "up" : "down"}`}>
                     You voted {ballot.support ? "yes" : "no"} with {share(BigInt(ballot.shares))} shares.
@@ -469,14 +556,14 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
                       Add your other {share(room)} shares
                     </button>
                   )}
-                  {a.status === "Voting" && ended && (
-                    <button className="btn" disabled={busy} onClick={() => run("Counting", () => w.arena()!.finalizeAmendment(a.id), "Votes counted.")}>
-                      Count the votes
+                  {phase === "counting" && now > ends + LATE_MS && (
+                    <button className="btn ghost small-btn" disabled={busy} onClick={() => run("Counting", () => w.arena()!.finalizeAmendment(a.id), "Votes counted.")}>
+                      Count it now
                     </button>
                   )}
-                  {ready && (
-                    <button className="btn" disabled={busy} onClick={() => run("Enacting", () => w.arena()!.enactAmendment(a.id), "The new rules are in force from its next match.")}>
-                      Put the new rules in force
+                  {phase === "enacting" && !gone && now > enact + LATE_MS && (
+                    <button className="btn ghost small-btn" disabled={busy} onClick={() => run("Enacting", () => w.arena()!.enactAmendment(a.id), "The new rules are in force from its next match.")}>
+                      Put it in force now
                     </button>
                   )}
                 </div>

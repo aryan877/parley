@@ -30,7 +30,7 @@ const NOTES: Record<string, string> = {
 const ORDER = ["meteor-wallet", "intear-wallet", "nightly-wallet", "ethereum-wallets", "ledger", "near-cli"];
 const rank = (id: string) => (ORDER.includes(id) ? ORDER.indexOf(id) : ORDER.length);
 
-const BACKUP_RPC: Record<string, string> = { testnet: "https://rpc.testnet.near.org", mainnet: "https://rpc.mainnet.near.org" };
+const BACKUP_RPC: Record<string, string> = { testnet: "https://near-testnet.drpc.org" };
 
 const fail = (name: string, message: string) => Object.assign(new Error(message), { name });
 const cancelled = () => fail("Cancelled", "cancelled in the wallet");

@@ -5,7 +5,7 @@ import { CoinCard } from "../components/CoinCard.tsx";
 import { ArrowIcon, BetrayIcon, ShieldCheckIcon, TrustIcon } from "../components/icons.tsx";
 import { Mascot, type Mood } from "../components/Mascot.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
-import { networkName, useArenaInfo, useSchedule } from "../lib/live.ts";
+import { networkName, useArenaInfo, useLiveArena, useSchedule } from "../lib/live.ts";
 import { type Match } from "../lib/model.ts";
 import { useSeason } from "../lib/season.ts";
 
@@ -85,6 +85,8 @@ export function Arena() {
   const { info } = useArenaInfo();
   const { schedule } = useSchedule();
   const playing = info ? schedule?.current : null;
+  const { parleys } = useLiveArena(10_000);
+  const lastLive = info ? parleys.find((p) => p.status === "Settled") : undefined;
   const [pick, setPick] = useState(0);
 
   const featured = useMemo(() => {
@@ -126,6 +128,10 @@ export function Arena() {
           {playing ? (
             <Link to={`/match/${playing.id}`} className="btn big ghost">
               <span className="live-tag">Live</span> Watch a match
+            </Link>
+          ) : lastLive ? (
+            <Link to={`/match/${lastLive.id}`} className="btn big ghost">
+              Watch a match
             </Link>
           ) : (
             <button className="btn big ghost" onClick={() => document.getElementById("watch")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
@@ -171,7 +177,7 @@ export function Arena() {
           </div>
         </div>
         {featured ? (
-          <Stage key={featured.id} match={featured} a={fighter(featured, "A")} b={fighter(featured, "B")} label={`Season 1 · match ${featured.id}`} callKey={`season:${featured.id}`} onDone={() => setTimeout(() => setPick((p) => p + 1), 12_000)} />
+          <Stage key={featured.id} match={featured} a={fighter(featured, "A")} b={fighter(featured, "B")} label={`Season 1 · match ${featured.id}`} callKey={`season:${featured.id}`} callCounts={false} onDone={() => setTimeout(() => setPick((p) => p + 1), 12_000)} />
         ) : (
           <div className="surface" style={{ height: 520 }} />
         )}

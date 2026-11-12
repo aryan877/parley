@@ -30,6 +30,9 @@ export interface Match {
   aDelta: string;
   bDelta: string;
   potDelta: string;
+  /** Each coin's rules version when the match was played. */
+  aVersion: number;
+  bVersion: number;
 }
 
 export interface CoinInfo {
@@ -70,6 +73,8 @@ export function fromParley(parley: Parley, replies: ({ model: string; request: s
     aDelta: parley.a_delta,
     bDelta: parley.b_delta,
     potDelta: parley.commons_delta,
+    aVersion: parley.a_constitution_version ?? 1,
+    bVersion: parley.b_constitution_version ?? 1,
   };
 }
 

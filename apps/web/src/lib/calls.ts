@@ -54,10 +54,11 @@ export function callMove(key: string, side: Side, move: Move) {
   write({ ...state, matches: { ...state.matches, [key]: { ...guess, [side]: move } } });
 }
 
-/** Scores the guesses for a revealed match once: each guessed coin is one call. */
-export function scoreCalls(key: string, a: Move, b: Move) {
+/** Scores the guesses for a revealed match once: each guessed coin is one call. A replay's guesses don't count. */
+export function scoreCalls(key: string, a: Move, b: Move, counts = true) {
   const guess = state.matches[key];
   if (!guess || guess.scored || (!guess.A && !guess.B)) return;
+  if (!counts) return write({ ...state, matches: { ...state.matches, [key]: { ...guess, scored: true } } });
   let { right, total, streak, best } = state;
   for (const [side, actual] of [["A", a], ["B", b]] as const) {
     const g = guess[side];

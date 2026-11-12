@@ -12,7 +12,7 @@ export interface VoteLock {
   ballots: { amendment_id: number; shares: string; support: boolean }[];
 }
 
-const BACKUP: Record<string, string[]> = { testnet: ["https://rpc.testnet.near.org"] };
+const BACKUP: Record<string, string[]> = { testnet: ["https://near-testnet.drpc.org"] };
 
 class Refused extends Error {}
 
@@ -21,7 +21,7 @@ async function post(url: string, params: Record<string, unknown>): Promise<Recor
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: "parley", method: "query", params }),
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(6000),
   });
   if (!res.ok) throw new Error(`NEAR answered ${res.status}`);
   const body = (await res.json()) as { result?: Record<string, unknown> & { error?: string }; error?: unknown };
@@ -57,13 +57,16 @@ export function useNearTrouble(): boolean {
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+let backupFirstUntil = 0;
+
 /** One RPC query with backoff. Busy public RPCs answer 429, which browsers often report as a failed fetch. */
 export async function query<T>(chain: Chain, params: Record<string, unknown>): Promise<T> {
-  const urls = [chain.rpcUrl, ...(BACKUP[chain.network] ?? []).filter((u) => u !== chain.rpcUrl)];
+  const backups = (BACKUP[chain.network] ?? []).filter((u) => u !== chain.rpcUrl);
+  const urls = Date.now() < backupFirstUntil ? [...backups, chain.rpcUrl] : [chain.rpcUrl, ...backups];
   let last: unknown;
   for (let attempt = 0; attempt < 4; attempt++) {
-    if (attempt) await wait(500 * 2 ** attempt + Math.random() * 400);
-    const url = (attempt >= 2 && urls[1]) || urls[0]!;
+    if (attempt) await wait(urls.length > 1 && attempt === 1 ? 150 : 400 * 2 ** attempt + Math.random() * 300);
+    const url = urls[attempt % urls.length]!;
     try {
       const result = await post(url, params);
       setTrouble(false);
@@ -73,6 +76,7 @@ export async function query<T>(chain: Chain, params: Record<string, unknown>): P
         setTrouble(false);
         throw error;
       }
+      if (url === chain.rpcUrl && backups.length) backupFirstUntil = Date.now() + 30_000;
       last = error;
     }
   }

@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArenaNow } from "../components/ArenaNow.tsx";
 import { Empty } from "../components/Empty.tsx";
-import { MatchGuide } from "../components/Guide.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
 import { fromParley } from "../lib/model.ts";
 import { useLiveArena } from "../lib/live.ts";
@@ -40,7 +39,6 @@ export function Matches() {
         <h1>Matches</h1>
         <p className="muted">Tap any match to watch it and read what each coin was thinking.</p>
       </div>
-      <MatchGuide />
       <div className="tabs page-tabs">
         {live.info && (
           <button className={tab === "live" ? "on" : ""} onClick={() => setTab("live")}>

@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { CoinCard } from "../components/CoinCard.tsx";
-import { CoinsGuide } from "../components/Guide.tsx";
+import { shareWhy } from "../components/Guide.tsx";
 import { MyCoins } from "../components/MyCoins.tsx";
 import { fromCoin, fromParley } from "../lib/model.ts";
 import { useLiveArena } from "../lib/live.ts";
@@ -41,8 +41,8 @@ export function Coins() {
       <div className="page-head compact">
         <h1>{showMine ? "My coins" : "Coins"}</h1>
         <p className="muted">{showMine ? "Coins you launched or hold shares in, from your wallet." : "Each coin is an AI with its own rules. Back the ones you think will win."}</p>
+        {!showMine && <p className="faint small page-hint">{shareWhy()}</p>}
       </div>
-      {!showMine && <CoinsGuide />}
       <div className="tabs page-tabs">
         {live.info && (
           <button className={showLive ? "on" : ""} onClick={() => setTab("live")}>

@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { txLink, useSchedule } from "../lib/live.ts";
 import { CANCELLED, useWallet } from "../lib/wallet.tsx";
-import { FakeGuide } from "./Guide.tsx";
 import { BetrayIcon, ShieldCheckIcon, WalletIcon } from "./icons.tsx";
 import { Mascot } from "./Mascot.tsx";
 
@@ -138,7 +137,6 @@ export function FakeReply() {
             </p>
           </div>
         </div>
-        <FakeGuide />
         <div className="fake-act">
           <motion.button
             className="btn big betray"

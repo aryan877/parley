@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { type CoinInfo, fmtNear, nearNumber, pctText, sharePrice, sinceLaunch, trustRate } from "../lib/model.ts";
 import { tagline } from "../lib/words.ts";
 import { Mascot, mascotColor } from "./Mascot.tsx";
+import { RulesPill } from "./RulesPill.tsx";
 
 export function Sparkline({ values, width = 120, height = 34, color, fluid = false }: { values: number[]; width?: number; height?: number; color: string; fluid?: boolean }) {
   if (values.length < 2) return <svg width={width} height={height} />;
@@ -34,7 +35,10 @@ export function CoinCard({ coin, rank, history, start, curve, to, price }: { coi
       <div className="top">
         <Mascot id={coin.id} size={64} mood={pct > 0 ? "win" : pct < 0 ? "lose" : "idle"} />
         <div>
-          <h3>{coin.name}</h3>
+          <h3 className="title-line">
+            {coin.name}
+            <RulesPill version={coin.version} />
+          </h3>
           <div className="tag">{tagline(coin.id, coin.rules)}</div>
         </div>
       </div>

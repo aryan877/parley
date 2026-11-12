@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { Fragment, type ReactNode } from "react";
-import { ArrowIcon, AskIcon, BetrayIcon, BlocksIcon, BrainIcon, ChartIcon, ChatIcon, ChipIcon, ClockIcon, CoinIcon, PenIcon, ShieldCheckIcon, ShuffleIcon, TrustIcon, VoteIcon, WalletIcon } from "./icons.tsx";
+import { ArrowIcon, AskIcon, BlocksIcon, ChartIcon, ChipIcon, ClockIcon, CoinIcon, ShieldCheckIcon, ShuffleIcon, WalletIcon } from "./icons.tsx";
 import { Mascot, type Mood } from "./Mascot.tsx";
 
 type Tone = "gold" | "mind" | "trust" | "betray" | "sky";
@@ -23,41 +23,11 @@ function Face({ id, mood, badge }: { id: string; mood?: Mood; badge?: ReactNode 
   );
 }
 
-function Duo({ a, b, am, bm, badge }: { a: string; b: string; am?: Mood; bm?: Mood; badge?: ReactNode }) {
-  return (
-    <span className="g-duo">
-      <Mascot id={a} size={34} mood={am} />
-      <Mascot id={b} size={34} mood={bm} />
-      {badge}
-    </span>
-  );
-}
-
 const Trio = () => (
   <span className="g-trio">
     <Mascot id="saint" size={28} />
     <Mascot id="snake" size={34} mood="trust" />
     <Mascot id="mirror" size={28} />
-  </span>
-);
-
-const Cards = ({ open }: { open?: boolean }) => (
-  <span className="g-cards">
-    {open ? (
-      <>
-        <span className="g-card t">
-          <TrustIcon size={18} />
-        </span>
-        <span className="g-card b">
-          <BetrayIcon size={18} />
-        </span>
-      </>
-    ) : (
-      <>
-        <span className="g-card">?</span>
-        <span className="g-card">?</span>
-      </>
-    )}
   </span>
 );
 
@@ -136,79 +106,6 @@ export const LaunchGuide = ({ coin }: { coin: string }) => (
   />
 );
 
-export const RulesGuide = ({ coin }: { coin: string }) => (
-  <Guide
-    compact
-    label="How the rules work"
-    steps={[
-      {
-        art: (
-          <Tile tone="gold">
-            <BlocksIcon size={22} />
-          </Tile>
-        ),
-        text: "Tap blocks",
-      },
-      {
-        art: (
-          <Tile tone="sky">
-            <PenIcon size={22} />
-          </Tile>
-        ),
-        text: "They write its rules",
-      },
-      {
-        art: (
-          <Face
-            id={coin}
-            mood="thinking"
-            badge={
-              <Badge tone="mind">
-                <BrainIcon size={14} />
-              </Badge>
-            }
-          />
-        ),
-        text: "Its AI follows them",
-      },
-    ]}
-  />
-);
-
-export const MineGuide = ({ coin, own = false }: { coin: string; own?: boolean }) => (
-  <Guide
-    compact
-    label="Your coins"
-    steps={[
-      {
-        art: (
-          <Tile tone="mind">
-            <WalletIcon size={22} />
-          </Tile>
-        ),
-        text: own ? "Your own NEAR wallet" : "Kept in this browser",
-      },
-      { art: <Face id={coin} mood="win" />, text: "Coins you made or hold" },
-      {
-        art: (
-          <Duo
-            a={coin}
-            b="snake"
-            am="thinking"
-            bm="thinking"
-            badge={
-              <Badge tone="gold">
-                <ClockIcon size={14} />
-              </Badge>
-            }
-          />
-        ),
-        text: "Their next matches",
-      },
-    ]}
-  />
-);
-
 export const TradeGuide = ({ coin, name }: { coin: string; name: string }) => (
   <Guide
     compact
@@ -256,91 +153,6 @@ export const TradeGuide = ({ coin, name }: { coin: string; name: string }) => (
   />
 );
 
-export const VoteGuide = ({ coin, practice }: { coin: string; practice: boolean }) => (
-  <Guide
-    compact
-    steps={[
-      {
-        art: (
-          <Tile tone="gold">
-            <PenIcon size={22} />
-          </Tile>
-        ),
-        text: "Propose new rules",
-      },
-      {
-        art: (
-          <Tile tone="trust">
-            <VoteIcon size={22} />
-          </Tile>
-        ),
-        text: "Holders vote",
-      },
-      {
-        art: (
-          <Tile tone="mind">
-            <ClockIcon size={22} />
-          </Tile>
-        ),
-        text: "A short wait",
-      },
-      {
-        art: (
-          <Face
-            id={coin}
-            mood="thinking"
-            badge={
-              <Badge tone="mind">
-                <BrainIcon size={14} />
-              </Badge>
-            }
-          />
-        ),
-        text: practice ? "New rules are saved" : "Its AI follows them",
-      },
-    ]}
-  />
-);
-
-export const MatchGuide = () => (
-  <Guide
-    steps={[
-      {
-        art: (
-          <Duo
-            a="saint"
-            b="snake"
-            badge={
-              <Badge tone="mind">
-                <ChatIcon size={14} />
-              </Badge>
-            }
-          />
-        ),
-        text: "Two coins chat",
-      },
-      { art: <Cards />, text: "Each picks in secret" },
-      { art: <Cards open />, text: "Both cards flip" },
-      {
-        art: (
-          <Duo
-            a="snake"
-            b="saint"
-            am="win"
-            bm="lose"
-            badge={
-              <Badge tone="gold">
-                <CoinIcon size={14} />
-              </Badge>
-            }
-          />
-        ),
-        text: "The money moves",
-      },
-    ]}
-  />
-);
-
 export const ProofGuide = () => (
   <Guide
     steps={[
@@ -372,105 +184,3 @@ export const ProofGuide = () => (
   />
 );
 
-export const WalletGuide = () => (
-  <Guide
-    compact
-    steps={[
-      {
-        art: (
-          <Tile tone="mind">
-            <WalletIcon size={22} />
-          </Tile>
-        ),
-        text: "Free play wallet",
-      },
-      { art: <Face id="saint" mood="win" />, text: "No sign-up" },
-      {
-        art: (
-          <Tile tone="gold">
-            <CoinIcon size={22} />
-          </Tile>
-        ),
-        text: "Test NEAR only",
-      },
-    ]}
-  />
-);
-
-export const CoinsGuide = () => (
-  <Guide
-    note={shareWhy()}
-    steps={[
-      { art: <Trio />, text: "Pick a coin you like" },
-      {
-        art: (
-          <Tile tone="gold">
-            <CoinIcon size={24} />
-          </Tile>
-        ),
-        text: "Buy its shares",
-      },
-      {
-        art: (
-          <Duo
-            a="diplomat"
-            b="skeptic"
-            am="win"
-            bm="lose"
-            badge={
-              <Badge tone="trust">
-                <ChartIcon size={14} />
-              </Badge>
-            }
-          />
-        ),
-        text: "Its price moves every match",
-      },
-    ]}
-  />
-);
-
-export const ChallengeGuide = ({ coin, rival }: { coin: string; rival: string }) => (
-  <Guide
-    compact
-    label="How a challenge works"
-    steps={[
-      { art: <Duo a={coin} b={rival} am="win" />, text: "Your coin picks this one" },
-      {
-        art: (
-          <Tile tone="mind">
-            <ClockIcon size={22} />
-          </Tile>
-        ),
-        text: "It joins the line",
-      },
-      { art: <Cards />, text: "They meet live" },
-    ]}
-  />
-);
-
-export const FakeGuide = () => (
-  <Guide
-    compact
-    label="How the fake reply works"
-    steps={[
-      { art: <Face id="snake" mood="betray" />, text: "Make up a key" },
-      {
-        art: (
-          <Tile tone="gold">
-            <PenIcon size={22} />
-          </Tile>
-        ),
-        text: "Sign a fake reply",
-      },
-      {
-        art: (
-          <Tile tone="trust">
-            <ShieldCheckIcon size={24} />
-          </Tile>
-        ),
-        text: "The contract checks it",
-      },
-    ]}
-  />
-);

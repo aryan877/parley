@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { sendChallenge } from "../lib/arena.ts";
 import { YourMatches } from "./ArenaNow.tsx";
-import { ChallengeGuide } from "./Guide.tsx";
 import { Mascot } from "./Mascot.tsx";
 import { RestartIcon } from "./icons.tsx";
 
@@ -56,7 +55,7 @@ export function Challenge({ mine, rival, name }: { mine: Coin[]; rival: string; 
         <h3>
           Think {coin.name} can take on {name(rival)}?
         </h3>
-        <ChallengeGuide coin={coin.id} rival={rival} />
+        <p className="muted small challenge-hint">It joins the line, and the two meet live. You can watch it here.</p>
       </div>
       <div className="challenge-act">
         {mine.length > 1 && (

@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { YourMatches } from "../components/ArenaNow.tsx";
-import { LaunchGuide, RulesGuide } from "../components/Guide.tsx";
+import { LaunchGuide } from "../components/Guide.tsx";
 import { LookEditor } from "../components/LookEditor.tsx";
 import { Mascot, type Mood, mascotColor } from "../components/Mascot.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
@@ -17,6 +17,7 @@ import { type Match, fmtNear, fromParley, nearNumber, plainNear } from "../lib/m
 import { forget, reads } from "../lib/near.ts";
 import { type Plan, writeRules } from "../lib/rules.ts";
 import { CANCELLED, launching, noteCoin, useWallet } from "../lib/wallet.tsx";
+import { useWatching } from "../lib/watching.ts";
 import { BRAIN_LABEL, PRACTICE_NOTE, SIGNED_NOTE, brainOf, tagline } from "../lib/words.ts";
 
 const STARTERS: { name: string; plan: Plan; look: Look }[] = [
@@ -27,7 +28,7 @@ const STARTERS: { name: string; plan: Plan; look: Look }[] = [
   },
   {
     name: "LAWYER",
-    plan: { rules: [{ id: "betray-dodge" }, { id: "betray-backstab" }], talk: ["talk-ask"], fallback: "trust" },
+    plan: { rules: [{ id: "betray-backstab" }, { id: "betray-dodge" }], talk: ["talk-ask"], fallback: "trust" },
     look: look("silver", "none", "dot", "smile", "flat", "specs"),
   },
   {
@@ -53,6 +54,53 @@ const BRAIN_NOTE = {
 } as const;
 
 const plainName = (name: string) => /^[\x20-\x7E]{1,24}$/.test(name.trim());
+
+const FAUCET = "https://near-faucet.io/";
+
+function LowFunds({ balance, need, least, room, onFit }: { balance: string; need: bigint; least: bigint; room: number | null; onFit: () => void }) {
+  const w = useWallet();
+  const [sure, setSure] = useState(false);
+  return (
+    <div className="low-funds">
+      <p>
+        Your wallet has {fmtNear(balance)} NEAR. {room !== null ? `This launch needs about ${fmtNear(need)} NEAR with gas.` : `The smallest launch needs about ${fmtNear(least)} NEAR with gas.`}
+      </p>
+      {room !== null ? (
+        <button className="btn ghost small-btn" onClick={onFit}>
+          Start it with {String(Math.round(room * 10) / 10)} NEAR instead
+        </button>
+      ) : w.kind === "play" ? (
+        sure ? (
+          <>
+            <p className="faint small">This browser forgets your current play wallet. Its coins stay on chain.</p>
+            <div className="low-funds-row">
+              <button className="btn small-btn" disabled={w.busy} onClick={() => w.connectPlay(true)}>
+                {w.busy ? "Making it…" : "Get a fresh one"}
+              </button>
+              <button className="btn ghost small-btn" onClick={() => setSure(false)}>
+                Keep mine
+              </button>
+            </div>
+          </>
+        ) : (
+          <button className="btn small-btn" onClick={() => setSure(true)}>
+            Get a fresh play wallet
+          </button>
+        )
+      ) : (
+        <div className="low-funds-row">
+          <a className="btn ghost small-btn" href={FAUCET} target="_blank" rel="noreferrer">
+            Get test NEAR
+          </a>
+          <button className="btn ghost small-btn" onClick={() => w.setOpen(true)}>
+            Use a free play wallet
+          </button>
+        </div>
+      )}
+      {w.error && <p className="short-note">{w.error}</p>}
+    </div>
+  );
+}
 
 function refusal(error?: string): string {
   if (error === CANCELLED || /your (NEAR )?wallet/i.test(error ?? "")) return error!;
@@ -119,6 +167,7 @@ export function Launch() {
   };
 
   const stream = useLiveMatch(launched ? (p) => p.a === launched.id || p.b === launched.id : () => false);
+  useWatching(null, launched?.id);
   const [shown, setShown] = useState<Match | null>(null);
   const [snapshot, setSnapshot] = useState<{ id: number; coins: Coin[] } | null>(null);
   const [finished, setFinished] = useState<Match[]>([]);
@@ -187,6 +236,9 @@ export function Launch() {
   const cost = asYocto(money) + fee;
   const tenth = (n: number) => String(Math.round(n * 10) / 10);
   const short = w.balance !== null && BigInt(w.balance) < cost + GAS;
+  const least = asYocto(minMoney) + fee + GAS;
+  const room = w.balance === null ? null : Math.floor(nearNumber(BigInt(w.balance) - fee - GAS) * 10) / 10;
+  const fits = room !== null && room >= minMoney ? room : null;
   const brain = brainOf(model);
   const tooLong = [...rules].length > limit;
   const nameProblem = !name.trim() ? "Give it a name." : !plainName(name) ? "Use plain letters, numbers and spaces." : nameTaken ? "That name is taken. Try another." : null;
@@ -350,9 +402,7 @@ export function Launch() {
             </label>
             {nameProblem && <p className="short-note name-note">{nameProblem}</p>}
             <div style={{ marginTop: 16 }}>
-              <RuleBuilder value={rules} onChange={setRules} limit={limit}>
-                <RulesGuide coin={id} />
-              </RuleBuilder>
+              <RuleBuilder value={rules} onChange={setRules} limit={limit} />
             </div>
           </div>
 
@@ -446,11 +496,14 @@ export function Launch() {
               </p>
             )}
             {error && <div className="notice bad">{error}</div>}
-            {w.balance && (
-              <p className={short ? "short-note" : "faint small"} style={{ textAlign: "center", margin: 0 }}>
-                {short ? `Your wallet has ${fmtNear(w.balance)} NEAR. That is not enough for this launch.` : `Your wallet: ${fmtNear(w.balance)} NEAR`}
-              </p>
-            )}
+            {w.balance &&
+              (short ? (
+                <LowFunds balance={w.balance} need={cost + GAS} least={least} room={fits} onFit={() => fits !== null && setMoney(fits)} />
+              ) : (
+                <p className="faint small" style={{ textAlign: "center", margin: 0 }}>
+                  Your wallet: {fmtNear(w.balance)} NEAR
+                </p>
+              ))}
           </div>
         </aside>
       </div>

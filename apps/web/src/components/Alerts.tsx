@@ -3,9 +3,11 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { subscribeLive, useArenaInfo } from "../lib/live.ts";
+import { holdings, holds } from "../lib/holdings.ts";
 import { reads } from "../lib/near.ts";
 import { fmtNear } from "../lib/model.ts";
 import { useWallet } from "../lib/wallet.tsx";
+import { watching } from "../lib/watching.ts";
 import { Mascot, type Mood, mascotColor } from "./Mascot.tsx";
 
 interface Toast {
@@ -29,7 +31,7 @@ function outcome(p: Parley, side: "A" | "B", me: string, them: string): { text: 
   return { text: `${me} ${verb(mine)}, ${them} ${verb(theirs)}. ${money}`, mood: delta > 0n ? "win" : delta < 0n ? "lose" : "idle" };
 }
 
-/** Small app-wide notes when one of the visitor's coins starts or finishes a live match. */
+/** Small app-wide notes when a coin the visitor made or holds starts or finishes a live match it is not already watching. */
 export function Alerts() {
   const w = useWallet();
   const { info } = useArenaInfo();
@@ -64,8 +66,10 @@ export function Alerts() {
       const key = `${done ? "s" : "o"}${p.id}`;
       if (seen.has(key)) return;
       const [a, b] = await Promise.all([coin(p.a), coin(p.b)]);
-      const side = a?.creator === account ? "A" : b?.creator === account ? "B" : null;
-      if (!live || !side || path.current === `/match/${p.id}`) return;
+      const held = holdings(account);
+      const ours = (c: Coin | null) => !!c && (c.creator === account || holds(held.get(c.id)));
+      const side = ours(a) ? "A" : ours(b) ? "B" : null;
+      if (!live || !side || path.current === `/match/${p.id}` || watching(p)) return;
       const me = (side === "A" ? a : b)!;
       const them = (side === "A" ? b?.name : a?.name) ?? (side === "A" ? p.b : p.a).toUpperCase();
       if (!done) return push({ key, coin: me.id, mood: "thinking", text: `${me.name} is playing ${them} now`, to: `/match/${p.id}`, action: "Watch" });

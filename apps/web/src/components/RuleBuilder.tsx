@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { BLOCKS, EMPTY_PLAN, FALLBACKS, GROUPS, type Plan, isOn, readRules, sentences, toggle, writeRules } from "../lib/rules.ts";
+import { EMPTY_PLAN, FALLBACKS, GROUPS, type Plan, blocksIn, isOn, readRules, sentences, toggle, writeRules } from "../lib/rules.ts";
 import { BetrayIcon, ShuffleIcon, TrustIcon } from "./icons.tsx";
 import { MoveWords } from "./MoveWords.tsx";
 
@@ -101,13 +101,14 @@ export function RuleBuilder({ value, onChange, limit, children, legend = true }:
         <div key={g.id} className="rb-group">
           <h4>{g.label}</h4>
           <div className="rb-chips">
-            {BLOCKS.filter((b) => b.group === g.id).map((b) => {
+            {blocksIn(plan, g.id).map((b) => {
               const on = isOn(plan, b.id);
               const next = toggle(plan, b.id);
               const n = plan.rules.find((r) => r.id === b.id)?.n ?? 2;
+              const title = b.old ? "Older wording. Tap to remove it." : !on && !fits(next) ? "This would make the rules too long" : undefined;
               return (
                 <span key={b.id} className={`rb-chip ${b.lean} ${on ? "on" : ""}`}>
-                  <button className="rb-main" disabled={!on && !fits(next)} onClick={() => apply(next, b.id)} aria-pressed={on} title={!on && !fits(next) ? "This would make the rules too long" : undefined}>
+                  <button className="rb-main" disabled={!on && !fits(next)} onClick={() => apply(next, b.id)} aria-pressed={on} title={title}>
                     {b.count ? `Grudge after ${n} ${n === 1 ? "betrayal" : "betrayals"}` : b.label}
                   </button>
                   {b.count && on && (
@@ -136,7 +137,7 @@ export function RuleBuilder({ value, onChange, limit, children, legend = true }:
         <h4>{ruleCount ? "When no rule fits" : "Its move, every time"}</h4>
         <div className="rb-fallback" role="radiogroup">
           {FALLBACKS.map((f) => (
-            <button key={f.id} role="radio" aria-checked={plan.fallback === f.id} className={`${f.id} ${plan.fallback === f.id ? "on" : ""}`} onClick={() => apply({ ...plan, fallback: f.id }, "fallback")}>
+            <button key={f.id} role="radio" aria-checked={plan.fallback === f.id} className={`rb-fb-${f.id} ${plan.fallback === f.id ? "on" : ""}`} onClick={() => apply({ ...plan, fallback: f.id }, "fallback")}>
               {f.id === "trust" ? <TrustIcon size={15} /> : f.id === "betray" ? <BetrayIcon size={15} /> : <ShuffleIcon size={15} />}
               {f.label}
             </button>

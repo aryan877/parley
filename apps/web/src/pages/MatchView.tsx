@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Rematch } from "../components/Challenge.tsx";
 import { ShareButton, matchShareLine } from "../components/Share.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
+import { clock } from "../components/ArenaNow.tsx";
 import { ArrowIcon } from "../components/icons.tsx";
+import { useCalls } from "../lib/calls.ts";
 import { type Match } from "../lib/model.ts";
 import { loadLiveMatch, useArenaInfo, useLiveMatch, useSchedule } from "../lib/live.ts";
 import { reads } from "../lib/near.ts";
@@ -28,7 +30,7 @@ function SeasonMatch({ id }: { id: number }) {
       <div className="crumbs">
         <Link to="/matches">Matches</Link> / Season 1 / match {match.id}
       </div>
-      <Stage key={match.id} match={match} a={fighter(match.a)} b={fighter(match.b)} label={`Season 1 · match ${match.id}`} callKey={`season:${match.id}`} />
+      <Stage key={match.id} match={match} a={fighter(match.a)} b={fighter(match.b)} label={`Season 1 · match ${match.id}`} callKey={`season:${match.id}`} callCounts={false} />
       <div className="after-stage">
         <p className="hint-line">
           Tap <b>Verified</b> under any message to check its signature yourself.
@@ -56,7 +58,14 @@ function LiveMatch({ id }: { id: number }) {
   const [later, setLater] = useState<Map<string, bigint>>(new Map());
   const stream = useLiveMatch((p) => p.id === id);
   const w = useWallet();
-  const { schedule } = useSchedule(5000);
+  const { schedule, skew } = useSchedule(5000);
+  const calls = useCalls();
+  const openedLive = useRef<boolean | null>(null);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => {
     if (!info) return;
     let live = true;
@@ -77,6 +86,7 @@ function LiveMatch({ id }: { id: number }) {
     };
   }, [info, id]);
   const shown = stream.match ?? match;
+  if (shown && openedLive.current === null) openedLive.current = !shown.settled && !shown.void;
   if (!ready) return <p className="muted loading-line">Connecting…</p>;
   if (!info) return <p className="muted loading-line">The live arena is offline right now.</p>;
   if (!shown) return <p className="muted">Loading match {id}…</p>;
@@ -88,10 +98,13 @@ function LiveMatch({ id }: { id: number }) {
     const now = BigInt(c?.treasury ?? "0");
     return { id: cid, name: c?.name ?? cid.toUpperCase(), rules: c?.constitution ?? "", before: (now - (later.get(cid) ?? 0n)).toString() };
   };
+  const callKey = `live:${info.contractId}:${shown.id}`;
+  const next = schedule && !schedule.current && schedule.next ? schedule.next : null;
+  const wait = next ? Math.max(0, Math.round((next.at + skew - now) / 1000)) : 0;
   return (
     <>
       <div className="crumbs">
-        <Link to="/matches">Matches</Link> / live / match {shown.id}
+        <Link to="/matches">Matches</Link> / match {shown.id}
       </div>
       <Stage
         key={shown.id}
@@ -102,7 +115,7 @@ function LiveMatch({ id }: { id: number }) {
         autoplay={!shown.settled}
         label={`Match ${shown.id}`}
         explorer={info.explorerTx ?? null}
-        callKey={`live:${info.contractId}:${shown.id}`}
+        callKey={openedLive.current || calls.matches[callKey] ? callKey : undefined}
       />
       <div className="after-stage">
         {shown.lines.some((l) => l.proof) && (
@@ -121,6 +134,14 @@ function LiveMatch({ id }: { id: number }) {
           </span>
           <ArrowIcon size={16} />
         </Link>
+      )}
+      {(shown.settled || shown.void) && next && (
+        <div className="next-live">
+          <span className="next-when">{wait > 0 ? `In ${clock(wait)}` : "Starting"}</span>
+          <span>
+            Up next: <b>{nameOf(next.a)}</b> vs <b>{nameOf(next.b)}</b>
+          </span>
+        </div>
       )}
     </>
   );
