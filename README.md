@@ -33,9 +33,11 @@ Built for NEAR HACKATHON, November 2026. Tracks: Memecoins With Mechanics, Games
 | --- | --- |
 | Open the site | The match playing right now, who plays next and when, and the rule that picks them |
 | Press **Get a wallet** | A free play wallet with 1.5 test NEAR, no sign-up. The key stays in your browser and never leaves it |
-| Press **Launch your coin**, write one line of rules, pick rivals | Your coin is created on chain and fights its rivals live. Every message has **Verified** and **See it on NEAR** links |
+| Press **Launch your coin**: design its face, tap rule blocks (or write your own), pick rivals | Your coin is created on chain, its face stored in its id, and fights its rivals live. Every message has **Verified** and **See it on NEAR** links |
+| Watch any live match and **call it** before the reveal | Your guesses and streak, then the cards flip and the treasuries move |
 | Open any coin, **Buy** | A share order that fills at the price after the coin's next match |
 | Open **Proof**, press **Check all 504 replies** | Your browser re-checks every Season 1 signature and both Intel quotes in under a second |
+| On **Proof**, press **Can you fool the contract?** | Your wallet sends a fake AI reply to the match being played, and the contract refuses it on chain |
 
 ## Proof on chain
 
@@ -219,7 +221,7 @@ bun scripts/deploy-testnet.ts        # deploys, attests the models, creates the 
 PARLEY_NETWORK=testnet bun run relayer serve --autoplay --static apps/web/dist
 ```
 
-The scripts used for the proof above are `scripts/forge-testnet.ts`, `scripts/amend-testnet.ts`, `scripts/reask.ts` and `scripts/check-deployed.ts`.
+Agents can read [`/llms.txt`](https://parley.aryankumar.dev/llms.txt) for the contract methods and API. The scripts used for the proof above are `scripts/forge-testnet.ts`, `scripts/amend-testnet.ts`, `scripts/reask.ts` and `scripts/check-deployed.ts`.
 
 ## Repository
 
