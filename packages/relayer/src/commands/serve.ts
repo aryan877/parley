@@ -1,7 +1,7 @@
 import { Arena, type Coin, type Config, type Model, type Parley, type SignedReply } from "@parley/sdk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { ROOT, fundLocalAccount, loadDeployment } from "../localnet.ts";
+import { extname, join, normalize } from "node:path";
+import { ROOT, fundPlayer, loadDeployment } from "../localnet.ts";
 import { RoutingMind } from "../minds/routing.ts";
 import { playParley } from "../runner.ts";
 import { flag } from "./shared.ts";
@@ -28,8 +28,16 @@ interface Challenge {
 
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
 const MAX_QUEUE = 12;
-const PLAYERS = join(ROOT, ".localnet", "players.json");
-const EVIDENCE = join(ROOT, ".localnet", "evidence");
+const STATE = join(ROOT, process.env.PARLEY_NETWORK === "testnet" ? ".testnet" : ".localnet");
+const PLAYERS = join(STATE, "players.json");
+const ORDERS = join(STATE, "orders.json");
+const QUEUE = join(STATE, "queue.json");
+const SCHEDULE_TTL = 8000;
+const EVIDENCE = join(STATE, "evidence");
+const EXPLORER: Record<string, string | null> = { local: null, testnet: "https://testnet.nearblocks.io/txns/" };
+const FAUCET_PER_IP = 2;
+const FAUCET_PER_DAY = 60;
+const DAY_MS = 86_400_000;
 
 interface Next {
   a: string;
@@ -46,14 +54,13 @@ const NS = 1_000_000;
  * waited longest goes first and meets the rested coin it met least recently, skipping pairs that met too
  * recently. When no pair is ready, the earliest moment one will be.
  */
-async function predict(arena: Arena, coins: Coin[], config: Config, models: Model[]): Promise<Next | null> {
+async function predict(arena: Arena, coins: Coin[], config: Config, models: Model[], met = new Map<string, bigint>()): Promise<Next | null> {
   const now = BigInt(Date.now()) * BigInt(NS);
   const rest = BigInt(config.rest_ns);
   const apart = BigInt(config.pair_rest_ns);
   const answers = (model: string) => models.some((m) => m.id === model && m.signers.some((k) => BigInt(k.active_from) <= now && (!k.retired_from || now < BigInt(k.retired_from))));
   const able = coins.filter((c) => c.in_match === null && BigInt(c.treasury) >= BigInt(config.min_treasury) && answers(c.model));
   const order = [...able].sort((x, y) => (BigInt(x.idle_since) === BigInt(y.idle_since) ? x.id.localeCompare(y.id) : BigInt(x.idle_since) < BigInt(y.idle_since) ? -1 : 1));
-  const met = new Map<string, bigint>();
   const lastMet = async (a: Coin, b: Coin) => {
     const key = [a.id, b.id].sort().join(":");
     if (!met.has(key)) {
@@ -79,6 +86,18 @@ async function predict(arena: Arena, coins: Coin[], config: Config, models: Mode
   return soonest ? { a: soonest.a.id, b: soonest.b.id, at: Number(soonest.at / BigInt(NS)), why: "rule" } : null;
 }
 
+const TYPES: Record<string, string> = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf", ".ico": "image/x-icon" };
+
+/** The built site, from `--static <dir>`. Hashed assets are cached for a year; the page itself never is. */
+function page(dir: string, pathname: string): Response {
+  const rel = normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "").replace(/^\/+/, "");
+  let file = Bun.file(join(dir, rel || "index.html"));
+  if (!rel || !existsSync(join(dir, rel)) || rel.endsWith("/")) file = Bun.file(join(dir, "index.html"));
+  const type = TYPES[extname(file.name ?? "")] ?? "application/octet-stream";
+  const cache = rel.startsWith("assets/") ? "public, max-age=31536000, immutable" : "no-cache";
+  return new Response(file, { headers: { "content-type": type, "cache-control": cache } });
+}
+
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: CORS });
 const panic = (error?: string) => error?.match(/Smart contract panicked: ([^"\\]+)/)?.[1] ?? error ?? "refused";
 
@@ -93,26 +112,39 @@ export async function serve() {
   const mind = new RoutingMind();
   const autoplay = process.argv.includes("--autoplay");
   const pause = Number(flag("pause", "4")) * 1000;
-  const queue: Challenge[] = [];
+  const queue: Challenge[] = existsSync(QUEUE) ? (JSON.parse(readFileSync(QUEUE, "utf8")) as Challenge[]) : [];
+  const saveQueue = () => writeFileSync(QUEUE, JSON.stringify(queue));
   const watchers = new Set<(event: Event) => void>();
   const players: string[] = existsSync(PLAYERS) ? (JSON.parse(readFileSync(PLAYERS, "utf8")) as string[]) : [];
+  const watched = new Set<string>(existsSync(ORDERS) ? (JSON.parse(readFileSync(ORDERS, "utf8")) as string[]) : []);
+  const saveWatched = () => writeFileSync(ORDERS, JSON.stringify([...watched]));
+  const pairs = new Map<string, bigint>();
+  let schedule: { at: number; body: unknown } | null = null;
   let current: { parley: Parley; turns: Evidence[] } | null = null;
   let currentSince = 0;
   let lastEnded = Date.now();
   mkdirSync(EVIDENCE, { recursive: true });
+  const handedOut: { ip: string; at: number }[] = [];
+  let wake: (() => void) | null = null;
+  const rest = (ms: number) => Promise.race([Bun.sleep(ms), new Promise<void>((resolve) => (wake = resolve))]).finally(() => (wake = null));
+  const site = flag("static");
 
   const emit = (event: Event) => {
     for (const watch of watchers) watch(event);
   };
   const evidenceFile = (id: number) => join(EVIDENCE, `${deployment.contractId}-${id}.json`);
 
+  /** Fills the due orders the site told us about. Anyone may call fill_order; this just saves players the wait. */
   async function keep() {
-    const coins = (await owner.coins()).filter((c) => !c.house && c.in_match === null);
-    for (const account of players) {
-      for (const coin of coins) {
-        if (await owner.order(coin.id, account)) await owner.fillOrder(coin.id, account);
-      }
+    const idle = new Set((await owner.coins()).filter((c) => c.in_match === null).map((c) => c.id));
+    for (const key of [...watched]) {
+      const [coin, account] = key.split(" ") as [string, string];
+      if (!idle.has(coin)) continue;
+      const order = await owner.order(coin, account).catch(() => undefined);
+      if (order === null) watched.delete(key);
+      else if (order && (await owner.fillOrder(coin, account)).ok) watched.delete(key);
     }
+    saveWatched();
   }
 
   async function play(open: () => Promise<{ ok: boolean; value?: unknown; error?: string }>, reason: string) {
@@ -120,7 +152,8 @@ export async function serve() {
     if (!opened.ok) return panic(opened.error);
     const id = opened.value as number;
     const parley = (await owner.parley(id))!;
-    current = { parley, turns: [] };
+    const kept = existsSync(evidenceFile(id)) ? ((JSON.parse(readFileSync(evidenceFile(id), "utf8")) as { turns: Evidence[] }).turns ?? []) : [];
+    current = { parley, turns: kept };
     currentSince = Date.now();
     emit({ type: "opened", parley, reason });
     await playParley(owner, mind, id, async ({ index, model, request, reply, txHash }) => {
@@ -136,16 +169,32 @@ export async function serve() {
     emit({ type: "settled", parley: done });
     current = null;
     lastEnded = Date.now();
+    pairs.clear();
+    schedule = null;
     await keep().catch(() => {});
     return null;
   }
 
+  /** A Parley left open by a restart is finished first, or voided once it can no longer be played. */
+  async function unfinished(): Promise<number | null> {
+    const recent = await owner.parleys(0, 12);
+    return recent.find((p) => p.status === "Open")?.id ?? null;
+  }
+
   async function work() {
     for (;;) {
-      const next = queue.shift();
+      const stuck = await unfinished().catch(() => null);
+      const next = stuck === null ? queue.shift() : undefined;
+      if (next) saveQueue();
       let problem: string | null = null;
       try {
-        if (next) problem = await play(() => owner.openParleyBetween(next.a, next.b), "challenge");
+        if (stuck !== null) {
+          problem = await play(async () => ({ ok: true, value: stuck }), "a match left open").catch(async (error) => {
+            const voided = await owner.call("void_parley", { id: stuck });
+            current = null;
+            return voided.ok ? null : `Parley ${stuck} could not be finished or voided: ${error instanceof Error ? error.message : error}`;
+          });
+        } else if (next) problem = await play(() => owner.openParleyBetween(next.a, next.b), "challenge");
         else if (autoplay) problem = await play(() => owner.openParley(), "the contract's pairing");
         else problem = "waiting for a challenge";
       } catch (error) {
@@ -153,7 +202,7 @@ export async function serve() {
         current = null;
       }
       if (problem) emit({ type: "idle", reason: problem });
-      await Bun.sleep(problem ? Math.max(pause, 3000) : pause);
+      await rest(queue.length ? 3000 : problem ? Math.max(pause, 3000) : pause);
     }
   }
 
@@ -186,14 +235,22 @@ export async function serve() {
     if (!opponents.length) return json({ error: "Pick at least one coin to meet." }, 400);
     if (queue.length + opponents.length > MAX_QUEUE) return json({ error: "The arena is busy. Try again in a minute." }, 429);
     opponents.forEach((o, i) => queue.push(i % 2 === 0 ? { a: mine.id, b: o } : { a: o, b: mine.id }));
+    saveQueue();
+    wake?.();
     return json({ queued: opponents.length, ahead: queue.length - opponents.length + (current ? 1 : 0) });
   }
 
-  async function faucet(req: Request): Promise<Response> {
-    if (deployment.network !== "local") return json({ error: "Test NEAR is only handed out on the local chain." }, 400);
+  async function faucet(req: Request, ip: string): Promise<Response> {
     const body = (await req.json().catch(() => null)) as { publicKey?: string } | null;
     if (!body?.publicKey?.startsWith("ed25519:")) return json({ error: "Send an ed25519 public key." }, 400);
-    const accountId = await fundLocalAccount(body.publicKey);
+    if (deployment.network !== "local") {
+      const now = Date.now();
+      while (handedOut[0] && now - handedOut[0].at > DAY_MS) handedOut.shift();
+      if (handedOut.length >= FAUCET_PER_DAY) return json({ error: "Today's free play wallets are all handed out. Try again tomorrow." }, 429);
+      if (handedOut.filter((h) => h.ip === ip).length >= FAUCET_PER_IP) return json({ error: "You already have play wallets from today. Reuse the one in this browser." }, 429);
+      handedOut.push({ ip, at: now });
+    }
+    const accountId = await fundPlayer(deployment, body.publicKey);
     players.push(accountId);
     writeFileSync(PLAYERS, JSON.stringify(players));
     return json({ accountId });
@@ -203,24 +260,26 @@ export async function serve() {
   Bun.serve({
     port,
     idleTimeout: 255,
-    async fetch(req) {
+    async fetch(req, server) {
       const url = new URL(req.url);
       if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
       try {
         if (url.pathname === "/api/arena") {
           const [overview, config, models] = await Promise.all([owner.overview(), owner.config(), owner.models()]);
-          return json({ network: deployment.network, rpcUrl: deployment.rpcUrl, contractId: deployment.contractId, autoplay, overview, config, models });
+          return json({ network: deployment.network, rpcUrl: deployment.rpcUrl, contractId: deployment.contractId, explorerTx: EXPLORER[deployment.network] ?? null, autoplay, overview, config, models });
         }
         if (url.pathname === "/api/live") return stream();
         if (url.pathname === "/api/schedule") {
+          if (schedule && Date.now() - schedule.at < SCHEDULE_TTL) return json({ ...(schedule.body as object), now: Date.now() });
           const [coins, config, models] = await Promise.all([owner.coins(), owner.config(), owner.models()]);
           const queued = queue.map((q) => ({ a: q.a, b: q.b }));
           const next: Next | null = queued[0]
             ? { ...queued[0], at: current ? 0 : Date.now(), why: "challenge" }
             : autoplay
-              ? await predict(owner, coins.filter((c) => c.id !== current?.parley.a && c.id !== current?.parley.b), config, models)
+              ? await predict(owner, coins.filter((c) => c.id !== current?.parley.a && c.id !== current?.parley.b), config, models, pairs)
               : null;
-          return json({
+          if (next && next.why === "rule" && !current) next.at = Math.max(next.at, lastEnded + pause);
+          const body = {
             now: Date.now(),
             autoplay,
             pauseMs: pause,
@@ -228,15 +287,25 @@ export async function serve() {
             lastEnded,
             queue: queued,
             next,
-          });
+          };
+          schedule = { at: Date.now(), body };
+          return json(body);
         }
         if (url.pathname === "/api/challenge" && req.method === "POST") return challenge(req);
-        if (url.pathname === "/api/faucet" && req.method === "POST") return faucet(req);
+        if (url.pathname === "/api/watch-order" && req.method === "POST") {
+          const body = (await req.json().catch(() => null)) as { coin?: string; account?: string } | null;
+          if (!body?.coin || !body.account || !/^[a-z0-9._-]{2,64}$/.test(body.account) || !(await owner.coin(body.coin))) return json({ error: "Send a coin and an account." }, 400);
+          if (watched.size < 5000) watched.add(`${body.coin} ${body.account}`);
+          saveWatched();
+          return json({ watching: true });
+        }
+        if (url.pathname === "/api/faucet" && req.method === "POST") return faucet(req, req.headers.get("cf-connecting-ip") ?? server.requestIP(req)?.address ?? "?");
         const match = url.pathname.match(/^\/api\/match\/(\d+)$/);
         if (match) {
           const file = evidenceFile(Number(match[1]));
           return existsSync(file) ? json(JSON.parse(readFileSync(file, "utf8"))) : json({ error: "This server did not play that match." }, 404);
         }
+        if (site && req.method === "GET" && !url.pathname.startsWith("/api/")) return page(site, url.pathname);
       } catch (error) {
         return json({ error: error instanceof Error ? error.message : String(error) }, 500);
       }

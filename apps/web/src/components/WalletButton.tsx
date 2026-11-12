@@ -1,14 +1,14 @@
 import { AnimatePresence, motion } from "motion/react";
 import { fmtNear } from "../lib/model.ts";
 import { shortAccount, useWallet } from "../lib/wallet.tsx";
-import { SparkIcon, WalletIcon } from "./icons.tsx";
+import { WalletGuide } from "./Guide.tsx";
+import { ArrowIcon, WalletIcon } from "./icons.tsx";
 import { Mascot } from "./Mascot.tsx";
-
-const WALLETS = ["Meteor", "HOT", "MyNearWallet", "Intear", "NEAR Mobile"];
 
 export function WalletModal() {
   const w = useWallet();
-  const local = w.info?.network === "local";
+  const network = w.info?.network;
+  const playable = network === "local" || network === "testnet";
   return (
     <AnimatePresence>
       {w.open && (
@@ -17,36 +17,27 @@ export function WalletModal() {
             <button className="drawer-close" onClick={() => w.setOpen(false)} aria-label="Close">
               ×
             </button>
-            <h3>Connect a wallet</h3>
-            <p className="muted">Your wallet is your seat at the table. With it you can launch a coin, buy and sell shares, and vote on a coin's rules.</p>
+            <h3>Get a wallet</h3>
+            <p className="muted">You need one to launch a coin, buy shares or vote.</p>
+            <WalletGuide />
             {!w.info ? (
-              <div className="notice">The arena is offline right now, so there is nothing to connect to. You can still watch Season 1.</div>
-            ) : local ? (
+              <div className="notice">The arena is offline right now. You can still watch Season 1.</div>
+            ) : playable ? (
               <>
-                <button className="wallet-option featured" onClick={() => w.connectPlay()} disabled={w.busy}>
+                <motion.button className="wallet-option featured" onClick={() => w.connectPlay()} disabled={w.busy} whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
                   <span className="wallet-ico">
-                    <SparkIcon size={20} />
+                    <Mascot id="wallet" size={34} mood={w.busy ? "thinking" : "win"} />
                   </span>
                   <span>
-                    <b>{w.busy ? "Making your wallet…" : "Play wallet"}</b>
-                    <small>One click. 50 free test NEAR on this local chain. The key stays in this browser.</small>
+                    <b>{w.busy ? "Making your wallet…" : "Free play wallet"}</b>
+                    <small>{network === "testnet" ? "Test NEAR, no sign-up. Ready in one click." : "Free test NEAR on a local test chain. Ready in one click."}</small>
                   </span>
-                </button>
-                <div className="wallet-sep">Real wallets work on NEAR testnet and mainnet</div>
-                <div className="wallet-grid">
-                  {WALLETS.map((name) => (
-                    <div key={name} className="wallet-option off">
-                      <span className="wallet-ico">{name.slice(0, 1)}</span>
-                      <span>
-                        <b>{name}</b>
-                        <small>not on a local chain</small>
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                  <ArrowIcon size={18} className="wallet-go" />
+                </motion.button>
+                <p className="wallet-note">The key stays in this browser. Meteor, HOT and other NEAR wallets are coming soon.</p>
               </>
             ) : (
-              <div className="notice">Wallet connection for {w.info.network} is coming with the public deployment.</div>
+              <div className="notice">Wallets for NEAR {network} are coming soon.</div>
             )}
             {w.error && <div className="notice bad">{w.error}</div>}
           </motion.div>
@@ -72,7 +63,7 @@ export function WalletButton() {
   }
   return (
     <button className="btn" style={{ padding: "9px 16px", fontSize: 14 }} onClick={() => w.setOpen(true)}>
-      <WalletIcon size={16} /> Connect wallet
+      <WalletIcon size={16} /> Get a wallet
     </button>
   );
 }

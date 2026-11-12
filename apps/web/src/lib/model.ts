@@ -11,7 +11,7 @@ export interface Line {
   kind: "Talk" | "Decide";
   text: string;
   thought: string;
-  proof?: { model: string; request: string; reply: SignedReply };
+  proof?: { model: string; request: string; reply: SignedReply; txHash?: string };
 }
 
 export interface Match {
@@ -50,7 +50,7 @@ export interface CoinInfo {
   creator: string;
 }
 
-export function fromParley(parley: Parley, replies: ({ model: string; request: string; reply: SignedReply } | undefined)[] = []): Match {
+export function fromParley(parley: Parley, replies: ({ model: string; request: string; reply: SignedReply; txHash?: string } | undefined)[] = []): Match {
   return {
     id: parley.id,
     a: parley.a,

@@ -1,7 +1,8 @@
-import { NavLink, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Mark } from "./components/Mark.tsx";
 import { WalletButton } from "./components/WalletButton.tsx";
+import { accountLink, useArenaInfo } from "./lib/live.ts";
 import { Arena } from "./pages/Arena.tsx";
 import { CoinView } from "./pages/CoinView.tsx";
 import { Coins } from "./pages/Coins.tsx";
@@ -13,6 +14,8 @@ import { ProofPage } from "./pages/ProofPage.tsx";
 export function App() {
   const link = ({ isActive }: { isActive: boolean }) => `navlink${isActive ? " active" : ""}`;
   const { pathname } = useLocation();
+  const { info } = useArenaInfo();
+  const contract = info ? accountLink(info, info.contractId) : null;
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
@@ -54,12 +57,19 @@ export function App() {
           <Route path="/season/coin/:id" element={<CoinView season />} />
           <Route path="/launch" element={<Launch />} />
           <Route path="/proof" element={<ProofPage />} />
+          <Route path="/play" element={<Navigate to="/launch" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <footer className="foot">
           <a href="https://near.ai" target="_blank" rel="noreferrer">
             Parley runs on <img src="./brand/near-ai-white.svg" alt="NEAR AI" />
           </a>
-          <span>Unaudited. Test money only. Read the limits in the README.</span>
+          {info && contract && (
+            <a href={contract} target="_blank" rel="noreferrer" className="foot-contract">
+              Contract on {info.network === "testnet" ? "NEAR testnet" : "NEAR"}: <b>{info.contractId}</b>
+            </a>
+          )}
+          <span>Test money only. Not audited.</span>
         </footer>
       </main>
     </>

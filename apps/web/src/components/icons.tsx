@@ -190,3 +190,73 @@ export const CrownIcon = ({ size = 18, className }: P) =>
       <path d="M0.73 7.71a1.85 1.85 0 1 0 3.7 0a1.85 1.85 0 1 0 -3.7 0ZM8.89 3.57a1.95 1.95 0 1 0 3.9 0a1.95 1.95 0 1 0 -3.9 0ZM18.01 5.59a1.85 1.85 0 1 0 3.7 0a1.85 1.85 0 1 0 -3.7 0Z" />
     </>,
   );
+
+const rr = (x: number, y: number, w: number, h: number, r: number) =>
+  `M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z`;
+
+export const PenIcon = ({ size = 18, className }: P) =>
+  glyph(
+    size,
+    className,
+    <>
+      <path opacity=".35" fillRule="evenodd" d={`${rr(2.6, 2.6, 13.4, 18.8, 3.4)}${rr(5.6, 7, 7.2, 1.9, 0.95)}${rr(5.6, 11, 4.8, 1.9, 0.95)}`} />
+      <g transform="rotate(40 15.5 12)">
+        <path d={`${rr(13.6, 5.3, 3.8, 9.9, 1.2)}${rr(13.6, 1.9, 3.8, 2.6, 1.2)}`} />
+        <path d="M13.6 16h3.8l-1.45 3.3q-.45 1-.9 0Z" />
+      </g>
+    </>,
+  );
+
+export const ChatIcon = ({ size = 18, className }: P) =>
+  glyph(
+    size,
+    className,
+    <>
+      <path opacity=".35" d={`${rr(9.4, 9.6, 12.8, 9.6, 4)}M17.6 18.6l2.4 3.4q.3.5-.3.4l-6-3.2Z`} />
+      <path fillRule="evenodd" d={`${rr(1.8, 2.8, 15.2, 11.4, 4.2)}${rr(5.4, 6.4, 8, 1.9, 0.95)}${rr(5.4, 9.6, 4.8, 1.9, 0.95)}`} />
+      <path d="M4.6 13.6l-.9 4.2q-.1.6.4.3l5.8-4.5Z" />
+    </>,
+  );
+
+export const ChartIcon = ({ size = 18, className }: P) =>
+  glyph(
+    size,
+    className,
+    <>
+      <path opacity=".35" d={rr(1.8, 2.8, 20.4, 18.4, 4.6)} />
+      <path d="M5.6 16.4L9.6 12.1L12.7 14.5L18 8.6M14.6 8.1H18.5V12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </>,
+  );
+
+export const ChipIcon = ({ size = 18, className }: P) =>
+  glyph(
+    size,
+    className,
+    <>
+      <path
+        opacity=".35"
+        d={[
+          rr(7.6, 1.4, 2.6, 4.4, 1.3),
+          rr(13.8, 1.4, 2.6, 4.4, 1.3),
+          rr(7.6, 18.2, 2.6, 4.4, 1.3),
+          rr(13.8, 18.2, 2.6, 4.4, 1.3),
+          rr(1.4, 7.6, 4.4, 2.6, 1.3),
+          rr(1.4, 13.8, 4.4, 2.6, 1.3),
+          rr(18.2, 7.6, 4.4, 2.6, 1.3),
+          rr(18.2, 13.8, 4.4, 2.6, 1.3),
+        ].join("")}
+      />
+      <path fillRule="evenodd" d={`${rr(4.4, 4.4, 15.2, 15.2, 4.2)}M12.7 12.11A1.85 1.85 0 1 0 11.3 12.11L10.69 14.37Q10.55 14.9 11.1 14.9L12.9 14.9Q13.45 14.9 13.31 14.37Z`} />
+    </>,
+  );
+
+export const AskIcon = ({ size = 18, className }: P) =>
+  glyph(
+    size,
+    className,
+    <>
+      <path opacity=".35" d={rr(3.6, 2.2, 16.8, 19.6, 4)} />
+      <path d="M9.3 9.4a2.75 2.75 0 1 1 4.1 2.4c-.9.5-1.4 1.1-1.4 2.1" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10.55 17.6a1.45 1.45 0 1 0 2.9 0a1.45 1.45 0 1 0 -2.9 0Z" />
+    </>,
+  );

@@ -3,14 +3,16 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Sparkline } from "../components/CoinCard.tsx";
+import { Empty } from "../components/Empty.tsx";
+import { TradeGuide, VoteGuide } from "../components/Guide.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
 import { Mascot, mascotColor } from "../components/Mascot.tsx";
-import { BoltIcon, BrainIcon, TrustIcon, BetrayIcon, WalletIcon } from "../components/icons.tsx";
+import { BoltIcon, BrainIcon, RestartIcon, TrustIcon, BetrayIcon, WalletIcon } from "../components/icons.tsx";
 import { type CoinInfo, type Match, fmtNear, fromCoin, fromParley, nearNumber, sharePrice, trustRate } from "../lib/model.ts";
-import { readArena, useArenaInfo } from "../lib/live.ts";
+import { ARENA_API, readArena, useArenaInfo } from "../lib/live.ts";
 import { useSeason } from "../lib/season.ts";
 import { useWallet } from "../lib/wallet.tsx";
-import { tagline } from "../lib/words.ts";
+import { BRAIN_LABEL, PRACTICE_NOTE, brainOf, tagline } from "../lib/words.ts";
 
 const YOCTO = 10n ** 24n;
 
@@ -30,7 +32,7 @@ function until(ns: string): string {
 
 function Hero({ coin, matches, live }: { coin: CoinInfo; matches: Match[]; live: boolean }) {
   const color = mascotColor(coin.id);
-  const thinker = !coin.model.includes("Qwen") && !coin.model.startsWith("local/");
+  const brain = brainOf(coin.model);
   let value = BigInt(coin.treasury) - matches.reduce((n, m) => n + BigInt(m.a === coin.id ? m.aDelta : m.bDelta), 0n);
   const curve = [nearNumber(value)];
   for (const m of matches) {
@@ -48,14 +50,20 @@ function Hero({ coin, matches, live }: { coin: CoinInfo; matches: Match[]; live:
       </div>
       <div className="coin-hero-text">
         <div className="chips">
-          <span className={`brain ${thinker ? "deep" : ""}`}>
-            {thinker ? <BrainIcon size={13} /> : <BoltIcon size={13} />} {thinker ? "Thinks first" : "Quick"} · {coin.model}
+          <span className={`brain ${brain === "deep" ? "deep" : ""}`} title={coin.model}>
+            {brain === "deep" ? <BrainIcon size={13} /> : brain === "practice" ? <RestartIcon size={13} /> : <BoltIcon size={13} />} {BRAIN_LABEL[brain]}
+            {brain !== "practice" && <span className="faint"> · {coin.model.split("/").pop()}</span>}
           </span>
-          <span className="brain">{coin.house ? "House coin: fixed rules, no shares" : `Holder-owned · rules v${coin.version}`}</span>
-          {coin.token && <span className="brain">NEP-141 token: {coin.token.split(".")[0]}</span>}
+          <span className="brain">{coin.house ? "House coin: rules never change" : `Owned by holders · rules version ${coin.version}`}</span>
+          {coin.token && (
+            <span className="brain" title={coin.token}>
+              Shares are a NEAR token
+            </span>
+          )}
         </div>
         <h1>{coin.name}</h1>
         <p className="lead">{tagline(coin.id, coin.rules)}</p>
+        {brain === "practice" && <p className="practice-note">{PRACTICE_NOTE}</p>}
         <div className="coin-stats">
           <div>
             <b>{live && !coin.house ? sharePrice(coin).toFixed(4) : fmtNear(coin.treasury)}</b>
@@ -93,6 +101,10 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
   const [note, setNote] = useState<{ tone: "good" | "bad"; text: string } | null>(null);
   const info = w.info;
 
+  useEffect(() => {
+    if (info?.network === "testnet") setAmount((a) => (a === "5" ? "0.2" : a));
+  }, [info?.network]);
+
   const load = useCallback(async () => {
     if (!info || !w.accountId) return;
     const arena = readArena(info);
@@ -118,22 +130,39 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     setBusy(true);
     setNote(null);
     const result = await action();
+    if (result.ok && w.accountId && (label === "Buying" || label === "Selling")) {
+      fetch(`${ARENA_API}/api/watch-order`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ coin: coin.id, account: w.accountId }) }).catch(() => {});
+    }
     setBusy(false);
-    setNote(result.ok ? { tone: "good", text: done } : { tone: "bad", text: `${label} failed: ${result.error?.match(/panicked: ([^"\\]+)/)?.[1] ?? result.error?.slice(0, 140)}` });
+    setNote(result.ok ? { tone: "good", text: done } : { tone: "bad", text: /Not enough balance/.test(result.error ?? "") ? "Not enough NEAR in your wallet. Keep about 0.1 NEAR for gas." : `${label} failed: ${result.error?.match(/panicked: ([^"\\]+)/)?.[1] ?? result.error?.slice(0, 140)}` });
     await load();
     w.refresh();
     onDone();
   };
 
-  if (coin.house) return <div className="glass trade"><p className="muted">House coins have fixed rules and no shares. They are the regulars every new coin has to face.</p></div>;
+  if (coin.house) {
+    return (
+      <div className="glass trade">
+        <h3>A house coin</h3>
+        <p className="muted" style={{ margin: 0 }}>
+          House coins have fixed rules and no shares.
+          <br />
+          They are the regulars every new coin has to face.
+        </p>
+      </div>
+    );
+  }
 
   if (!w.accountId) {
     return (
       <div className="glass trade">
         <h3>Own a piece of {coin.name}</h3>
-        <p className="muted">Shares give you a cut of its treasury and a vote on its rules.</p>
+        <TradeGuide coin={coin.id} />
+        <p className="muted" style={{ margin: 0 }}>
+          Shares give you a cut of its treasury and a vote on its rules.
+        </p>
         <button className="btn big" onClick={() => w.setOpen(true)} style={{ width: "100%", justifyContent: "center" }}>
-          <WalletIcon /> Connect a wallet to trade
+          <WalletIcon /> Get a free wallet to buy
         </button>
       </div>
     );
@@ -143,6 +172,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
 
   return (
     <div className="glass trade">
+      <TradeGuide coin={coin.id} />
       <div className="tabs" style={{ marginTop: 0 }}>
         <button className={mode === "buy" ? "on" : ""} onClick={() => setMode("buy")}>
           Buy
@@ -155,16 +185,14 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
         <span>You hold</span>
         <b>{fmtNear(held + locked, 2)} shares</b>
         <span className="faint">≈ {(nearNumber(held + locked) * price).toFixed(2)} NEAR</span>
-        {locked > 0n && <span className="faint">({fmtNear(locked, 2)} locked in a vote until it closes)</span>}
+        {locked > 0n && <span className="faint">({fmtNear(locked, 2)} held in a vote until it ends)</span>}
       </div>
       {order ? (
         <div className="pending">
           <div>
             <b>{order.kind === "Mint" ? `Buying with ${fmtNear(order.amount)} NEAR` : `Selling ${fmtNear(order.amount)} shares`}</b>
             <span>
-              {due
-                ? "Filling now at the price after its last match…"
-                : `Your order fills at the price right after ${coin.name}'s next match. Nobody, you included, can buy knowing how a match will end.`}
+              {due ? "Filling now at the price after its last match…" : `Your order fills after ${coin.name}'s next match, so nobody can buy knowing how a match ends.`}
             </span>
           </div>
           <button className="btn ghost" disabled={busy} onClick={() => run("Cancel", () => w.arena()!.cancelOrder(coin.id), "Order cancelled. Your funds are back.")}>
@@ -177,8 +205,10 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
             <span>NEAR to put in</span>
             <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
           </label>
-          <p className="muted small">
-            About {value ? (nearNumber(value) / price).toFixed(2) : "0"} shares at today's price of {price.toFixed(4)} NEAR. The real price is set after its next match.
+          <p className="muted small" style={{ margin: 0 }}>
+            About {value ? (nearNumber(value) / price).toFixed(2) : "0"} shares at {price.toFixed(4)} NEAR each.
+            <br />
+            Your order fills after its next match.
           </p>
           <button className="btn trust big" disabled={busy || !value} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Buying", () => w.arena()!.placeMint(coin.id, value), "Order placed. It fills after the next match.")}>
             {busy ? "Sending…" : `Buy ${coin.name}`}
@@ -193,6 +223,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
               max
             </button>
           </label>
+          <p className="muted small" style={{ margin: 0 }}>Your sale fills after its next match.</p>
           <button className="btn betray big" disabled={busy || !value || value > held} style={{ width: "100%", justifyContent: "center" }} onClick={() => value && run("Selling", () => w.arena()!.placeRedeem(coin.id, value), "Sell order placed. It fills after the next match.")}>
             {busy ? "Sending…" : `Sell for about ${value ? (nearNumber(value) * price).toFixed(2) : "0"} NEAR`}
           </button>
@@ -246,7 +277,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     <div className="glass rules-card">
       <div className="rules-head">
         <h3>Its rules</h3>
-        <span className="faint">version {coin.constitution_version}</span>
+        <span className="faint small">version {coin.constitution_version}</span>
       </div>
       <blockquote className="rules-text">{coin.constitution}</blockquote>
       {!coin.house && (
@@ -259,15 +290,20 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
               </button>
             )}
           </div>
-          <p className="muted small" style={{ marginTop: 0 }}>
-            Holders vote with their shares. A change needs more yes than no and at least {Number(info?.config.quorum_bps ?? 2000) / 100}% of all shares. After it passes there is a wait, so anyone who
-            disagrees can sell first.
+          <VoteGuide coin={coin.id} practice={brainOf(coin.model) === "practice"} />
+          <p className="muted small vote-rules">
+            Holders vote with their shares. A change needs more yes than no, and yes votes from at least {Number(info?.config.quorum_bps ?? 2000) / 100}% of all shares.
+            <br />
+            Then a short wait, so anyone who disagrees can sell first.
           </p>
           {writing && (
             <div className="propose">
               <textarea rows={4} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Write the new rules in plain words. Example: Trust coins that have never betrayed anyone. Betray the rest." />
+              <p className="faint small" style={{ margin: 0 }}>
+                You need at least {Number(info?.config.proposer_bps ?? 100) / 100}% of its shares to propose. Your shares count as the first yes votes.
+              </p>
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn" disabled={busy || !draft.trim()} onClick={() => run("Proposing", () => w.arena()!.proposeAmendment(coin.id, draft.trim(), coin.model), "Proposed. Your stake counts as the first yes votes.").then(() => (setWriting(false), setDraft("")))}>
+                <button className="btn" disabled={busy || !draft.trim()} onClick={() => run("Proposing", () => w.arena()!.proposeAmendment(coin.id, draft.trim(), coin.model), "Proposed. Your shares count as the first yes votes.").then(() => (setWriting(false), setDraft("")))}>
                   Put it to a vote
                 </button>
                 <button className="btn ghost" onClick={() => setWriting(false)}>
@@ -346,9 +382,14 @@ function LiveCoin({ id }: { id: string }) {
     const timer = setInterval(() => load().catch(() => {}), 5000);
     return () => clearInterval(timer);
   }, [info, id, tick]);
-  if (!ready) return <p className="muted">Connecting…</p>;
-  if (!info) return <p className="muted">The live arena is offline. <Link to={`/season/coin/${id}`}>See {id.toUpperCase()} in Season 1.</Link></p>;
-  if (!coin) return <p className="muted">Loading…</p>;
+  if (!ready) return <p className="muted loading-line">Connecting…</p>;
+  if (!info)
+    return (
+      <Empty id={id} mood="thinking" title="The live arena is offline right now" action={<Link to={`/season/coin/${id}`} className="btn ghost">See {id.toUpperCase()} in Season 1</Link>}>
+        Season 1 replays still work.
+      </Empty>
+    );
+  if (!coin) return <p className="muted loading-line">Loading…</p>;
   const name = (cid: string) => names.get(cid) ?? cid.toUpperCase();
   return (
     <>
@@ -368,7 +409,11 @@ function LiveCoin({ id }: { id: string }) {
           {[...matches].reverse().map((m) => (
             <MatchRow key={m.id} match={m} to={`/match/${m.id}`} name={name} />
           ))}
-          {!matches.length && <div className="notice">No matches yet. New coins wait a minute, then the arena pairs them.</div>}
+          {!matches.length && (
+            <Empty id={coin.id} mood="thinking" title="No matches yet">
+              {info.autoplay ? "New coins rest a moment, then the arena pairs them." : "It plays when a new coin picks it as a rival."}
+            </Empty>
+          )}
         </div>
       </section>
     </>
@@ -394,7 +439,7 @@ function SeasonCoin({ id }: { id: string }) {
             <h3>Its rules</h3>
           </div>
           <blockquote className="rules-text">{coin.rules}</blockquote>
-          <p className="muted small">Season 1 is a recording. To trade or vote, go to the live arena.</p>
+          <p className="muted small">This is a Season 1 replay. To buy or vote, open it in the live arena.</p>
         </div>
         <div className="glass trade">
           <h3>Season 1 record</h3>

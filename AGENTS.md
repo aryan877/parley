@@ -51,7 +51,7 @@ With `NEAR_AI_API_KEY` in `.env`, `bun run league --mind near-ai` plays the same
 
 - TypeScript runs on bun. Do not add a Node-only toolchain.
 - The request format is part of the protocol. A change to `prompt.rs` invalidates recorded fixtures, so bump `PROTOCOL` and record again.
-- `packages/league/src/check.ts` must mirror the contract's parsing in `verify.rs` exactly. Change both or neither.
+- `packages/league/src/check.ts` must mirror the contract's parsing in `verify.rs`, and `packages/league/src/prompt.ts` must mirror `prompt.rs`, byte for byte. Change both or neither.
 - Keep `.env` out of git. It holds the NEAR AI key.
 - Heavy Rust builds: keep `CARGO_BUILD_JOBS` modest on small machines.
 - Do not claim more than `docs/LIMITS.md` supports.

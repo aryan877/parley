@@ -10,10 +10,45 @@ const BUILT_WASM = join(ROOT, "target/near/parley_arena/parley_arena.wasm");
 const KEPT_WASM = join(ROOT, "contracts/arena/res/parley_arena.wasm");
 
 export interface Deployment {
-  network: "local";
+  network: "local" | "testnet";
   rpcUrl: string;
   contractId: string;
   accounts: Record<string, { accountId: string; privateKey: string }>;
+}
+
+/** What a public deployment records in `deployments/<network>.json`. Keys never go in this file. */
+export interface PublicDeployment {
+  network: "testnet";
+  rpcUrl: string;
+  contractId: string;
+  owner: string;
+  faucet: string;
+  deployedAt: string;
+  codeHash: string;
+  transactions: Record<string, string>;
+}
+
+export const TESTNET_FILE = join(ROOT, "deployments", "testnet.json");
+const CREDENTIALS = join(process.env.HOME ?? "", ".near-credentials", "testnet");
+
+/** A testnet key from the environment (`PARLEY_<ROLE>_KEY`) or from the near CLI's legacy keychain. */
+export function testnetKey(accountId: string, role: string): string | null {
+  const env = process.env[`PARLEY_${role.toUpperCase()}_KEY`];
+  if (env) return env;
+  const file = join(CREDENTIALS, `${accountId}.json`);
+  return existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as { private_key: string }).private_key : null;
+}
+
+function loadTestnet(): Deployment {
+  if (!existsSync(TESTNET_FILE)) throw new Error("no testnet deployment; run `bun scripts/deploy-testnet.ts` first");
+  const pub = JSON.parse(readFileSync(TESTNET_FILE, "utf8")) as PublicDeployment;
+  const accounts: Deployment["accounts"] = {};
+  for (const [role, accountId] of [["arena", pub.owner], ["faucet", pub.faucet]] as const) {
+    const privateKey = testnetKey(accountId, role === "arena" ? "owner" : role);
+    if (privateKey) accounts[role] = { accountId, privateKey };
+  }
+  if (!accounts.arena) throw new Error(`no key for ${pub.owner}; set PARLEY_OWNER_KEY`);
+  return { network: "testnet", rpcUrl: process.env.PARLEY_RPC_URL ?? pub.rpcUrl, contractId: pub.contractId, accounts };
 }
 
 export const DEMO_CONFIG: Config = {
@@ -36,10 +71,25 @@ export const DEMO_CONFIG: Config = {
   creation_fee: near(1).toString(),
 };
 
+/** The local deployment, or the public testnet one when `PARLEY_NETWORK=testnet`. */
 export function loadDeployment(): Deployment {
+  if (process.env.PARLEY_NETWORK === "testnet") return loadTestnet();
   if (!existsSync(DEPLOYMENT)) throw new Error("no local deployment; run `bun run deploy:local` first");
   return JSON.parse(readFileSync(DEPLOYMENT, "utf8")) as Deployment;
 }
+
+/** A new play account for a key someone holds in their browser, funded with test NEAR from the faucet account. */
+export async function fundPlayer(deployment: Deployment, publicKey: string): Promise<string> {
+  if (deployment.network === "local") return fundLocalAccount(publicKey);
+  const faucet = deployment.accounts.faucet;
+  if (!faucet) throw new Error("this server has no faucet key");
+  const funder = new Account(faucet.accountId, new JsonRpcProvider({ url: deployment.rpcUrl }), faucet.privateKey as KeyPairString);
+  const accountId = `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}.${faucet.accountId}`;
+  await funder.createSubAccount({ accountOrPrefix: accountId, publicKey, nearToTransfer: PLAY_FUNDS });
+  return accountId;
+}
+
+export const PLAY_FUNDS = near(1.5);
 
 /** Creates a new local account for a key someone holds, funded with test NEAR. Only for the local chain. */
 export async function fundLocalAccount(publicKey: string, amount = near(50)): Promise<string> {

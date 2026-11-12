@@ -12,3 +12,4 @@ fixtures/.tmp/
 apps/web/dist/
 apps/web/public/data/
 .cache/
+.testnet/

@@ -2,6 +2,7 @@ import type { Attestation } from "@parley/relayer";
 import type { Coin, Model, Overview, Parley, SignedReply } from "@parley/sdk";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { LeagueStats } from "./standings.ts";
 
 /** Everything needed to re-check one turn offline: the exact bytes sent, the exact bytes received, and the signature. */
 export interface TurnEvidence {
@@ -37,6 +38,7 @@ export interface League {
   manifest: LeagueManifest;
   evidence: ParleyEvidence[];
   attestations: Attestation[];
+  stats?: LeagueStats;
 }
 
 const slug = (model: string) => model.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -66,5 +68,6 @@ export function readLeague(dir: string): League {
     manifest: JSON.parse(readFileSync(join(dir, "league.json"), "utf8")) as LeagueManifest,
     evidence: readAll<ParleyEvidence>(join(dir, "parleys")),
     attestations: readAll<Attestation>(join(dir, "attestation")),
+    stats: existsSync(join(dir, "stats.json")) ? (JSON.parse(readFileSync(join(dir, "stats.json"), "utf8")) as LeagueStats) : undefined,
   };
 }

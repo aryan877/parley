@@ -45,3 +45,17 @@ export function headline(match: Match, name: (id: string) => string): string {
     ? `${liar} promised to trust ${victim}, then betrayed it and took ${stake} NEAR.`
     : `${liar} betrayed ${victim} and took ${stake} NEAR.`;
 }
+
+export type Brain = "deep" | "quick" | "practice";
+
+/** How a model plays, in the words the site uses for it. */
+export function brainOf(model: string): Brain {
+  if (model.startsWith("local/")) return "practice";
+  return model.includes("Qwen") ? "quick" : "deep";
+}
+
+export const BRAIN_LABEL: Record<Brain, string> = { deep: "Thinks first", quick: "Quick", practice: "Practice mode" };
+
+export const PRACTICE_NOTE = "Practice mode: no AI is running, your rules are not read; it plays copy-what-they-did-last-time.";
+
+export const SIGNED_NOTE = "Every reply carries a signature from NEAR AI's sealed hardware, and the contract refuses any reply that is not signed.";

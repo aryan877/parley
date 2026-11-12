@@ -3,10 +3,15 @@ import type { Coin, Config, Model, Overview, Parley, SignedReply } from "@parley
 import { useEffect, useRef, useState } from "react";
 import { type Match, fromParley } from "./model.ts";
 
-export const ARENA_API: string = import.meta.env.VITE_ARENA_API ?? "http://localhost:8787";
+const configured = (import.meta.env.VITE_ARENA_API as string | undefined)?.trim().replace(/\/+$/, "");
+
+/** An explicit build-time URL wins; a production build without one talks to the site's own origin. */
+export const ARENA_API: string = configured || (import.meta.env.PROD ? window.location.origin : "http://localhost:8787");
 
 export interface ArenaInfo {
-  network: string;
+  network: "local" | "testnet" | (string & {});
+  /** Explorer prefix for a transaction hash, such as https://testnet.nearblocks.io/txns/, or null. */
+  explorerTx?: string | null;
   rpcUrl: string;
   contractId: string;
   autoplay: boolean;
@@ -50,6 +55,19 @@ export function useArenaInfo(): { info: ArenaInfo | null; ready: boolean } {
   }, []);
   return state;
 }
+
+export const txLink = (i: ArenaInfo | null | undefined, hash?: string | null) => (i?.explorerTx && hash ? `${i.explorerTx}${hash}` : null);
+
+export function accountLink(i: ArenaInfo | null | undefined, account: string): string | null {
+  if (!i?.explorerTx) return null;
+  try {
+    return `${new URL(i.explorerTx).origin}/address/${account}`;
+  } catch {
+    return null;
+  }
+}
+
+export const networkName = (i: ArenaInfo | null | undefined) => (i?.network === "testnet" ? "NEAR testnet" : i?.network === "local" ? "a local test chain" : `NEAR ${i?.network ?? ""}`.trim());
 
 export const readArena = (i: ArenaInfo) => new Arena({ rpcUrl: i.rpcUrl, contractId: i.contractId });
 
@@ -154,7 +172,7 @@ export interface Schedule {
 }
 
 /** What the arena is playing now and what it will play next, refreshed every two seconds. */
-export function useSchedule(every = 2000): { schedule: Schedule | null; skew: number } {
+export function useSchedule(every = 5000): { schedule: Schedule | null; skew: number } {
   const [state, setState] = useState<{ schedule: Schedule | null; skew: number }>({ schedule: null, skew: 0 });
   useEffect(() => {
     let live = true;

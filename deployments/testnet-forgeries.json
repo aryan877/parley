@@ -1,0 +1,14 @@
+{
+  "parley": 11,
+  "triedAt": "2026-11-12T03:43:21.072Z",
+  "unregisteredKey": {
+    "refused": true,
+    "reason": "not an active enclave signer for this model",
+    "tx": "GsMd1LkRjdLMZEnYBbQyViZCAEfutUVKKpSVFU9JDs1T"
+  },
+  "replayedReply": {
+    "refused": true,
+    "reason": "enclave signature does not match this request and response",
+    "tx": "FPt6Ay1ipavgQZa13pb1qhcbftXMuHCG2eLU45fg6qsC"
+  }
+}

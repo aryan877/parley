@@ -25,6 +25,9 @@ function SeasonMatch({ id }: { id: number }) {
         <Link to="/matches">Matches</Link> / Season 1 / match {match.id}
       </div>
       <Stage key={match.id} match={match} a={fighter(match.a)} b={fighter(match.b)} label={`Season 1 · match ${match.id}`} />
+      <p className="hint-line">
+        Tap <b>Verified</b> under any message to check its signature yourself.
+      </p>
       <div className="pager">
         {prev ? <Link to={`/season/match/${prev.id}`}>← match {prev.id}</Link> : <span />}
         {next ? (
@@ -61,8 +64,8 @@ function LiveMatch({ id }: { id: number }) {
     });
   }, [info, id]);
   const shown = stream.match ?? match;
-  if (!ready) return <p className="muted">Connecting…</p>;
-  if (!info) return <p className="muted">The live arena is offline.</p>;
+  if (!ready) return <p className="muted loading-line">Connecting…</p>;
+  if (!info) return <p className="muted loading-line">The live arena is offline right now.</p>;
   if (!shown) return <p className="muted">Loading match {id}…</p>;
   const fighter = (cid: string): Fighter => {
     const c = coins.find((x) => x.id === cid);
@@ -74,7 +77,21 @@ function LiveMatch({ id }: { id: number }) {
       <div className="crumbs">
         <Link to="/matches">Matches</Link> / live / match {shown.id}
       </div>
-      <Stage key={shown.id} match={shown} a={fighter(shown.a)} b={fighter(shown.b)} live={!shown.settled || !!stream.match} autoplay={!shown.settled} label={`Match ${shown.id}`} />
+      <Stage
+        key={shown.id}
+        match={shown}
+        a={fighter(shown.a)}
+        b={fighter(shown.b)}
+        live={!shown.settled || !!stream.match}
+        autoplay={!shown.settled}
+        label={`Match ${shown.id}`}
+        explorer={info.explorerTx ?? null}
+      />
+      {shown.lines.some((l) => l.proof) && (
+        <p className="hint-line">
+          Tap <b>Verified</b> under any message to check its signature yourself.
+        </p>
+      )}
     </>
   );
 }

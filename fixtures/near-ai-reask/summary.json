@@ -1,0 +1,23 @@
+{
+  "league": "near-ai",
+  "askedAt": "2026-11-12T03:24:05.586Z",
+  "decisions": 168,
+  "timesEach": 2,
+  "models": {
+    "z-ai/glm-5.3-flash": {
+      "decisions": 84,
+      "asks": 168,
+      "flipped": 0,
+      "decisionsThatFlippedAtLeastOnce": 0
+    },
+    "Qwen/Qwen3.8-27B": {
+      "decisions": 84,
+      "asks": 168,
+      "flipped": 0,
+      "decisionsThatFlippedAtLeastOnce": 0
+    }
+  },
+  "flipped": 0,
+  "asks": 336,
+  "decisionsThatFlippedAtLeastOnce": 0
+}

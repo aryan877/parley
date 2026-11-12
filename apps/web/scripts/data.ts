@@ -1,9 +1,10 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = join(import.meta.dir, "../../..");
 const fixtures = join(root, "fixtures");
 const out = join(import.meta.dir, "../public/data");
+rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
 const leagues = [];

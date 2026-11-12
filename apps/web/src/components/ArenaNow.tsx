@@ -38,12 +38,16 @@ export function ArenaNow() {
   const { current, next, queue } = schedule;
   const step = current ? Math.min(current.turns, 6) : 0;
   const wait = next ? Math.max(0, Math.round((next.at + skew - now) / 1000)) : null;
-  const pause = Math.round(schedule.pauseMs / 1000);
+  const pause = schedule.pauseMs >= 90_000 ? `about ${Math.round(schedule.pauseMs / 60_000)} min` : `about ${Math.round(schedule.pauseMs / 1000)}s`;
+  const soon = next?.why === "challenge" ? "a few seconds" : pause;
   const rest = info ? Math.round(Number(info.config.rest_ns) / 1e9) : 20;
+  const auto = schedule.autoplay;
   const when = !next
-    ? "Waiting for coins to finish resting"
+    ? auto
+      ? "Coins are resting. The next match starts in a moment."
+      : "Matches start when someone launches a coin or challenges one."
     : current
-      ? `Right after this match (about ${pause}s later)`
+      ? `Right after this match (${soon} later)`
       : wait && wait > 0
         ? `Starts in ${wait}s`
         : "Starting now";
@@ -52,7 +56,7 @@ export function ArenaNow() {
     <div className="arena-now">
       <div className="now-col">
         <div className="now-label">
-          <span className="live-tag">Live</span> Now playing
+          {current && <span className="live-tag">Live</span>} Now playing
         </div>
         {current ? (
           <>
@@ -71,7 +75,10 @@ export function ArenaNow() {
             </Link>
           </>
         ) : (
-          <p className="muted">Between matches. The next one starts in a moment.</p>
+          <div className="now-idle">
+            <Mascot id="pavlov" size={44} mood="idle" />
+            <p className="muted">{auto || next ? "Between matches. The next one starts in a moment." : "Nothing is playing right now."}</p>
+          </div>
         )}
       </div>
 
@@ -81,10 +88,17 @@ export function ArenaNow() {
           <>
             <Pair a={next.a} b={next.b} name={name} />
             <p className="now-when">{when}</p>
-            <p className="faint small">{next.why === "challenge" ? "A coin someone just launched, meeting its chosen rival." : "Picked by the contract's rule below."}</p>
+            <p className="faint small">{next.why === "challenge" ? "A new coin, meeting a rival it picked." : "Picked by the arena's rule, not by a person."}</p>
           </>
         ) : (
-          <p className="muted">{when}</p>
+          <>
+            <p className={auto ? "muted" : "now-when calm"}>{when}</p>
+            {!auto && (
+              <Link to="/launch" className="btn ghost small-btn">
+                Launch a coin <ArrowIcon size={16} />
+              </Link>
+            )}
+          </>
         )}
         {queue.length > 1 && (
           <p className="faint small" style={{ marginTop: 6 }}>
@@ -95,11 +109,21 @@ export function ArenaNow() {
 
       <div className="now-col rule">
         <div className="now-label">How matches are picked</div>
-        <p>
-          <b>One match at a time, nonstop.</b> Nobody chooses who plays. The coin that has waited longest goes next, against the coin it has gone longest without
-          meeting.
-        </p>
-        <p className="faint small">A coin rests {rest} seconds between matches. A new coin can also challenge up to three rivals the moment it launches.</p>
+        {auto ? (
+          <>
+            <p>
+              <b>One match at a time, nonstop.</b> The coin that has waited longest plays next, against the coin it met least recently.
+            </p>
+            <p className="faint small">Coins rest {rest} seconds between matches. A new coin also picks up to three rivals when it launches.</p>
+          </>
+        ) : (
+          <>
+            <p>
+              <b>One match at a time.</b> A new coin picks up to three rivals when it launches.
+            </p>
+            <p className="faint small">Its matches join the line and play in order.</p>
+          </>
+        )}
       </div>
     </div>
   );

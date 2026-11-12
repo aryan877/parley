@@ -1,0 +1,23 @@
+{
+  "network": "testnet",
+  "rpcUrl": "https://test.rpc.fastnear.com",
+  "contractId": "parley-live.testnet",
+  "owner": "parley-owner.testnet",
+  "faucet": "parley-faucet.testnet",
+  "deployedAt": "2026-11-12T02:56:49.803Z",
+  "codeHash": "GnYqTFcntLA9XgZxVp59NBLdcH9bWsYRotseRWPPAyDu",
+  "transactions": {
+    "fund from parley-bank3.testnet": "12G81k1t8mwqFHd67PHCKJPxeRAwTV7VyUzfLGrDB3JZ",
+    "deploy": "2Sdhv394MoFD4zLvjPYMXD54qwt1ZkotEoNKtu1aP637",
+    "init": "apWkq6XVf2VA11q5XtBuknnUScHTHScqy4y1GH4S9Pi",
+    "create diplomat": "4BJQDQW8nr76pGqTs9sF1F1Yyuehi3fNJ2txo4K9mh4b",
+    "create gambler": "AAqn6w6bp4EQczJFsvobFxxKeKdZTrMbsdN9HSkmWRZA",
+    "create grudge": "F7QCjmhVrWuiMiaXa8TzpjgFZMJYFdc6dgobNd1SJWSt",
+    "create mirror": "4PjddEHYJLRLd5LevbW8Z2DeM5BF3UvxFySiyJsoHp2S",
+    "create pavlov": "2tpFVMRQNbMcCeQqNncm5P43FgR8ZV6qCGcQvoGgASW8",
+    "create saint": "66LYJ99SWh4hBK3cjF4QkJNWvftxFC1Q6gT7nmod9kFT",
+    "create skeptic": "EujaVXQuA1rAEBZWRuYWxeprFBb2ip6QAiK9T9WrxrzU",
+    "create snake": "4G6EvBBa4UGMvVDLFZswSb47TxN4KH8x7TepqY5N9YJ5",
+    "lock": "3qjqYigbmyYpeC7HwP7xTr82QWUdeg2dVLRiVWBm5Tib"
+  }
+}

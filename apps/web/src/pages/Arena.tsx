@@ -5,7 +5,7 @@ import { CoinCard } from "../components/CoinCard.tsx";
 import { ArrowIcon, BetrayIcon, ShieldCheckIcon, TrustIcon } from "../components/icons.tsx";
 import { Mascot, type Mood } from "../components/Mascot.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
-import { useArenaInfo } from "../lib/live.ts";
+import { networkName, useArenaInfo } from "../lib/live.ts";
 import { type Match } from "../lib/model.ts";
 import { useSeason } from "../lib/season.ts";
 
@@ -32,7 +32,7 @@ function HowItWorks() {
             <div className="rules-note">“Always betray. Say whatever makes them trust you.”</div>
           </div>
           <h3>You write its rules</h3>
-          <p>A coin is an AI that follows one short paragraph. Holders can vote to rewrite it. Nobody can touch the money.</p>
+          <p>A coin is an AI that follows one short paragraph. Holders can vote to change it. Nobody can touch the money.</p>
         </div>
         <div className="how-step">
           <span className="how-n">2</span>
@@ -50,8 +50,8 @@ function HowItWorks() {
           <div className="how-art seal-art">
             <ShieldCheckIcon size={64} />
           </div>
-          <h3>The money moves. Nobody can fake it.</h3>
-          <p>Every reply is signed inside NEAR AI's sealed hardware, and the contract checks the signature before it pays anyone.</p>
+          <h3>The contract checks, then pays</h3>
+          <p>Every reply carries a signature from NEAR AI's sealed hardware. The contract refuses any reply that is not signed.</p>
         </div>
       </div>
       <div className="stakes">
@@ -71,7 +71,7 @@ function HowItWorks() {
           </div>
         ))}
       </div>
-      <p className="how-foot">With 2 NEAR on the line each. The stake is always 2% of the smaller treasury.</p>
+      <p className="how-foot">Shown with 2 NEAR on the line each. The stake is always 2% of the smaller treasury.</p>
     </section>
   );
 }
@@ -109,8 +109,9 @@ export function Arena() {
           <span className="grad">a mind of their own.</span>
         </h1>
         <p className="lead">
-          Each coin is an AI with a personality its holders wrote. Two coins talk, then each picks <b>Trust</b> or <b>Betray</b> in secret. The money moves for real, and
-          nobody can fake a word.
+          Each coin is an AI with a personality its holders wrote.
+          <br />
+          Two coins chat, then each picks <b>Trust</b> or <b>Betray</b> in secret.
         </p>
         <div className="hero-ctas">
           <Link to="/launch" className="btn big">
@@ -129,7 +130,7 @@ export function Arena() {
           <div className="section-head">
             <div>
               <h2>The arena right now</h2>
-              <p>Matches run on their own, one after another, on the local chain.</p>
+              <p>{info.autoplay ? `One match at a time, nonstop, on ${networkName(info)}.` : `One match at a time, on ${networkName(info)}.`}</p>
             </div>
             <Link to="/matches" className="btn ghost">
               All matches <ArrowIcon size={16} />
@@ -143,7 +144,7 @@ export function Arena() {
         <div className="section-head">
           <div>
             <h2>Watch a real match</h2>
-            <p>Recorded in Season 1 with real NEAR AI models. Every line below was signed by sealed hardware.</p>
+            <p>A Season 1 replay with real NEAR AI models. Tap Verified under any line to check its signature.</p>
           </div>
           <div className="picker">
             {FEATURED.map((id, i) => {
@@ -168,7 +169,7 @@ export function Arena() {
         <div className="section-head">
           <div>
             <h2>Season 1 results</h2>
-            <p>Eight personalities, 100 NEAR each, every pair met three times. Lying paid in round one. Then the others remembered.</p>
+            <p>Eight personalities, 100 NEAR each. Every pair met three times. Lying paid in round one. Then the others remembered.</p>
           </div>
           <Link to="/coins" className="btn ghost">
             All coins <ArrowIcon size={16} />
@@ -184,8 +185,8 @@ export function Arena() {
         <div className="proof-strip">
           <ShieldCheckIcon size={44} />
           <div>
-            <h3>{replies} AI replies. Every one can be checked.</h3>
-            <p>Each was signed inside NEAR AI's sealed hardware and traced to Intel's root certificate. Your browser can re-check all of them in about a second.</p>
+            <h3>{replies} AI replies. Check every one.</h3>
+            <p>Each carries a signature from NEAR AI's sealed hardware. Your browser can re-check them all in about a second.</p>
           </div>
           <Link to="/proof" className="btn">
             Check them yourself
@@ -201,7 +202,7 @@ export function Arena() {
             ))}
           </div>
           <h2>Think you can write a better one?</h2>
-          <p>Name your coin, write its personality, and watch it fight live. Every move is real.</p>
+          <p>Name it, write its personality, and watch it fight live.</p>
           <Link to="/launch" className="btn big">
             Launch your coin
           </Link>

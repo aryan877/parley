@@ -7,10 +7,11 @@ import { checkLeague, clean, readLeague, summarize } from "../src/index.ts";
 const dir = join(ROOT, "fixtures/scripted");
 const recorded = existsSync(join(dir, "league.json"));
 
-test.skipIf(!recorded)("the recorded scripted league verifies offline", () => {
-  const { manifest, evidence } = readLeague(dir);
-  expect(evidence.length).toBeGreaterThan(0);
-  expect(checkLeague(manifest, evidence)).toEqual([]);
+test.skipIf(!recorded)("the recorded scripted league verifies offline, every request rebuilt and stats.json re-derived", () => {
+  const { manifest, evidence, stats } = readLeague(dir);
+  expect(evidence.length).toBe(manifest.parleys);
+  expect(stats).toBeDefined();
+  expect(checkLeague(manifest, evidence, [], stats)).toEqual([]);
 });
 
 test.skipIf(!recorded)("flipping one recorded move is caught five ways", () => {
@@ -56,16 +57,20 @@ const aiDir = join(ROOT, "fixtures/near-ai");
 const aiRecorded = existsSync(join(aiDir, "league.json"));
 
 test.skipIf(!aiRecorded)("the recorded real-AI league verifies offline, hardware quotes included", () => {
-  const { manifest, evidence, attestations } = readLeague(aiDir);
+  const { manifest, evidence, attestations, stats } = readLeague(aiDir);
   expect(attestations.length).toBeGreaterThan(0);
-  expect(checkLeague(manifest, evidence, attestations)).toEqual([]);
+  expect(stats).toBeDefined();
+  expect(checkLeague(manifest, evidence, attestations, stats)).toEqual([]);
 });
 
 test.skipIf(!aiRecorded)("a real-AI league without its quotes does not verify", () => {
   const { manifest, evidence } = readLeague(aiDir);
   const problems = checkLeague(manifest, evidence, []).map((f) => f.problem);
-  expect(problems.length).toBe(manifest.models.length);
-  expect(problems.every((p) => p.endsWith("no recorded attestation for the registered enclave key"))).toBe(true);
+  const missing = problems.filter((p) => p.endsWith("no recorded attestation for the registered enclave key"));
+  const replies = evidence.reduce((n, e) => n + e.turns.length, 0);
+  expect(missing.length).toBe(manifest.models.length);
+  expect(problems.length).toBe(missing.length + replies);
+  expect(problems.filter((p) => !missing.includes(p)).every((p) => p.endsWith("its Intel TDX quote is missing or does not verify"))).toBe(true);
 });
 
 test.skipIf(!aiRecorded)("editing a coin's recorded reasoning breaks its signature", () => {

@@ -1,6 +1,7 @@
 import type { Coin, Config, Model, Overview, Parley, SignedReply } from "@parley/sdk/src/types.ts";
+import { ARENA_API } from "./live.ts";
 
-export const ARENA_API: string = import.meta.env.VITE_ARENA_API ?? "http://localhost:8787";
+export { ARENA_API };
 
 export interface LiveArena {
   network: string;
@@ -53,7 +54,7 @@ export function watchChallenge(id: string, onEvent: (event: LiveEvent) => void, 
 
 /** A plain-words label for a registered model, read from the request settings the arena stores for it. */
 export function modelLabel(model: Model): string {
-  if (model.id.startsWith("local/")) return "Rule-based stand-in";
+  if (model.id.startsWith("local/")) return "Practice mode";
   const name = model.id.split("/").pop() ?? model.id;
   return model.options.includes('"enable_thinking":false') ? `${name}: answers at once` : `${name}: reasons first, and you can read it`;
 }

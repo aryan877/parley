@@ -5,5 +5,6 @@ export default defineConfig({
   base: "./",
   plugins: [react()],
   server: { port: 5180 },
+  preview: { port: 5180, strictPort: true },
   build: { target: "es2022" },
 });

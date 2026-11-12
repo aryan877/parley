@@ -3,6 +3,20 @@ import type { Amendment, Coin, Config, Model, Order, Overview, Parley, SignedRep
 
 const TGAS = 1_000_000_000_000n;
 
+const limited = (error: unknown) => /-429|Rate limits exceeded|Too Many Requests|\b429\b/i.test(error instanceof Error ? error.message : String(error));
+
+/** Public RPCs rate-limit by address. Waits and tries again instead of failing a whole match on one busy second. */
+async function patient<T>(work: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await work();
+    } catch (error) {
+      if (!limited(error) || attempt >= 5) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt));
+    }
+  }
+}
+
 export interface ArenaOptions {
   rpcUrl: string;
   contractId: string;
@@ -38,27 +52,28 @@ export class Arena {
   }
 
   async view<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
-    return (await this.provider.callFunction({ contractId: this.contractId, method, args })) as T;
+    return (await patient(() => this.provider.callFunction({ contractId: this.contractId, method, args }))) as T;
   }
 
   async call(method: string, args: Record<string, unknown> = {}, options: { deposit?: bigint; gas?: bigint } = {}): Promise<CallResult> {
     if (!this.account) throw new Error("this Arena client has no signer");
     try {
-      const outcome = await this.account.callFunctionRaw({
+      const outcome = await patient(() => this.account!.callFunctionRaw({
         contractId: this.contractId,
         methodName: method,
         args,
         deposit: options.deposit ?? 0n,
         gas: options.gas ?? 100n * TGAS,
         waitUntil: "EXECUTED_OPTIMISTIC",
-      });
+      }));
       const status = outcome.status as { SuccessValue?: string; Failure?: unknown };
       const hash = outcome.transaction.hash as string;
       if (status.SuccessValue === undefined) return { ok: false, hash, error: JSON.stringify(status.Failure ?? status) };
       const raw = status.SuccessValue ? new TextDecoder().decode(Uint8Array.from(atob(status.SuccessValue), (c) => c.charCodeAt(0))) : "";
       return { ok: true, hash, value: raw ? JSON.parse(raw) : undefined };
     } catch (error) {
-      return { ok: false, hash: "", error: error instanceof Error ? error.message : String(error) };
+      const hash = (error as { transactionResult?: { transaction?: { hash?: string } } }).transactionResult?.transaction?.hash ?? "";
+      return { ok: false, hash, error: error instanceof Error ? error.message : String(error) };
     }
   }
 

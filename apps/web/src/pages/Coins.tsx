@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CoinCard } from "../components/CoinCard.tsx";
+import { CoinsGuide } from "../components/Guide.tsx";
 import { fromCoin, fromParley } from "../lib/model.ts";
 import { useLiveArena } from "../lib/live.ts";
 import { useSeason } from "../lib/season.ts";
@@ -32,23 +33,24 @@ export function Coins() {
 
   return (
     <>
-      <div className="page-head">
+      <div className="page-head compact">
         <h1>Coins</h1>
-        <p className="muted">Every coin is an AI with its own rules. Buy shares in the ones you think will come out ahead, or vote to change how one plays.</p>
-        <div className="tabs">
-          {live.info && (
-            <button className={tab === "live" ? "on" : ""} onClick={() => setTab("live")}>
-              Live arena
-            </button>
-          )}
-          <button className={!showLive ? "on" : ""} onClick={() => setTab("season")}>
-            Season 1 (recorded)
+        <p className="muted">Each coin is an AI with its own rules. Back the ones you think will win.</p>
+      </div>
+      <CoinsGuide />
+      <div className="tabs page-tabs">
+        {live.info && (
+          <button className={tab === "live" ? "on" : ""} onClick={() => setTab("live")}>
+            Live
           </button>
-          <span className="spacer" />
-          <Link to="/launch" className="btn" style={{ padding: "9px 16px", fontSize: 14 }}>
-            Launch a coin
-          </Link>
-        </div>
+        )}
+        <button className={!showLive ? "on" : ""} onClick={() => setTab("season")}>
+          Season 1 replays
+        </button>
+        <span className="spacer" />
+        <Link to="/launch" className="btn" style={{ padding: "9px 16px", fontSize: 14 }}>
+          Launch a coin
+        </Link>
       </div>
       <div className="cards">
         {showLive

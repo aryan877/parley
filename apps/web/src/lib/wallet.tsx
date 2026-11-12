@@ -16,7 +16,7 @@ interface Wallet {
   balance: string | null;
   busy: boolean;
   error: string | null;
-  /** Creates a funded play account on the local chain and keeps its key in this browser. */
+  /** Creates a funded play account from the arena's faucet and keeps its key in this browser. */
   connectPlay(): Promise<void>;
   disconnect(): void;
   /** The arena, signing as the connected account. */

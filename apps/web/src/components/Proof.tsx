@@ -2,17 +2,19 @@ import { verifyReply } from "@parley/sdk/src/enclave.ts";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import type { Line, Match } from "../lib/model.ts";
+import { brainOf } from "../lib/words.ts";
 import { ShieldCheckIcon } from "./icons.tsx";
 
 const short = (hex: string, n = 10) => (hex.length > n * 2 ? `${hex.slice(0, n)}…${hex.slice(-6)}` : hex);
 
 /** A drawer that re-checks one reply's enclave signature in the browser and shows what was signed. */
-export function Proof({ line, match, name, onClose }: { line: Line; match: Match; name: (id: string) => string; onClose: () => void }) {
+export function Proof({ line, match, name, onClose, txUrl }: { line: Line; match: Match; name: (id: string) => string; onClose: () => void; txUrl?: string | null }) {
   const [raw, setRaw] = useState(false);
   const proof = line.proof;
   const ok = useMemo(() => (proof ? verifyReply(proof.model, proof.request, proof.reply) : false), [proof]);
   if (!proof) return null;
   const who = name(line.side === "A" ? match.a : match.b);
+  const practice = brainOf(proof.model) === "practice";
   const prompt = (JSON.parse(proof.request) as { messages: { content: string }[] }).messages[1]?.content ?? "";
 
   return (
@@ -32,24 +34,47 @@ export function Proof({ line, match, name, onClose }: { line: Line; match: Match
           <ShieldCheckIcon size={28} />
           <div>
             <strong>{ok ? "Checked in your browser just now" : "This signature does not match"}</strong>
-            <span>{ok ? `This is exactly what ${who}'s AI said. Nobody edited it.` : "Someone changed these bytes."}</span>
+            <span>{ok ? `These are the exact words ${who} sent. Nothing was edited.` : "Someone changed these bytes."}</span>
           </div>
         </div>
 
-        <ol className="proof-steps">
-          <li>
-            <b>The blockchain wrote the question.</b> Nobody in between could change a word of it.
-          </li>
-          <li>
-            <b>The AI answered inside sealed hardware</b> at NEAR AI Cloud, running <code>{proof.model}</code>.
-          </li>
-          <li>
-            <b>The hardware stamped the answer</b> with a key that never leaves it. The stamp covers the exact question and the exact answer.
-          </li>
-          <li>
-            <b>The contract checked the stamp</b> before it counted the turn, and your browser just checked it again.
-          </li>
-        </ol>
+        {txUrl && (
+          <a className="chain-link" href={txUrl} target="_blank" rel="noreferrer">
+            See it on NEAR
+          </a>
+        )}
+
+        {practice ? (
+          <ol className="proof-steps">
+            <li>
+              <b>The chain wrote the question.</b> Nobody in between could change a word.
+            </li>
+            <li>
+              <b>Practice mode answered.</b> No AI is running for this coin. It copies what the other coin did last time.
+            </li>
+            <li>
+              <b>A local practice key signed it.</b> This is not sealed hardware.
+            </li>
+            <li>
+              <b>The contract checked the signature</b> before the turn counted, and your browser just checked it again.
+            </li>
+          </ol>
+        ) : (
+          <ol className="proof-steps">
+            <li>
+              <b>The chain wrote the question.</b> Nobody in between could change a word.
+            </li>
+            <li>
+              <b>NEAR AI answered inside sealed hardware,</b> running <code>{proof.model}</code>.
+            </li>
+            <li>
+              <b>The hardware signed it.</b> One signature covers the exact question and the exact answer.
+            </li>
+            <li>
+              <b>The contract checked the signature</b> before the turn counted, and your browser just checked it again.
+            </li>
+          </ol>
+        )}
 
         <h4>What the contract asked {who}</h4>
         <pre className="prompt">{prompt}</pre>

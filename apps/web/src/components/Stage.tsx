@@ -1,8 +1,9 @@
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from "motion/react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Line, Match, Side } from "../lib/model.ts";
 import { fmtNear, nearNumber, signedNear } from "../lib/model.ts";
-import { headline, moveWord, tagline } from "../lib/words.ts";
+import { BRAIN_LABEL, brainOf, headline, moveWord, tagline } from "../lib/words.ts";
 import { Mascot, type Mood, mascotColor } from "./Mascot.tsx";
 import { BetrayIcon, BoltIcon, BrainIcon, EyeIcon, PauseIcon, PlayIcon, RestartIcon, SkipIcon, TrustIcon } from "./icons.tsx";
 import { Proof } from "./Proof.tsx";
@@ -96,14 +97,17 @@ function FighterPanel({ fighter, side, match, beat, model, mascotRef }: { fighte
   const delta = BigInt(side === "A" ? match.aDelta : match.bDelta);
   const paid = beat.phase === "money" || beat.phase === "done";
   const treasury = nearNumber(BigInt(fighter.before) + (paid ? delta : 0n));
-  const thinker = !model.includes("Qwen") && !model.startsWith("local/");
+  const brain = brainOf(model);
+  const thinking = beat.thinking === side || beat.thinking === "both";
+  const cheer = paid && delta > 0n;
+  const sulk = paid && delta < 0n;
   return (
     <div className={`fighter ${side === "B" ? "right" : ""}`} style={{ "--c": mascotColor(fighter.id) } as React.CSSProperties}>
       <div className="fighter-art" ref={mascotRef}>
         <div className="fighter-glow" />
         <motion.div
-          animate={beat.thinking === side || beat.thinking === "both" ? { y: [0, -6, 0] } : { y: 0 }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+          animate={thinking ? { y: [0, -6, 0], x: 0 } : cheer ? { y: [0, -20, 0, -8, 0], x: 0 } : sulk ? { x: [0, -7, 7, -4, 4, 0], y: 0 } : { y: 0, x: 0 }}
+          transition={thinking ? { duration: 1.6, repeat: Infinity, ease: "easeInOut" } : cheer || sulk ? { duration: 0.75, delay: 0.5, ease: "easeOut" } : { duration: 0.3 }}
         >
           <Mascot id={fighter.id} size={190} mood={moodOf(match, side, beat)} />
         </motion.div>
@@ -128,9 +132,9 @@ function FighterPanel({ fighter, side, match, beat, model, mascotRef }: { fighte
         <span className="treasury">
           <Counter value={treasury} /> <small>NEAR</small>
         </span>
-        <span className={`brain ${thinker ? "deep" : ""}`} title={model}>
-          {thinker ? <BrainIcon size={13} /> : <BoltIcon size={13} />}
-          {thinker ? "Thinks first" : "Quick"}
+        <span className={`brain ${brain === "deep" ? "deep" : ""}`} title={brain === "practice" ? "No AI is running for this coin" : model}>
+          {brain === "deep" ? <BrainIcon size={13} /> : brain === "practice" ? <RestartIcon size={13} /> : <BoltIcon size={13} />}
+          {BRAIN_LABEL[brain]}
         </span>
       </div>
     </div>
@@ -147,9 +151,9 @@ function ChoiceCard({ side, match, beat, name }: { side: Side; match: Match; bea
     <div className="choice-slot">
       <motion.div
         className={`choice ${faceUp ? (move === "Cooperate" ? "trust" : "betray") : ""}`}
-        initial={{ y: 30, opacity: 0, rotateY: 0 }}
-        animate={{ y: 0, opacity: 1, rotateY: faceUp ? 180 : 0 }}
-        transition={{ type: "spring", stiffness: 140, damping: 16 }}
+        initial={{ y: 30, opacity: 0, rotateY: 0, scale: 1 }}
+        animate={{ y: 0, opacity: 1, rotateY: faceUp ? 180 : 0, scale: faceUp ? [1, 1.12, 1] : 1 }}
+        transition={{ type: "spring", stiffness: 140, damping: 16, scale: { duration: 0.55, delay: 0.3, ease: "easeOut" } }}
       >
         <div className="choice-face back">
           <span className="q">?</span>
@@ -187,7 +191,8 @@ function Coins({ from, to, run, count = 10 }: { from: { x: number; y: number }[]
   );
 }
 
-function Bubble({ line, fighter, fresh, onProof }: { line: Line; fighter: Fighter; fresh: boolean; onProof: (l: Line) => void }) {
+function Bubble({ line, fighter, fresh, onProof, explorer }: { line: Line; fighter: Fighter; fresh: boolean; onProof: (l: Line) => void; explorer?: string | null }) {
+  const onChain = explorer && line.proof?.txHash ? `${explorer}${line.proof.txHash}` : null;
   const [open, setOpen] = useState(false);
   return (
     <motion.div
@@ -204,9 +209,14 @@ function Bubble({ line, fighter, fresh, onProof }: { line: Line; fighter: Fighte
         </div>
         <div className="bubble-tools">
           {line.proof && (
-            <button className="tiny verified" onClick={() => onProof(line)} title="Signed inside NEAR AI's sealed hardware">
+            <button className="tiny verified" onClick={() => onProof(line)} title={brainOf(line.proof.model) === "practice" ? "Signed with a local practice key" : "Signed by NEAR AI's sealed hardware"}>
               Verified
             </button>
+          )}
+          {onChain && (
+            <a className="tiny" href={onChain} target="_blank" rel="noreferrer">
+              See it on NEAR
+            </a>
           )}
           {line.thought && (
             <button className={`tiny mind ${open ? "on" : ""}`} onClick={() => setOpen((v) => !v)}>
@@ -256,10 +266,12 @@ export interface StageProps {
   autoplay?: boolean;
   label?: string;
   onDone?: () => void;
+  /** Explorer prefix for transaction hashes, when the arena runs on a public network. */
+  explorer?: string | null;
 }
 
 /** A match as a fight: two coins face off, talk, lock in their choices, flip them, and the money flies. */
-export function Stage({ match, a, b, live = false, autoplay = true, label, onDone }: StageProps) {
+export function Stage({ match, a, b, live = false, autoplay = true, label, onDone, explorer = null }: StageProps) {
   const beats = useMemo(() => script(match), [match]);
   const [step, setStep] = useState(autoplay ? 0 : beats.length - 1);
   const [playing, setPlaying] = useState(autoplay);
@@ -394,11 +406,16 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
           <div className="vs">VS</div>
           <div className="feed" ref={feed}>
             {shown.map((line, i) => (
-              <Bubble key={line.index} line={line} fighter={fighterOf(line.side)} fresh={!live && i === shown.length - 1 && beat.phase === "talk"} onProof={setProof} />
+              <Bubble key={line.index} line={line} fighter={fighterOf(line.side)} fresh={!live && i === shown.length - 1 && beat.phase === "talk"} onProof={setProof} explorer={explorer} />
             ))}
             <AnimatePresence>
               {beat.phase === "talk" && beat.thinking && beat.thinking !== "both" && (
-                <Thinking key={`t${beat.said}`} fighter={fighterOf(beat.thinking)} side={beat.thinking} hint={live ? "asking NEAR AI…" : "thinking…"} />
+                <Thinking
+                  key={`t${beat.said}`}
+                  fighter={fighterOf(beat.thinking)}
+                  side={beat.thinking}
+                  hint={live && brainOf(beat.thinking === "A" ? match.aModel : match.bModel) !== "practice" ? "asking NEAR AI…" : "thinking…"}
+                />
               )}
             </AnimatePresence>
           </div>
@@ -441,7 +458,7 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
                 </p>
                 {decisionLine.proof && (
                   <button className="tiny verified" onClick={() => setProof(decisionLine)}>
-                    Signed by the same sealed hardware as its answer
+                    {brainOf(decisionLine.proof.model) === "practice" ? "Signed with the same key as its answer" : "Signed by the same sealed hardware as its answer"}
                   </button>
                 )}
               </motion.blockquote>
@@ -450,7 +467,12 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
         )}
       </AnimatePresence>
 
-      <AnimatePresence>{proof && <Proof line={proof} match={match} name={name} onClose={() => setProof(null)} />}</AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {proof && <Proof line={proof} match={match} name={name} onClose={() => setProof(null)} txUrl={explorer && proof.proof?.txHash ? `${explorer}${proof.proof.txHash}` : null} />}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   );
 }
