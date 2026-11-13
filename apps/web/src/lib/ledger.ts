@@ -1,4 +1,5 @@
 import type { LedgerEntry, LedgerKind, LedgerPage, LedgerSummary } from "@parley/sdk/src/ledger.ts";
+import { YOCTO } from "@parley/sdk/src/units.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ARENA_API } from "./live.ts";
 import { fmtNear } from "./model.ts";
@@ -100,9 +101,7 @@ export function useLedger(coin: string | null, kinds: LedgerKind[], limit = 40, 
   return { entries: state.key === key ? state.entries : [], next: state.next, ready: state.ready && state.key === key, problem: state.problem, more, paging };
 }
 
-const ONE = 10n ** 24n;
-
-export const amount = (yocto: string | bigint) => fmtNear(yocto, (BigInt(yocto) < 0n ? -BigInt(yocto) : BigInt(yocto)) < ONE ? 4 : 2);
+export const amount = (yocto: string | bigint) => fmtNear(yocto, (BigInt(yocto) < 0n ? -BigInt(yocto) : BigInt(yocto)) < YOCTO ? 4 : 2);
 
 const n = (yocto: string) => `${amount(yocto)} NEAR`;
 const sh = (units: string) => fmtNear(units);

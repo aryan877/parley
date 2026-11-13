@@ -1,4 +1,4 @@
-import type { Arena, Coin, Parley } from "@parley/sdk";
+import { type Arena, type Coin, type Parley, fmtNear } from "@parley/sdk";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -25,16 +25,9 @@ const ALT: Record<Outcome, string> = {
 const KEEP = 500;
 const FRESH_MS = 10_000;
 
-/** NEAR from yoctoNEAR the way the site shows it: two decimals, more for small amounts. */
-export function near(yocto: string | bigint): string {
-  const v = BigInt(yocto);
-  const n = Number(v < 0n ? -v : v) / 1e24;
-  let digits = 2;
-  while (digits < 4 && n !== 0 && n < 0.5 * 10 ** -digits) digits++;
-  return n.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-}
+export const near = (yocto: string | bigint) => fmtNear(BigInt(yocto) < 0n ? -BigInt(yocto) : yocto);
 
-export function outcomeOf(parley: Parley): Outcome | null {
+function outcomeOf(parley: Parley): Outcome | null {
   if (parley.status !== "Settled" || !parley.a_move || !parley.b_move) return null;
   if (parley.a_move === "Cooperate" && parley.b_move === "Cooperate") return "trust";
   return parley.a_move === "Defect" && parley.b_move === "Defect" ? "both-betray" : "betray";

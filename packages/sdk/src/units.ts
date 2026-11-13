@@ -22,4 +22,14 @@ export function formatNear(yocto: bigint | string, digits = 2): string {
   return `${sign}${whole}.${frac}`;
 }
 
+export const nearNumber = (yocto: bigint | string): number => Number(BigInt(yocto) / 10n ** 20n) / 10_000;
+
+/** NEAR as the site shows it: `digits` decimals, more (up to 4) so a small amount never shows as 0. `formatNear` keeps exact digits. */
+export function fmtNear(yocto: bigint | string, digits = 2): string {
+  const n = nearNumber(yocto);
+  let d = digits;
+  while (d < 4 && n !== 0 && Math.abs(n) < 0.5 * 10 ** -d) d++;
+  return n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
 export const MINUTE_NS = 60n * 1_000_000_000n;
