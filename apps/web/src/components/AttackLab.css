@@ -1,0 +1,145 @@
+section.lab {
+  margin-top: 56px;
+}
+
+.lab .section-head p code {
+  font-size: 0.85em;
+}
+
+.lab-off {
+  margin: -6px 0 16px;
+}
+
+.lab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.lab-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 20px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+.lab-card h3 {
+  margin: 0;
+  font: 750 18px/1.25 var(--display);
+}
+
+.lab-card > p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.lab-act {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 2px;
+}
+
+.lab-kept {
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.2);
+  text-underline-offset: 3px;
+}
+
+.lab-kept:hover {
+  color: var(--text);
+}
+
+.lab-note {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.lab-note.bad {
+  color: #ffc6cd;
+}
+
+.lab-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  color: var(--trust);
+  background: rgba(52, 211, 153, 0.09);
+}
+
+.lab-result > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.lab-result > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.lab-result b {
+  font: 700 15px/1.35 var(--display);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.lab-result p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.lab-result p a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lab-result .chain-link {
+  margin: 0;
+  justify-self: start;
+}
+
+.lab-edit {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.lab-edit q {
+  font-size: 13.5px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.lab-edit q + span {
+  margin-top: 6px;
+}
+
+.lab-edit mark {
+  padding: 0 2px;
+  border-radius: 4px;
+  color: #1b0306;
+  background: var(--gold);
+}
+
+@media (max-width: 600px) {
+  .lab-grid {
+    grid-template-columns: 1fr;
+  }
+  .lab-card {
+    padding: 16px;
+  }
+}

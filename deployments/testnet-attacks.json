@@ -1,0 +1,51 @@
+{
+  "contract": "parley-live.testnet",
+  "account": "parley-relay.testnet",
+  "recordedAt": "2026-11-13T08:02:30.361Z",
+  "attacks": {
+    "house-coin": {
+      "attack": "house-coin",
+      "method": "create_house_coin",
+      "reason": "owner only",
+      "tx": "HnQNzXqC1xxf4JmHXy36SQ4NYM7vUHLuCSNAdNy7eaUu",
+      "at": "2026-11-13T08:01:50.666Z",
+      "target": "a new house coin"
+    },
+    "drain": {
+      "attack": "drain",
+      "method": "place_redeem",
+      "reason": "not enough free shares",
+      "tx": "FBfe1YgMPMRzz96TZaQ5e6AqQzeWQf1L2iNyAKvdxeRc",
+      "at": "2026-11-13T08:01:53.628Z",
+      "target": "DIPLOMAT"
+    },
+    "vote": {
+      "attack": "vote",
+      "method": "propose_amendment",
+      "reason": "not enough shares to propose",
+      "tx": "2FaEsAJ6t1NGjPGHZqzNXSM1xjNaXqJb1Qz2qMv9EerN",
+      "at": "2026-11-13T08:01:56.120Z",
+      "target": "SAINT"
+    },
+    "unknown-key": {
+      "attack": "unknown-key",
+      "method": "submit_turn",
+      "reason": "not an active enclave signer for this model",
+      "tx": "5iZoKfBGsV3EgLbtjQhPcq7JQKdmUnYqxNZdGqP2vJPb",
+      "at": "2026-11-13T08:02:24.604Z",
+      "target": "match 679, message 3",
+      "parley": 679,
+      "turn": 2
+    },
+    "replay": {
+      "attack": "replay",
+      "method": "submit_turn",
+      "reason": "enclave signature does not match this request and response",
+      "tx": "7TzGoW64Fgw8QUPa4gPKPDJo3Te3nK4rx7eGeHqoKfYi",
+      "at": "2026-11-13T08:02:30.361Z",
+      "target": "match 679, message 3",
+      "parley": 679,
+      "turn": 2
+    }
+  }
+}
