@@ -1,4 +1,5 @@
-import { formatNear } from "@parley/sdk";
+import { Arena, formatNear } from "@parley/sdk";
+import { rulesHistory } from "@parley/sdk/src/chronicle.ts";
 import type { LedgerEntry } from "@parley/sdk/src/ledger.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -18,9 +19,29 @@ const line = (e: LedgerEntry) =>
     e.tx,
   ].join("  ");
 
+const chainTime = (ns: string | null) => (ns ? new Date(Number(BigInt(ns) / 1_000_000n)).toISOString().slice(0, 19).replace("T", " ") : "unknown time");
+
+async function history(book: Ledger, arena: Arena, ids: string[]) {
+  for (const id of ids) {
+    const coin = await arena.coin(id);
+    if (!coin) {
+      console.log(`${id}: no such coin`);
+      continue;
+    }
+    const { versions, complete } = rulesHistory(coin, book.governance(id));
+    console.log(`${id}: ${versions.length} of ${coin.constitution_version} rules versions${complete ? "" : ", some missing"}`);
+    for (const v of versions) {
+      const vote = v.yes !== null && v.no !== null ? `  for ${formatNear(v.yes, 4)}, against ${formatNear(v.no, 4)}` : "";
+      console.log(`  v${v.version}  ${chainTime(v.at)}  ${v.version === 1 ? "by" : "proposed by"} ${v.by ?? "?"}${vote}  ${v.model}  ${v.tx ?? "no transaction"}`);
+      console.log(`      ${v.constitution}`);
+    }
+  }
+}
+
 export async function ledger() {
   const deployment = JSON.parse(readFileSync(TESTNET_FILE, "utf8")) as PublicDeployment;
-  const book = new Ledger({ dir: join(ROOT, ".testnet"), network: deployment.network, contractId: deployment.contractId, rpcUrl: process.env.PARLEY_RPC_URL ?? deployment.rpcUrl });
+  const rpcUrl = process.env.PARLEY_RPC_URL ?? deployment.rpcUrl;
+  const book = new Ledger({ dir: join(ROOT, ".testnet"), network: deployment.network, contractId: deployment.contractId, rpcUrl });
   const started = Date.now();
   while (!(await book.pass())) await Bun.sleep(5000);
   const { status, totals, coins, books } = book.summary();
@@ -39,4 +60,6 @@ export async function ledger() {
   }
   const last = Number(flag("last", "15"));
   for (const e of book.entries.slice(-last).reverse()) console.log(line(e));
+  const asked = flag("history")?.split(",").filter(Boolean) ?? [];
+  if (asked.length) await history(book, new Arena({ rpcUrl, contractId: deployment.contractId }), asked);
 }

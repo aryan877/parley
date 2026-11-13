@@ -46,7 +46,7 @@ if (!command) {
       "  govern [--mind scripted|near-ai]        walk through buying in, amending and leaving",
       "  serve [--port 8787] [--autoplay]        live arena API for the site; --autoplay keeps matches running",
       "  status                                  treasuries and records",
-      "  ledger [--last N]                       read every money move of the testnet arena and check its books",
+      "  ledger [--last N] [--history a,b]       read every money move of the testnet arena and check its books; print coins' rules history",
     ].join("\n"),
   );
   process.exit(1);
