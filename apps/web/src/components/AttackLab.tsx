@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import recorded from "../../../../deployments/testnet-attacks.json";
-import { ARENA_API, txLink, useArenaInfo, useSchedule } from "../lib/live.ts";
+import { ARENA_API, askArena, txLink, useArenaInfo, useSchedule } from "../lib/live.ts";
 import { clock, useNow } from "../lib/time.ts";
 import { ShieldCheckIcon } from "./icons.tsx";
 import { txUrl } from "./OnChain.tsx";
@@ -228,9 +228,7 @@ export function AttackLab() {
 
   useEffect(() => {
     if (!info) return;
-    fetch(`${ARENA_API}/api/attacks`)
-      .then((r) => (r.ok ? (r.json() as Promise<{ account: string | null }>) : { account: null }))
-      .then((b) => setAccount(b.account), () => setAccount(null));
+    askArena<{ account: string | null }>("/api/attacks").then((a) => setAccount(a.ok ? a.body.account : null));
   }, [info]);
 
   const next = schedule?.next ? Math.max(0, Math.round((schedule.next.at + skew - now) / 1000)) : null;

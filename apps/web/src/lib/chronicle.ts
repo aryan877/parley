@@ -1,7 +1,7 @@
 import { type Records, type RulesHistory, arenaRecords } from "@parley/sdk/src/chronicle.ts";
 import type { Coin } from "@parley/sdk/src/types.ts";
 import { useEffect, useMemo, useState } from "react";
-import { ARENA_API, useLiveArena } from "./live.ts";
+import { askArena, useLiveArena } from "./live.ts";
 import { msOf } from "./time.ts";
 
 export type { DiffPart, Records, RulesHistory, RulesVersion } from "@parley/sdk/src/chronicle.ts";
@@ -11,11 +11,7 @@ const RECORDS_EVERY = 30_000;
 const HISTORY_EVERY = 15_000;
 const HISTORY_TRIES = 12;
 
-async function getJson<T>(path: string): Promise<T | null> {
-  const res = await fetch(`${ARENA_API}${path}`, { signal: AbortSignal.timeout(8000) }).catch(() => null);
-  if (!res?.ok) return null;
-  return (await res.json().catch(() => null)) as T | null;
-}
+const getJson = <T>(path: string) => askArena<T>(path).then((a) => (a.ok ? a.body : null));
 
 let served: { at: number; body: Records | null } | null = null;
 let serving: Promise<Records | null> | null = null;

@@ -8,6 +8,20 @@ const configured = (import.meta.env.VITE_ARENA_API as string | undefined)?.trim(
 /** An explicit build-time URL wins; a production build without one talks to the site's own origin. */
 export const ARENA_API: string = configured || (import.meta.env.PROD ? window.location.origin : "http://localhost:8787");
 
+export type Answer<T> = { ok: true; body: T } | { ok: false; offline: boolean; error: string | null };
+
+/** A GET from the arena server. `offline` when it did not answer at all, `error` when it said why not. */
+export async function askArena<T>(path: string): Promise<Answer<T>> {
+  try {
+    const res = await fetch(`${ARENA_API}${path}`, { signal: AbortSignal.timeout(8000) });
+    if (res.ok) return { ok: true, body: (await res.json()) as T };
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    return { ok: false, offline: false, error: body?.error ?? null };
+  } catch {
+    return { ok: false, offline: true, error: null };
+  }
+}
+
 export interface ArenaInfo {
   network: "local" | "testnet" | (string & {});
   /** Explorer prefix for a transaction hash, such as https://testnet.nearblocks.io/txns/, or null. */

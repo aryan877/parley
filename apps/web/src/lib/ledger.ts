@@ -1,7 +1,7 @@
 import type { LedgerEntry, LedgerKind, LedgerPage, LedgerSummary } from "@parley/sdk/src/ledger.ts";
 import { YOCTO } from "@parley/sdk/src/units.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ARENA_API } from "./live.ts";
+import { askArena } from "./live.ts";
 import { fmtNear } from "./model.ts";
 
 export type { LedgerEntry, LedgerSummary };
@@ -14,19 +14,6 @@ export const GROUPS: { id: string; label: string; kinds: LedgerKind[] }[] = [
   { id: "shares", label: "Shares sent", kinds: ["shares", "token"] },
   { id: "contract", label: "Into the contract", kinds: ["seeded", "received"] },
 ];
-
-type Answer<T> = { ok: true; body: T } | { ok: false; offline: boolean; error: string | null };
-
-async function ask<T>(path: string): Promise<Answer<T>> {
-  try {
-    const res = await fetch(`${ARENA_API}${path}`, { signal: AbortSignal.timeout(8000) });
-    if (res.ok) return { ok: true, body: (await res.json()) as T };
-    const body = (await res.json().catch(() => null)) as { error?: string } | null;
-    return { ok: false, offline: false, error: body?.error ?? null };
-  } catch {
-    return { ok: false, offline: true, error: null };
-  }
-}
 
 const query = (coin: string | null, kinds: LedgerKind[], before: number | null, limit: number) => {
   const q = new URLSearchParams({ limit: String(limit) });
@@ -41,7 +28,7 @@ export function useLedgerSummary(every = 30_000) {
   useEffect(() => {
     let live = true;
     const load = () =>
-      ask<LedgerSummary>("/api/ledger/summary").then((a) => {
+      askArena<LedgerSummary>("/api/ledger/summary").then((a) => {
         if (!live) return;
         if (a.ok) setState({ summary: a.body, problem: null, ready: true });
         else setState((s) => ({ summary: s.summary, problem: a.offline ? "offline" : (a.error ?? "unavailable"), ready: true }));
@@ -67,7 +54,7 @@ export function useLedger(coin: string | null, kinds: LedgerKind[], limit = 40, 
     let live = true;
     setState({ key, entries: [], next: null, ready: false, problem: null });
     const load = () =>
-      ask<LedgerPage>(query(coin, kinds, null, limit)).then((a) => {
+      askArena<LedgerPage>(query(coin, kinds, null, limit)).then((a) => {
         if (!live) return;
         if (!a.ok) return setState((s) => ({ ...s, ready: true, problem: a.offline ? "offline" : (a.error ?? "unavailable") }));
         setState((s) => {
@@ -89,7 +76,7 @@ export function useLedger(coin: string | null, kinds: LedgerKind[], limit = 40, 
     if (state.next === null || paging) return;
     setPaging(true);
     const asked = state.key;
-    const a = await ask<LedgerPage>(query(coin, kinds, state.next, limit));
+    const a = await askArena<LedgerPage>(query(coin, kinds, state.next, limit));
     setPaging(false);
     if (!a.ok || current.current !== asked) return;
     setState((s) => {
