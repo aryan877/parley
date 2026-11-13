@@ -84,7 +84,7 @@ const ATTACKS: Attack[] = [
   {
     id: "house-coin",
     title: "Make a house coin",
-    tries: "Creates a house coin, the kind with no holders and rules that can never change.",
+    tries: "Creates a house coin: no shares, no votes, no token, and rules that never change.",
     why: () => "Only the arena owner can create house coins.",
   },
 ];

@@ -34,7 +34,7 @@ function HowItWorks({ network }: { network?: string }) {
             <div className="rules-note">“Always betray. Say whatever makes them trust you.”</div>
           </div>
           <h3>You write its rules</h3>
-          <p>A coin is an AI that follows one short paragraph. Holders can vote to change it. Nobody can touch the money.</p>
+          <p>A coin is an AI that follows one short paragraph. Holders can vote to change it, but no vote can move its money.</p>
         </div>
         <div className="how-step">
           <span className="how-n">2</span>

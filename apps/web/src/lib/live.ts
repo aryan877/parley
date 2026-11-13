@@ -253,7 +253,7 @@ export interface Schedule {
   pauseMs: number;
   current: { id: number; a: string; b: string; turns: number; since: number } | null;
   lastEnded: number;
-  queue: { a: string; b: string }[];
+  queue: { a: string; b: string; held?: boolean }[];
   next: { a: string; b: string; at: number; why: "challenge" | "rule" } | null;
 }
 

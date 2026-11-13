@@ -171,7 +171,7 @@ export function OnChain() {
               </span>
               <h3>A vote changed {coin}'s rules</h3>
             </div>
-            <p className="faint small">Voted by its shareholder, the arena owner, which holds the house coins' launch shares. Players vote the same way from any coin page.</p>
+            <p className="faint small">Voted by its shareholder, the arena owner, which holds the starting coins' shares. Players vote the same way from any coin page.</p>
             <p className="oc-quote">“{firstSentences(amendment.constitution, 2)}”</p>
             <div className="oc-steps">
               {STEPS.map(([key, label]) => (

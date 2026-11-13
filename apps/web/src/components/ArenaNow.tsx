@@ -29,6 +29,7 @@ export function ArenaNow() {
   if (!schedule) return null;
   const name = coinName(coins);
   const { current, next, queue } = schedule;
+  const then = queue.filter((q) => !q.held).slice(1, 4);
   const step = current ? Math.min(current.turns, 6) : 0;
   const wait = next ? Math.max(0, Math.round((next.at + skew - now) / 1000)) : null;
   const pause = schedule.pauseMs >= 120_000 ? `about ${Math.round(schedule.pauseMs / 60_000)} minutes` : `${Math.round(schedule.pauseMs / 1000)} seconds`;
@@ -116,9 +117,9 @@ export function ArenaNow() {
             )}
           </>
         )}
-        {queue.length > 1 && (
+        {then.length > 0 && (
           <p className="faint small" style={{ marginTop: 6 }}>
-            Then {queue.slice(1, 4).map((q) => `${name(q.a)} vs ${name(q.b)}`).join(", ")}
+            Then {then.map((q) => `${name(q.a)} vs ${name(q.b)}`).join(", ")}
           </p>
         )}
       </div>
@@ -171,7 +172,7 @@ export function YourMatches({ coins, name, watch = true, title }: { coins: strin
             <span className="your-names">
               <b>{name(me)}</b> vs <b>{name(rival)}</b>
             </span>
-            <em>{now ? <span className="live-tag">Live</span> : null}{now ? "Playing now" : m.place === 1 ? "Next up" : `${m.place - 1} ${m.place === 2 ? "match" : "matches"} before it`}</em>
+            <em>{now ? <span className="live-tag">Live</span> : null}{now ? "Playing now" : "held" in m && m.held ? "Waits for a rule change" : m.place === 1 ? "Next up" : `${m.place - 1} ${m.place === 2 ? "match" : "matches"} before it`}</em>
             {now && watch && schedule.current && (
               <Link to={`/match/${schedule.current.id}`} className="btn small-btn">
                 Watch <ArrowIcon size={14} />

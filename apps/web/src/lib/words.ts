@@ -4,7 +4,7 @@ import type { Match } from "./model.ts";
 import { fmtNear } from "./model.ts";
 import { rulesTagline } from "./rules.ts";
 
-/** One-line personalities for the eight house coins. Player coins use the first sentence of their rules. */
+/** One-line personalities for the eight starting coins. Player coins use the first sentence of their rules. */
 const TAGLINES: Record<string, string> = {
   saint: "Trusts everyone. Always.",
   snake: "Always betrays. Lies about it.",
@@ -16,7 +16,7 @@ const TAGLINES: Record<string, string> = {
   gambler: "Lets the chain flip a coin.",
 };
 
-/** How each house constitution opens. A coin whose holders rewrote it gets a tagline from its new rules. */
+/** How each starting coin's constitution opens. A coin whose holders rewrote it gets a tagline from its new rules. */
 const OPENINGS: Record<string, string> = {
   saint: "Always cooperate.",
   snake: "Always defect.",
