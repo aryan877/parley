@@ -6,9 +6,10 @@ import { useLiveArena } from "../lib/live.ts";
 import { fmtNear, fromParley } from "../lib/model.ts";
 import { reads, view } from "../lib/near.ts";
 import { useOpenAt } from "../lib/reveal.ts";
+import { clock, minutes, msOf, useNow } from "../lib/time.ts";
 import { shortAccount, useWallet } from "../lib/wallet.tsx";
 import { headline } from "../lib/words.ts";
-import { YourMatches, clock } from "./ArenaNow.tsx";
+import { YourMatches } from "./ArenaNow.tsx";
 import { Mascot } from "./Mascot.tsx";
 import { ArrowIcon, WalletIcon } from "./icons.tsx";
 import "./JudgeSeat.css";
@@ -45,21 +46,6 @@ const useSeated = () =>
     () => seated,
   );
 
-function useNow(run: boolean) {
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    if (!run) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [run]);
-  return now;
-}
-
-const msOf = (ns: string) => Number(BigInt(ns) / 1_000_000n);
-const minutes = (ns: string | undefined, fallback: number) => {
-  const m = ns ? Math.round(Number(BigInt(ns) / 1_000_000_000n) / 60) : fallback;
-  return `${m} ${m === 1 ? "minute" : "minutes"}`;
-};
 const minuteLong = (ns: string | undefined, fallback: number) => `${ns ? Math.round(Number(BigInt(ns) / 1_000_000_000n) / 60) : fallback}-minute`;
 const left = (ms: number) => clock(Math.max(0, Math.ceil(ms / 1000)));
 

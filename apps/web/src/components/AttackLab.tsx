@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import recorded from "../../../../deployments/testnet-attacks.json";
 import { ARENA_API, txLink, useArenaInfo, useSchedule } from "../lib/live.ts";
+import { clock, useNow } from "../lib/time.ts";
 import { ShieldCheckIcon } from "./icons.tsx";
 import { txUrl } from "./OnChain.tsx";
 import "./AttackLab.css";
@@ -90,7 +91,6 @@ const ATTACKS: Attack[] = [
 
 const RECORDED = (recorded as { attacks: Partial<Record<AttackId, Refusal>> }).attacks;
 const AUTO_RETRIES = 12;
-const clock = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
 
 function Edit({ before, after }: { before: string; after: string }) {
   let at = 0;
@@ -224,7 +224,7 @@ export function AttackLab() {
   const { info, ready } = useArenaInfo();
   const { schedule, skew } = useSchedule(4000);
   const [account, setAccount] = useState<string | null | undefined>(undefined);
-  const [now, setNow] = useState(Date.now);
+  const now = useNow();
 
   useEffect(() => {
     if (!info) return;
@@ -232,10 +232,6 @@ export function AttackLab() {
       .then((r) => (r.ok ? (r.json() as Promise<{ account: string | null }>) : { account: null }))
       .then((b) => setAccount(b.account), () => setAccount(null));
   }, [info]);
-  useEffect(() => {
-    const tick = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(tick);
-  }, []);
 
   const next = schedule?.next ? Math.max(0, Math.round((schedule.next.at + skew - now) / 1000)) : null;
   const waitLine = schedule?.current ? "One is starting now." : next && next > 2 ? `The next one starts in ${clock(next)}.` : "The next one starts any moment.";

@@ -2,6 +2,7 @@ import { type Records, type RulesHistory, arenaRecords } from "@parley/sdk/src/c
 import type { Coin } from "@parley/sdk/src/types.ts";
 import { useEffect, useMemo, useState } from "react";
 import { ARENA_API, useLiveArena } from "./live.ts";
+import { msOf } from "./time.ts";
 
 export type { DiffPart, Records, RulesHistory, RulesVersion } from "@parley/sdk/src/chronicle.ts";
 export { wordDiff } from "@parley/sdk/src/chronicle.ts";
@@ -57,8 +58,6 @@ export function useRecords(): RecordsView | null {
     return { ...all, richest: now.richest ?? all.richest, improved: now.improved ?? all.improved, scope: "all" };
   }, [all, coins, parleys]);
 }
-
-const msOf = (ns: string) => Number(BigInt(ns) / 1_000_000n);
 
 /** A chain time in nanoseconds as a short local date, such as "Nov 12, 3:41 PM". */
 export const chainDate = (ns: string) => new Date(msOf(ns)).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });

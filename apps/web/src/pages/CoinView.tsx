@@ -24,29 +24,13 @@ import { ARENA_API, useArenaInfo } from "../lib/live.ts";
 import { holdings, setHolding } from "../lib/holdings.ts";
 import { type VoteLock, forget, parleysBefore, reads, view } from "../lib/near.ts";
 import { useSeason } from "../lib/season.ts";
+import { minutes, msOf, useNow } from "../lib/time.ts";
 import { failed, noteCoin, useWallet, whyFailed } from "../lib/wallet.tsx";
 import { BRAIN_LABEL, PRACTICE_NOTE, brainOf, tagline } from "../lib/words.ts";
-
-const msOf = (ns: string) => Number(BigInt(ns) / 1_000_000n);
 
 function countdown(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return s < 3600 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${Math.round(s / 3600)} h`;
-}
-
-const minutes = (ns: string | undefined, fallback: number) => {
-  const m = ns ? Number(BigInt(ns) / 60_000_000_000n) : fallback;
-  return `${m} ${m === 1 ? "minute" : "minutes"}`;
-};
-
-function useNow(run: boolean) {
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    if (!run) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [run]);
-  return now;
 }
 
 /** Treasury after each match, oldest first, counted back from the treasury now. */
