@@ -1,5 +1,5 @@
 import type { Books, CoinMoney, GovernanceFacts, LedgerEntry, LedgerKind, LedgerPage, LedgerStatus, LedgerSummary, LedgerTotals } from "@parley/sdk";
-import { TX_INDEX_URLS, base64Text, viewQuery, viewResult } from "@parley/sdk";
+import { type ParleyEvent, TX_INDEX_URLS, base64Text, parleyEvents, viewQuery, viewResult } from "@parley/sdk";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -117,21 +117,6 @@ export function readTx(raw: FastTx, contractId: string): ChainTx {
   return { hash: raw.execution_outcome.id, receipts, complete: spawned.every((id) => ids.has(id)) };
 }
 
-type EventData = Record<string, string | number | boolean | null | undefined>;
-
-function events(logs: string[]): { event: string; data: EventData }[] {
-  return logs.flatMap((log) => {
-    if (!log.startsWith("EVENT_JSON:")) return [];
-    try {
-      const body = JSON.parse(log.slice("EVENT_JSON:".length)) as { standard?: string; event?: string; data?: unknown };
-      if (body.standard !== "parley" || !body.event || !Array.isArray(body.data)) return [];
-      return (body.data as EventData[]).map((data) => ({ event: body.event!, data }));
-    } catch {
-      return [];
-    }
-  });
-}
-
 interface Fields {
   coins?: string[];
   account?: string | null;
@@ -184,7 +169,7 @@ export function entriesOf(tx: ChainTx, orders: OpenOrders): Entry[] {
     if (r.transfer > 0n) out.push(make(tx.hash, r, "received", { account: r.predecessor, near: r.transfer, wallets: r.transfer }));
     if (r.calls.some((c) => c.method === "new") && r.deposit > 0n) out.push(make(tx.hash, r, "seeded", { account: r.predecessor, near: r.deposit, pot: r.deposit, wallets: r.deposit }));
     if (r.calls.some((c) => c.method === "create_token")) tokenPayment = { payer: r.predecessor, deposit: r.deposit };
-    for (const { event, data } of events(r.logs)) {
+    for (const { event, data } of parleyEvents(r.logs)) {
       const text = (key: string) => String(data[key] ?? "");
       const amount = (key: string) => BigInt(String(data[key] ?? 0));
       const coin = text("coin");
@@ -252,12 +237,12 @@ export interface GovernanceRecord {
   /** The account that made the call. */
   by: string;
   calls: Call[];
-  events: { event: string; data: EventData }[];
+  events: ParleyEvent[];
 }
 
 export function governanceOf(tx: ChainTx): GovernanceRecord[] {
   return tx.receipts.flatMap((r) => {
-    const found = r.ok ? events(r.logs).filter((e) => GOVERNANCE_EVENTS.has(e.event)) : [];
+    const found = r.ok ? parleyEvents(r.logs).filter((e) => GOVERNANCE_EVENTS.has(e.event)) : [];
     return found.length ? [{ tx: tx.hash, block: r.block, at: r.timestamp, by: r.predecessor, calls: r.calls, events: found }] : [];
   });
 }

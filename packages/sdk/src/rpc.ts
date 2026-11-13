@@ -89,6 +89,25 @@ export function functionCall(tx: Pick<TxOutcome, "transaction">): { method: stri
   }
 }
 
+export interface ParleyEvent {
+  event: string;
+  data: Record<string, string | number | boolean | null | undefined>;
+}
+
+/** The arena's `EVENT_JSON` events in receipt logs, one per data entry. */
+export function parleyEvents(logs: string[]): ParleyEvent[] {
+  return logs.flatMap((log) => {
+    if (!log.startsWith("EVENT_JSON:")) return [];
+    try {
+      const body = JSON.parse(log.slice("EVENT_JSON:".length)) as { standard?: string; event?: string; data?: unknown };
+      if (body.standard !== "parley" || !body.event || !Array.isArray(body.data)) return [];
+      return (body.data as ParleyEvent["data"][]).map((data) => ({ event: body.event!, data }));
+    } catch {
+      return [];
+    }
+  });
+}
+
 /** A busy, failing or forgetful node (HTTP 429, a timeout, a pruned block) hands the call to the next URL; later rounds back off. */
 export class NearRpc {
   private readonly attempts: number;
