@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 396" width="760" height="396" role="img" aria-label="A whale in MIRROR">
+<style>
+.bg{fill:#fcfcfb}.t{fill:#0b0b0b;font:600 15px system-ui,-apple-system,'Segoe UI',sans-serif}.st{fill:#52514e;font:12px system-ui,-apple-system,'Segoe UI',sans-serif}.ax{fill:#898781;font:11px system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}.lg{fill:#0b0b0b;font:12px system-ui,-apple-system,'Segoe UI',sans-serif}.lv{fill:#52514e;font:12px system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}.grid{stroke:#e1e0d9;stroke-width:1}.base{stroke:#c3c2b7;stroke-width:1}.ref{stroke:#898781;stroke-width:1}.line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.dot{stroke:#fcfcfb;stroke-width:2}.muted{stroke:#898781;fill:#898781}
+.s1{stroke:#2a78d6;fill:#2a78d6}.s2{stroke:#eb6834;fill:#eb6834}.s3{stroke:#1baf7a;fill:#1baf7a}.s4{stroke:#eda100;fill:#eda100}.s5{stroke:#e87ba4;fill:#e87ba4}.s6{stroke:#008300;fill:#008300}.s7{stroke:#6250d6;fill:#6250d6}.s8{stroke:#e34948;fill:#e34948}
+@media (prefers-color-scheme:dark){.bg{fill:#1a1a19}.t,.lg{fill:#f0efec}.st,.lv{fill:#c3c2b7}.grid{stroke:#2c2c2a}.base{stroke:#383835}.dot{stroke:#1a1a19}.s1{stroke:#3987e5;fill:#3987e5}.s2{stroke:#d95926;fill:#d95926}.s3{stroke:#199e70;fill:#199e70}.s4{stroke:#c98500;fill:#c98500}.s5{stroke:#d55181;fill:#d55181}.s6{stroke:#008300;fill:#008300}.s7{stroke:#9085e9;fill:#9085e9}.s8{stroke:#e66767;fill:#e66767}}
+</style>
+<rect class="bg" width="760" height="396" rx="8"/>
+<text class="t" x="16" y="26">A whale in MIRROR</text>
+<text class="st" x="16" y="46">MIRROR's share price with and without a 20 NEAR buy on day 10, sold on day 30</text>
+<line class="base" x1="56" x2="564" y1="352" y2="352"/>
+<text class="ax" x="48" y="356" text-anchor="end">0</text>
+<line class="grid" x1="56" x2="564" y1="298.4" y2="298.4"/>
+<text class="ax" x="48" y="302.4" text-anchor="end">0.5</text>
+<line class="grid" x1="56" x2="564" y1="244.8" y2="244.8"/>
+<text class="ax" x="48" y="248.8" text-anchor="end">1</text>
+<line class="grid" x1="56" x2="564" y1="191.2" y2="191.2"/>
+<text class="ax" x="48" y="195.2" text-anchor="end">1.5</text>
+<line class="grid" x1="56" x2="564" y1="137.6" y2="137.6"/>
+<text class="ax" x="48" y="141.6" text-anchor="end">2</text>
+<line class="grid" x1="56" x2="564" y1="84" y2="84"/>
+<text class="ax" x="48" y="88" text-anchor="end">2.5</text>
+<text class="ax" x="56" y="370" text-anchor="middle">0</text>
+<text class="ax" x="140.667" y="370" text-anchor="middle">10</text>
+<text class="ax" x="225.333" y="370" text-anchor="middle">20</text>
+<text class="ax" x="310" y="370" text-anchor="middle">30</text>
+<text class="ax" x="394.667" y="370" text-anchor="middle">40</text>
+<text class="ax" x="479.333" y="370" text-anchor="middle">50</text>
+<text class="ax" x="564" y="370" text-anchor="middle">60</text>
+<text class="ax" x="564" y="388" text-anchor="end">day</text>
+<text class="ax" x="48" y="68" text-anchor="end">price</text>
+<line class="ref" x1="56" x2="564" y1="244.8" y2="244.8"/>
+<text class="ax" x="560" y="240.8" text-anchor="end">launch</text>
+<line class="ref" x1="140.667" x2="140.667" y1="80" y2="352"/>
+<text class="ax" x="144.667" y="78">buy</text>
+<line class="ref" x1="310" x2="310" y1="80" y2="352"/>
+<text class="ax" x="314" y="78">sell</text>
+<g><title>MIRROR, no whale: 2.405 on day 60</title>
+<path class="line s1" style="fill:none" d="M56 244.8L64.467 221.808L72.933 187.918L81.4 177.472L89.867 168.47L98.333 159.807L106.8 153.579L115.267 146.023L123.733 142.285L132.2 135.803L140.667 130.818L149.133 129.491L157.6 123.392L166.067 121.787L174.533 117.892L183 113.826L191.467 111.194L199.933 108.675L208.4 106.597L216.867 103.998L225.333 102.299L233.8 100.692L242.267 98.917L250.733 97.453L259.2 95.623L267.667 94.237L276.133 94.234L284.6 94.234L293.067 94.234L301.533 94.234L310 94.234L318.467 94.234L326.933 94.234L335.4 94.234L343.867 94.234L352.333 94.234L360.8 94.234L369.267 94.234L377.733 94.234L386.2 94.234L394.667 94.234L403.133 94.234L411.6 94.234L420.067 94.234L428.533 94.234L437 94.234L445.467 94.234L453.933 94.234L462.4 94.234L470.867 94.234L479.333 94.234L487.8 94.234L496.267 94.234L504.733 94.234L513.2 94.234L521.667 94.234L530.133 94.234L538.6 94.234L547.067 94.234L555.533 94.234L564 94.234"/>
+<circle class="dot s1" cx="564" cy="94.234" r="4"/>
+</g>
+<g><title>MIRROR, whale: 2.122 on day 60</title>
+<path class="line s2" style="fill:none" d="M56 244.8L64.467 221.808L72.933 187.918L81.4 177.472L89.867 168.47L98.333 159.807L106.8 153.579L115.267 146.023L123.733 142.285L132.2 135.803L140.667 130.818L149.133 130.591L157.6 129.548L166.067 129.273L174.533 128.607L183 127.912L191.467 127.462L199.933 127.031L208.4 126.675L216.867 126.231L225.333 125.94L233.8 125.666L242.267 125.362L250.733 125.112L259.2 124.798L267.667 124.561L276.133 124.561L284.6 124.561L293.067 124.561L301.533 124.561L310 124.561L318.467 124.561L326.933 124.561L335.4 124.561L343.867 124.561L352.333 124.561L360.8 124.561L369.267 124.561L377.733 124.561L386.2 124.561L394.667 124.561L403.133 124.561L411.6 124.561L420.067 124.561L428.533 124.561L437 124.561L445.467 124.561L453.933 124.561L462.4 124.561L470.867 124.561L479.333 124.561L487.8 124.561L496.267 124.561L504.733 124.561L513.2 124.561L521.667 124.561L530.133 124.561L538.6 124.561L547.067 124.561L555.533 124.561L564 124.561"/>
+<circle class="dot s2" cx="564" cy="124.561" r="4"/>
+</g>
+<line class="line s1" x1="588" x2="604" y1="90" y2="90"/>
+<text class="lg" x="610" y="94">MIRROR, no whale</text>
+<text class="lv" x="748" y="94" text-anchor="end">2.40</text>
+<line class="line s2" x1="588" x2="604" y1="110" y2="110"/>
+<text class="lg" x="610" y="114">MIRROR, whale</text>
+<text class="lv" x="748" y="114" text-anchor="end">2.12</text>
+</svg>

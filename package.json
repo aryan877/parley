@@ -14,6 +14,7 @@
     "league": "bun packages/league/src/cli.ts",
     "verify": "bun packages/league/src/verify.ts",
     "judge": "bun scripts/judge.ts",
+    "sim": "bun scripts/sim.ts",
     "web": "bun run --cwd apps/web build && bun run --cwd apps/web preview",
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit -p tsconfig.json && bunx tsc --noEmit -p apps/web/tsconfig.json"
