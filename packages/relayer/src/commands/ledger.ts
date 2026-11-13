@@ -1,8 +1,7 @@
 import { Arena, type LedgerEntry, formatNear, rulesHistory } from "@parley/sdk";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Ledger } from "../ledger.ts";
-import { type PublicDeployment, ROOT, TESTNET_FILE } from "../localnet.ts";
+import { ROOT, publicTestnet } from "../localnet.ts";
 import { flag } from "./shared.ts";
 
 const line = (e: LedgerEntry) =>
@@ -37,7 +36,7 @@ async function history(book: Ledger, arena: Arena, ids: string[]) {
 }
 
 export async function ledger() {
-  const deployment = JSON.parse(readFileSync(TESTNET_FILE, "utf8")) as PublicDeployment;
+  const deployment = publicTestnet();
   const rpcUrl = process.env.PARLEY_RPC_URL ?? deployment.rpcUrl;
   const book = new Ledger({ dir: join(ROOT, ".testnet"), network: deployment.network, contractId: deployment.contractId, rpcUrl });
   const started = Date.now();

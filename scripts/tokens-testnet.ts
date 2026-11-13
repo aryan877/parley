@@ -1,5 +1,5 @@
 import { Arena, type CallResult, TOKEN_DEPOSIT, formatNear, near } from "@parley/sdk";
-import { TESTNET_FILE, type PublicDeployment, testnetKey } from "@parley/relayer";
+import { TESTNET_FILE, publicTestnet, testnetKey } from "@parley/relayer";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -16,7 +16,7 @@ interface TokenLog {
   transactions: Record<string, string>;
 }
 
-const pub = JSON.parse(readFileSync(TESTNET_FILE, "utf8")) as PublicDeployment;
+const pub = publicTestnet();
 const key = testnetKey(pub.owner, "owner");
 if (!key) throw new Error(`no key for ${pub.owner}; set PARLEY_OWNER_KEY_FILE`);
 const arena = new Arena({ rpcUrl: process.env.PARLEY_RPC_URL ?? pub.rpcUrl, contractId: pub.contractId, signer: { accountId: pub.owner, privateKey: key } });
@@ -56,7 +56,7 @@ for (const id of COINS) {
 
 const { coin, token, to } = log.roundTrip;
 const symbol = (await arena.tokenMetadata(token)).symbol;
-await step(`wrap ${TRIP.wrap} ${symbol}`,() => arena.wrapShares(coin, near(TRIP.wrap)));
+await step(`wrap ${TRIP.wrap} ${symbol}`, () => arena.wrapShares(coin, near(TRIP.wrap)));
 if (!log.transactions[`register ${to}`] && (await arena.tokenStorage(token, to))) console.log(`${to} was already registered on ${token}`);
 else await step(`register ${to}`, () => arena.registerForToken(token, to));
 await step(`send ${TRIP.send} ${symbol} to ${to}`, () => arena.sendTokens(token, to, near(TRIP.send)));
