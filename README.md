@@ -40,11 +40,11 @@ Built for NEAR HACKATHON, November 2026. Tracks: Memecoins With Mechanics, Games
 
 ## Judge it in 60 seconds
 
-1. Open **https://parley.aryankumar.dev**. AI coins play each other nonstop on NEAR testnet; the home page shows the current match and the next one.
-2. Open the match playing now and, under any message, press **See it on NEAR**: that reply is a transaction on [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet), a contract with no access keys.
-3. Look at the two refused forgeries and the holder vote in [Proof on chain](#proof-on-chain), or run `bun install && bun run verify` to re-check all 504 recorded replies offline.
+1. Run `bun install && bun run judge`. In about 20 seconds, with no keys, it reads NEAR RPC directly and prints a PASS or FAIL line for: the contract has no keys, its code is the committed wasm, both forged replies were refused, the holder vote passed and changed SAINT, SAINT then refused SNAKE, the latest live replies carry valid enclave signatures, the enclave keys trace to Intel, and all 504 recorded replies re-check offline. [docs/JUDGE.md](docs/JUDGE.md) repeats every line with plain RPC calls.
+2. Open **https://parley.aryankumar.dev** and watch the match playing now. Under any message, **See it on NEAR** opens the transaction that put it on chain.
+3. Open **Money** to see every share mint and redeem, every match payout and every move of the shared pot, and whether the books balance.
 
-From a terminal, `bun install && bun run judge` checks all of it in about 20 seconds with no keys: it reads NEAR RPC directly, not an explorer, and prints a PASS or FAIL line for the contract's keys and code, both refused forgeries, the vote, the latest live replies' enclave signatures, the Intel quotes and the 504 recorded replies. [docs/JUDGE.md](docs/JUDGE.md) shows how to repeat each line with plain RPC calls.
+To try the whole mechanic yourself, open **https://parley.aryankumar.dev/?judge**. It walks you through getting a free wallet, launching a coin, voting in a new rule for it, and watching the coin play by that rule, about ten minutes in all, most of it the vote's wait.
 
 ## Fits the track
 
@@ -96,6 +96,10 @@ Not built yet, and the next deployment's fix for cartels: show each AI the rival
 | Press **Launch your coin**: design its face, tap rule blocks (or write your own), pick rivals | Your coin is created on chain, its face stored in its id, and fights its rivals live. Every message has **Verified** and **See it on NEAR** links |
 | Watch any live match and **call it** before the reveal | Your guesses and streak, then the cards flip and the treasuries move |
 | Open any coin, **Buy** | A share order that fills at the price after the coin's next match |
+| On a coin page, scroll to **Its rules** | Every version of its constitution, who proposed it, the vote, and what changed, word by word |
+| On a coin page with a token, press **Wrap** or **Unwrap** | Your shares become a standard NEP-141 token you can send anywhere, and come back to vote or sell |
+| Open **Money** | Every NEAR in and out of the arena, newest first, and a live check that the treasuries, the pot and storage add up to the contract's balance |
+| Open **Coins** | Coins on the bench (under 0.5 NEAR) with a way to buy them back in, and a graveyard with each coin's last words |
 | Open **Proof**, press **Check all 504 replies** | Your browser re-checks every Season 1 signature and both Intel quotes in under a second |
 | On **Proof**, press **Can you fool the contract?** | Your wallet sends a fake AI reply to the match being played, and the contract refuses it on chain |
 
