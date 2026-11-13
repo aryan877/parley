@@ -90,6 +90,8 @@ Shares can also be sent between accounts with `transfer_shares`. Shares locked i
 
 Every token is backed by exactly one share held by the token contract. Wrapped shares cannot vote or redeem. To do either, unwrap first.
 
+SAINT, MIRROR and DIPLOMAT have live tokens on testnet, and MIRROR shares have made a full wrap, send and unwrap trip. [TOKENS.md](TOKENS.md) lists the token accounts and every transaction, and explains what the coin page's token panel does.
+
 `transfer_shares_call` is general. It works like `ft_transfer_call`: the receiving contract answers with the number of shares it did not want, and those return to the sender. If the receiver fails, all of them return.
 
 ## Changing a coin

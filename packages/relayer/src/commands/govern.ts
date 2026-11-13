@@ -71,13 +71,12 @@ export async function govern() {
   step("Bob pays for DOVE's NEP-141 token, wraps 10 shares, sends 4 to Carol and unwraps the rest");
   await expectOk("create token", bob.createToken("dove"));
   const tokenId = (await owner.coin("dove"))!.token!;
-  const [bobToken, carolToken] = [bob.token(tokenId), owner.as(deployment.accounts.carol!).token(tokenId)];
-  await expectOk("wrap", bob.wrapShares("dove", tokenId, near(10)));
-  console.log(`   ${tokenId} is live: bob holds ${formatNear(await bobToken.balanceOf(bobId))} ${(await bobToken.metadata()).symbol}`);
-  await expectOk("register carol", carolToken.register());
-  await expectOk("send", bobToken.transfer(carolId, near(4)));
-  await expectOk("unwrap", bobToken.unwrap(near(6)));
-  console.log(`   carol holds ${formatNear(await bobToken.balanceOf(carolId))} tokens; bob is back to ${await shares(owner, "dove", bobId)} shares in the arena`);
+  await expectOk("wrap", bob.wrapShares("dove", near(10)));
+  console.log(`   ${tokenId} is live: bob holds ${formatNear(await bob.tokenBalance(tokenId, bobId))} ${(await bob.tokenMetadata(tokenId)).symbol}`);
+  await expectOk("register carol", owner.as(deployment.accounts.carol!).registerForToken(tokenId));
+  await expectOk("send", bob.sendTokens(tokenId, carolId, near(4)));
+  await expectOk("unwrap", bob.unwrap(tokenId, near(6)));
+  console.log(`   carol holds ${formatNear(await bob.tokenBalance(tokenId, carolId))} tokens; bob is back to ${await shares(owner, "dove", bobId)} shares in the arena`);
   console.log("   wrapped shares trade like any token. Only shares held in the arena vote or redeem.");
 
   step("Alice proposes a new constitution. This is all holders can do; nobody can move the treasury");

@@ -1,7 +1,11 @@
 import { Account, JsonRpcProvider, type KeyPairString } from "near-api-js";
-import type { Amendment, Coin, Config, Model, Order, Overview, Parley, SignedReply } from "./types.ts";
+import type { Amendment, Coin, Config, Model, Order, Overview, Parley, SignedReply, StorageBalance, TokenMetadata } from "./types.ts";
 
 const TGAS = 1_000_000_000_000n;
+
+export const TOKEN_DEPOSIT = 3n * 10n ** 24n;
+/** More than one registration costs. The token returns the rest. */
+export const TOKEN_STORAGE = 10n ** 22n;
 
 const limited = (error: unknown) => /-429|Rate limits exceeded|Too Many Requests|\b429\b/i.test(error instanceof Error ? error.message : String(error));
 
@@ -68,14 +72,14 @@ export class Arena {
     return new Arena({ rpcUrl: this.rpcUrl, contractId: this.contractId, signer });
   }
 
-  async view<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
-    return (await patient(() => this.provider.callFunction({ contractId: this.contractId, method, args }))) as T;
+  async view<T>(method: string, args: Record<string, unknown> = {}, contractId = this.contractId): Promise<T> {
+    return (await patient(() => this.provider.callFunction({ contractId, method, args }))) as T;
   }
 
-  async call(method: string, args: Record<string, unknown> = {}, options: { deposit?: bigint; gas?: bigint } = {}): Promise<CallResult> {
+  async call(method: string, args: Record<string, unknown> = {}, options: { deposit?: bigint; gas?: bigint; contractId?: string } = {}): Promise<CallResult> {
     if (!this.account && !this.wallet) throw new Error("this Arena client has no signer");
     try {
-      const request = { contractId: this.contractId, methodName: method, args, deposit: options.deposit ?? 0n, gas: options.gas ?? 100n * TGAS };
+      const request = { contractId: options.contractId ?? this.contractId, methodName: method, args, deposit: options.deposit ?? 0n, gas: options.gas ?? 100n * TGAS };
       const outcome = (this.wallet
         ? await this.wallet.send({ receiverId: request.contractId, methodName: method, args, deposit: request.deposit, gas: request.gas })
         : await patient(() => this.account!.callFunctionRaw({ ...request, waitUntil: "EXECUTED_OPTIMISTIC" }))) as {
@@ -124,26 +128,30 @@ export class Arena {
   finalizeAmendment = (id: number) => this.call("finalize_amendment", { id });
   enactAmendment = (id: number) => this.call("enact_amendment", { id });
   releaseVotes = (coin: string) => this.call("release_votes", { coin });
-  createToken = (coin: string) => this.call("create_token", { coin }, { deposit: 3n * 10n ** 24n, gas: 200n * TGAS });
-  wrapShares = (coin: string, token: string, shares: bigint) => this.call("transfer_shares_call", { coin, to: token, shares: shares.toString(), msg: "" });
 
-  /** The coin's NEP-141 contract, called through the same RPC and signer. */
-  token(tokenId: string): ShareToken {
-    return new ShareToken(this.at(tokenId));
-  }
+  tokenAccount = (coin: string) => `${coin}.${this.contractId}`;
+  createToken = (coin: string) =>
+    landed(this.call("create_token", { coin }, { deposit: TOKEN_DEPOSIT, gas: 200n * TGAS }), (token) => typeof token === "string", "the token contract was not created, and the deposit went back");
+  wrapShares = (coin: string, shares: bigint) =>
+    landed(
+      this.call("transfer_shares_call", { coin, to: this.tokenAccount(coin), shares: shares.toString(), msg: "" }),
+      (used) => used === shares.toString(),
+      "the token did not take the shares, so they went back",
+    );
+  unwrap = (token: string, amount: bigint) =>
+    landed(this.call("unwrap", { amount: amount.toString() }, { contractId: token }), (released) => released === true, "the arena did not release the shares, so the tokens were restored");
+  sendTokens = (token: string, to: string, amount: bigint) => this.call("ft_transfer", { receiver_id: to, amount: amount.toString() }, { deposit: 1n, contractId: token });
+  registerForToken = (token: string, account?: string, deposit = TOKEN_STORAGE) =>
+    this.call("storage_deposit", { account_id: account ?? null, registration_only: true }, { deposit, contractId: token });
 
-  private at(contractId: string): Arena {
-    return new Arena({ rpcUrl: this.rpcUrl, contractId, signer: this.signer, wallet: this.wallet });
-  }
+  tokenBalance = (token: string, account: string) => this.view<string>("ft_balance_of", { account_id: account }, token);
+  tokenSupply = (token: string) => this.view<string>("ft_total_supply", {}, token);
+  tokenMetadata = (token: string) => this.view<TokenMetadata>("ft_metadata", {}, token);
+  tokenStorage = (token: string, account: string) => this.view<StorageBalance | null>("storage_balance_of", { account_id: account }, token);
 }
 
-export class ShareToken {
-  constructor(private readonly contract: Arena) {}
-
-  balanceOf = (account: string) => this.contract.view<string>("ft_balance_of", { account_id: account });
-  totalSupply = () => this.contract.view<string>("ft_total_supply");
-  metadata = () => this.contract.view<{ name: string; symbol: string; decimals: number }>("ft_metadata");
-  register = (account?: string) => this.contract.call("storage_deposit", account ? { account_id: account } : {}, { deposit: 10n ** 22n });
-  transfer = (to: string, amount: bigint) => this.contract.call("ft_transfer", { receiver_id: to, amount: amount.toString() }, { deposit: 1n });
-  unwrap = (amount: bigint) => this.contract.call("unwrap", { amount: amount.toString() });
+/** The transaction can succeed while a callback undoes the work, so the returned value decides. */
+async function landed(pending: Promise<CallResult>, done: (value: unknown) => boolean, undone: string): Promise<CallResult> {
+  const result = await pending;
+  return result.ok && !done(result.value) ? { ...result, ok: false, error: undone } : result;
 }

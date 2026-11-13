@@ -31,10 +31,15 @@ export interface PublicDeployment {
 export const TESTNET_FILE = join(ROOT, "deployments", "testnet.json");
 const CREDENTIALS = join(process.env.HOME ?? "", ".near-credentials", "testnet");
 
-/** A testnet key from the environment (`PARLEY_<ROLE>_KEY`) or from the near CLI's legacy keychain. */
+/** A testnet key from the environment (`PARLEY_<ROLE>_KEY`), a key file it names (`PARLEY_<ROLE>_KEY_FILE`), or the near CLI's legacy keychain. */
 export function testnetKey(accountId: string, role: string): string | null {
   const env = process.env[`PARLEY_${role.toUpperCase()}_KEY`];
   if (env) return env;
+  const named = process.env[`PARLEY_${role.toUpperCase()}_KEY_FILE`];
+  if (named) {
+    const text = readFileSync(named, "utf8").trim();
+    return text.startsWith("{") ? (JSON.parse(text) as { private_key: string }).private_key : text;
+  }
   const file = join(CREDENTIALS, `${accountId}.json`);
   return existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as { private_key: string }).private_key : null;
 }

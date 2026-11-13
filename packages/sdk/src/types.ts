@@ -140,3 +140,16 @@ export interface SignedReply {
   signature: string;
   publicKey: string;
 }
+
+export interface TokenMetadata {
+  spec: string;
+  name: string;
+  symbol: string;
+  icon: string | null;
+  decimals: number;
+}
+
+export interface StorageBalance {
+  total: string;
+  available: string;
+}
