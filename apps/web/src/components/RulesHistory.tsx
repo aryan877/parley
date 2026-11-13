@@ -48,7 +48,7 @@ function Version({ v, prev, current, who, link }: { v: RulesVersion; prev?: Rule
     .filter(Boolean)
     .join(" · ");
   return (
-    <article className={`rh-version ${current ? "now" : ""}`}>
+    <article className={`glass rh-version ${current ? "now" : ""}`}>
       <div className="rh-top">
         <b>Version {v.version}</b>
         {current && <span className="rh-now">In force now</span>}
@@ -83,7 +83,7 @@ export function RulesHistory({ coin }: { coin: Coin }) {
   if (coin.constitution_version <= 1) {
     return (
       <section className="rh" id="rules-history">
-        <h2 className="rh-title">Its rules over time</h2>
+        <h2 className="part-title">Its rules over time</h2>
         <p className="rh-still">
           Still on the rules it launched with, {chainDate(coin.created_at)}. When holders vote in new rules, each version shows up here with what changed.
         </p>
@@ -96,7 +96,7 @@ export function RulesHistory({ coin }: { coin: Coin }) {
   const shown = versions.length ? [...versions].reverse() : [];
   return (
     <section className="rh" id="rules-history">
-      <h2 className="rh-title">Its rules over time</h2>
+      <h2 className="part-title">Its rules over time</h2>
       <p className="rh-lead">
         {coin.constitution_version} versions, newest first. <ins>Green</ins> words were added, <del>crossed-out</del> words were removed.
       </p>

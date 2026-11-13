@@ -61,7 +61,7 @@ export function RecordsStrip() {
       </div>
       <div className="feats-row">
         {tiles.map((t) => (
-          <Link key={t.label} to={t.to} className="feat">
+          <Link key={t.label} to={t.to} className="glass feat">
             <span className="feat-faces">
               {t.faces.map((id) => (
                 <Mascot key={id} id={id} size={34} />

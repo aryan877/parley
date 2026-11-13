@@ -337,7 +337,7 @@ function Steps({ j }: { j: Judge }) {
       {steps.map((s, i) => {
         const state = i < at ? "done" : i === at ? "now" : "later";
         return (
-          <li key={s.id} className={`judge-step ${state}`}>
+          <li key={s.id} className={`glass judge-step ${state}`}>
             <div className="judge-step-top">
               <h2>{s.title}</h2>
               {state === "done" && <span className="judge-done">Done</span>}

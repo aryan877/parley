@@ -1,20 +1,7 @@
 import { type RefObject, useEffect } from "react";
 import { playMoney, playReveal, useSound } from "../lib/sound.ts";
-import "./sound.css";
-
-const SpeakerIcon = ({ on, size = 18 }: { on: boolean; size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
-    <path d="M3 9.6A1.6 1.6 0 0 1 4.6 8H7.2l4-3.5A1 1 0 0 1 12.9 5.3v13.4a1 1 0 0 1-1.7.8l-4-3.5H4.6A1.6 1.6 0 0 1 3 14.4Z" />
-    {on ? (
-      <g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
-        <path d="M16 9.2a4 4 0 0 1 0 5.6" />
-        <path opacity=".45" d="M18.6 6.6a7.6 7.6 0 0 1 0 10.8" />
-      </g>
-    ) : (
-      <path opacity=".5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" d="M16.6 9.6l4.8 4.8M21.4 9.6l-4.8 4.8" />
-    )}
-  </svg>
-);
+import { SpeakerIcon } from "./icons.tsx";
+import "./SoundToggle.css";
 
 function inView(el: HTMLElement | null | undefined): boolean {
   if (!el || document.visibilityState !== "visible") return false;

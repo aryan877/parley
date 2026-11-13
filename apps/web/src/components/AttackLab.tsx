@@ -148,7 +148,7 @@ function Card({ attack, ready, live, waitLine }: { attack: Attack; ready: boolea
   const link = refusal ? (txLink(info, refusal.tx) ?? txUrl(refusal.tx)) : null;
 
   return (
-    <div className="lab-card">
+    <div className="glass lab-card">
       <h3>{attack.title}</h3>
       <p className="muted">{attack.tries}</p>
       <div className="lab-act">

@@ -21,9 +21,6 @@ section.lab {
   align-content: start;
   gap: 10px;
   padding: 20px;
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: var(--lift);
 }
 
 .lab-card h3 {
@@ -71,7 +68,7 @@ section.lab {
   align-items: flex-start;
   gap: 12px;
   padding: 14px 16px;
-  border-radius: 16px;
+  border-radius: var(--r-md);
   color: var(--trust);
   background: rgba(52, 211, 153, 0.09);
 }
@@ -114,7 +111,7 @@ section.lab {
   display: grid;
   gap: 2px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--r-sm);
   background: rgba(0, 0, 0, 0.22);
 }
 
