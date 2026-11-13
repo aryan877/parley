@@ -1,6 +1,7 @@
 import { Arena, type Coin, type Config, type Model, type Parley, type SignedReply } from "@parley/sdk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
+import { Ledger } from "../ledger.ts";
 import { ROOT, fundPlayer, loadDeployment } from "../localnet.ts";
 import { RoutingMind } from "../minds/routing.ts";
 import { playParley } from "../runner.ts";
@@ -131,6 +132,7 @@ export async function serve() {
   let wake: (() => void) | null = null;
   const rest = (ms: number) => Promise.race([Bun.sleep(ms), new Promise<void>((resolve) => (wake = resolve))]).finally(() => (wake = null));
   const site = flag("static");
+  const ledger = new Ledger({ dir: STATE, network: deployment.network, contractId: deployment.contractId, rpcUrl: deployment.rpcUrl });
 
   const emit = (event: Event) => {
     for (const watch of watchers) watch(event);
@@ -297,6 +299,8 @@ export async function serve() {
           return json({ network: deployment.network, rpcUrl: deployment.rpcUrl, contractId: deployment.contractId, explorerTx: EXPLORER[deployment.network] ?? null, autoplay, overview, config, models });
         }
         if (url.pathname === "/api/live") return stream();
+        const money = ledger.respond(url);
+        if (money) return json(...money);
         if (url.pathname === "/api/schedule") {
           if (schedule && Date.now() - schedule.at < SCHEDULE_TTL) return json({ ...(schedule.body as object), now: Date.now() });
           const [coins, config, models] = await Promise.all([owner.coins(), owner.config(), owner.models()]);
@@ -341,5 +345,6 @@ export async function serve() {
     },
   });
   console.log(`live arena for ${deployment.contractId} on http://localhost:${port}${autoplay ? ", playing matches nonstop" : ""}`);
+  ledger.start();
   void work();
 }

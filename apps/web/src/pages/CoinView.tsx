@@ -7,6 +7,7 @@ import { Challenge } from "../components/Challenge.tsx";
 import { madeBy } from "../components/MyCoins.tsx";
 import { Sparkline } from "../components/CoinCard.tsx";
 import { Empty } from "../components/Empty.tsx";
+import { CoinMoney } from "../components/Ledger.tsx";
 import { TradeGuide } from "../components/Guide.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
 import { MoveWords } from "../components/MoveWords.tsx";
@@ -686,6 +687,7 @@ function LiveCoin({ id }: { id: string }) {
         <Rules key={`rules:${wallet}`} coin={coin} onDone={() => setTick((t) => t + 1)} />
         <Trade key={`trade:${wallet}`} coin={coin} onDone={() => setTick((t) => t + 1)} />
       </div>
+      <CoinMoney coin={coin} name={name} />
       <section style={{ marginTop: 40 }}>
         <div className="section-head">
           <div>
