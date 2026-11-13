@@ -1,24 +1,35 @@
 import { formatNear, near, worth } from "@parley/sdk";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { PairCap } from "./arena.ts";
 import { type Chart, lineChart } from "./chart.ts";
 import {
   AMEND_DAY,
+  CARTEL_SIZES,
+  CARTEL_TREASURY,
+  COPY_DRAWS,
+  COPY_SHARES,
+  DAY_CAPS,
   FARM_FEES,
   FARM_SIZES,
   FARM_TREASURIES,
   type Farm,
+  type Fix,
   INVADERS,
   INVADE_DAY,
+  LIFETIME_CAPS,
   REPUTATION,
   STAKES,
   WHALE,
   allTrust,
   amendment,
+  fixedCartel,
+  fixedHouse,
   governance,
   house8,
   houseConstitutions,
   invasion,
+  newcomers,
   reputation,
   stakeSweep,
   sybil,
@@ -38,7 +49,7 @@ import {
   SECOND,
   play,
 } from "./season.ts";
-import { cartel, farmer, trust } from "./strategies.ts";
+import { CODE_WORD, cartel, farmer, handshake, trust, wary } from "./strategies.ts";
 
 const nearText = (y: bigint, digits = 3) => formatNear(y, digits);
 const plain = (y: bigint) => formatNear(y, 3).replace(/\.?0+$/, "");
@@ -183,8 +194,8 @@ interface FarmResult {
   farmBenched: number;
 }
 
-function runFarm(farm: Farm): FarmResult {
-  const season = play(sybil(farm));
+function runFarm(farm: Farm, scenario = sybil(farm)): FarmResult {
+  const season = play(scenario);
   const fee = farm.fee ?? LIVE_RULES.creation_fee;
   const cost = BigInt(farm.size) * (farm.treasury + fee);
   const farmIds = season.plans.filter((p) => p.group === "FARM").map((p) => p.id);
@@ -196,7 +207,198 @@ function runFarm(farm: Farm): FarmResult {
   return { farm, season, cost, value, profit: (d) => value(d) - cost, evenDay, houseBenched, farmBenched };
 }
 
-const SHORT = { record: "record grudgers", memory: "memory grudgers", naive: "trusting" } as const;
+interface Spread {
+  avg: bigint;
+  low: bigint;
+  high: bigint;
+  benched: number;
+  pot: bigint;
+}
+
+const meanOf = (values: bigint[]) => values.reduce((x, y) => x + y, 0n) / BigInt(values.length);
+
+function spread(runs: FarmResult[]): Spread {
+  const profits = runs.map((r) => r.profit(DAYS));
+  return {
+    avg: meanOf(profits),
+    low: profits.reduce((x, y) => (y < x ? y : x)),
+    high: profits.reduce((x, y) => (y > x ? y : x)),
+    benched: average(runs.map((r) => r.houseBenched)),
+    pot: meanOf(runs.map((r) => r.season.days[DAYS]!.commons)),
+  };
+}
+
+const cartelFarm = (size: number): Farm => ({ size, treasury: CARTEL_TREASURY });
+const drawsFor = (fix: Fix) => (fix.copy && !(fix.copy === 1 && fix.learn === "start") ? COPY_DRAWS : COPY_DRAWS.slice(0, 1));
+const cartelRuns = (fix: Fix): Spread[] => CARTEL_SIZES.map((size) => spread(drawsFor(fix).map((draw) => runFarm(cartelFarm(size), fixedCartel(size, { ...fix, draw })))));
+const honestRuns = (fix: Fix): Spread[] => CARTEL_SIZES.map((size) => spread([runFarm(cartelFarm(size), newcomers(size, fix))]));
+
+const COPY_ROWS: Fix[] = COPY_SHARES.flatMap((copy) => (copy === 0 ? [{ copy }] : (["daily", "start"] as const).map((learn) => ({ copy, learn }))));
+const CODE_RULES = [
+  { rule: handshake, by: "code word" },
+  { rule: wary, by: "code word, unless it betrayed them" },
+];
+
+const avgText = (s: Spread) => signedText(s.avg, 2);
+const spreadText = (s: Spread) => (s.low === s.high ? avgText(s) : `${avgText(s)} (${signedText(s.low, 2)} to ${signedText(s.high, 2)})`);
+const countText = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+const benchText = (list: Spread[]) => list.map((s) => countText(s.benched)).join(" / ");
+const resultsText = (list: Spread[]) => list.map(avgText).join(" / ");
+const capText = (cap?: PairCap) => (!cap ? "none (live)" : cap.per === "day" ? `${cap.bps / 100}% of the pot a day` : `${plain(cap.amount)} NEAR in total`);
+const copyText = (fix: Fix) => `${(fix.copy ?? 0) * 100}%`;
+const learnText = (fix: Fix) => (!fix.copy ? "-" : fix.learn === "start" ? "before day 0" : "one a day from day 1");
+const sameResults = (x: Spread[], y: Spread[]) => x.every((s, i) => s.avg === y[i]!.avg);
+
+interface Section {
+  lines: string[];
+  charts: Record<string, string>;
+  summary: string;
+}
+
+function fixes(a: Season, houseIds: string[]): Section {
+  const ten = CARTEL_SIZES.indexOf(10);
+  const today = cartelRuns({});
+  const unnamed = cartelRuns({ anonymous: true });
+  const coded = CODE_RULES.map(({ rule, by }) => ({ by, rows: COPY_ROWS.map((fix) => ({ fix, result: cartelRuns({ anonymous: true, cartel: rule, ...fix }) })) }));
+  const pick = (rule: number, copy: number, learn?: Fix["learn"]) => coded[rule]!.rows.find((r) => r.fix.copy === copy && r.fix.learn === learn)!.result;
+  const honestToday = honestRuns({});
+  const capped = [...DAY_CAPS, ...LIFETIME_CAPS].map((cap) => ({ cap, cartel: cartelRuns({ cap }), honest: honestRuns({ cap }), house: play(fixedHouse({ cap })) }));
+  const capAt = (cap: PairCap) => capped.find((c) => c.cap === cap)!;
+  const hidden = play(fixedHouse({ anonymous: true }));
+  const BOTH_CAPS = [DAY_CAPS[1]!, LIFETIME_CAPS[1]!];
+  const BOTH_ROWS: Fix[] = [{ copy: 0 }, { copy: 0.5, learn: "daily" }, { copy: 1, learn: "daily" }, { copy: 1, learn: "start" }];
+  const both = BOTH_CAPS.flatMap((cap) =>
+    BOTH_ROWS.map((fix) => {
+      const [x, y] = CODE_RULES.map(({ rule }) => cartelRuns({ anonymous: true, cap, cartel: rule, ...fix }));
+      return { cap, fix, result: x!.map((s, i) => (y![i]!.avg > s.avg ? y![i]! : s)) };
+    }),
+  );
+  const bothAt = (cap: PairCap, copy: number, learn?: Fix["learn"]) => both.find((r) => r.cap === cap && r.fix.copy === copy && r.fix.learn === learn)!.result;
+
+  const pairs = (n: number) => (n * (n - 1)) / 2;
+  const stopped = (list: Spread[]) => CARTEL_SIZES.filter((_, i) => list[i]!.avg <= 0n);
+  const sizesText = (sizes: number[]) => (sizes.length ? list(sizes.map(String)) : "none");
+  const houseTreasury = (season: Season, id: string) => season.days[DAYS]!.coins.get(id)!.treasury;
+  const hiddenSame = houseIds.every((id) => houseTreasury(hidden, id) === houseTreasury(a, id));
+  const best = ranked(a, houseIds)[0]!;
+  const mildest = capped[0]!;
+  const tightDay = capAt(DAY_CAPS.at(-1)!);
+  const midPair = capAt(LIFETIME_CAPS[1]!);
+  const tightPair = capAt(LIFETIME_CAPS.at(-1)!);
+  const naive = (copy: number) => pick(0, copy, "daily")[ten]!;
+  const lateAll = pick(1, 1, "daily");
+  const earlyAll = pick(1, 1, "start");
+  const earlyIsHonest = sameResults(earlyAll, honestToday);
+  const bothLate = bothAt(LIFETIME_CAPS[1]!, 1, "daily");
+  const bothEarly = bothAt(LIFETIME_CAPS[1]!, 1, "start");
+  const last = CARTEL_SIZES.length - 1;
+
+  const farm10 = cartelFarm(10);
+  const lines = [
+    { label: "today", scenario: fixedCartel(10, {}) },
+    { label: "hidden, late copy", scenario: fixedCartel(10, { anonymous: true, cartel: wary, copy: 1, learn: "daily" }) },
+    { label: "hidden, early copy", scenario: fixedCartel(10, { anonymous: true, cartel: wary, copy: 1, learn: "start" }) },
+    { label: `${plain((LIFETIME_CAPS[1] as { amount: bigint }).amount)} NEAR pair cap`, scenario: fixedCartel(10, { cap: LIFETIME_CAPS[1] }) },
+    { label: "cap, early copy", scenario: fixedCartel(10, { anonymous: true, cartel: wary, copy: 1, learn: "start", cap: LIFETIME_CAPS[1] }) },
+  ].map(({ label, scenario }) => {
+    const r = runFarm(farm10, scenario);
+    return { label, values: r.season.days.map((d) => toNear(r.value(d.day))), cost: r.cost };
+  });
+  const charts = {
+    "fixes.svg": lineChart({
+      title: "Candidate fixes against a 10-coin cartel",
+      subtitle: "NEAR the cartel's coins could redeem, names hidden or trust bonus capped per pair",
+      unit: "NEAR",
+      series: lines.map(({ label, values }) => ({ label, values })),
+      reference: { y: toNear(lines[0]!.cost), label: "cartel paid in" },
+    }),
+  };
+
+  const summary = `Cartel fixes for a next deployment: hiding rival names does not stop a cartel on its own, because its coins can greet each other with a code word in public talk. If outside coins copy the code word only after the cartel has betrayed them, a cartel that refuses coins that betrayed it still ends ${resultsText(lateAll)} NEAR with 5, 10 and 20 coins; only if every outside coin knows the code word before day 0 does it fall to ${resultsText(earlyAll)}, ${earlyIsHonest ? "exactly" : "about"} what honest newcomers earn. A per-pair cap on the trust bonus removes the profit only when it is tight (${capText(tightPair.cap)} per pair stops all three sizes), still lets the cartel bench ${benchText(tightPair.cartel)} of 8 outside coins, and with no cartel at all leaves ${nearText(tightPair.house.days[DAYS]!.commons, 1)} NEAR stuck in the pot and ${benchedAt(tightPair.house).length} of 8 house coins benched.`;
+
+  const out: string[] = [
+    "## (h) Fixes for the cartel, for a future contract",
+    "",
+    `The live contract is locked, so this section tests changes a next deployment could make, under the setup of (g): the eight house coins and a cartel of ${list(CARTEL_SIZES.map(String))} coins with ${nearText(CARTEL_TREASURY, 1)} NEAR each and one owner, live rules otherwise, seed 7. The cartel's result is what its coins could redeem on day 60 minus everything it paid in. As a yardstick, the last row of the first table gives the same number of coins with separate owners that betray only a coin that betrayed them (honest newcomers).`,
+    "",
+    "### 1. Hide the rival's name",
+    "",
+    `The prompt would show the rival's record, treasury and the pair's history, but not its name. A cartel can still recognise its own coins if they say a code word in talk ("${CODE_WORD}"). Talk is public, so outside coins can copy it. The table varies how many of the eight house coins copy the code word and when they learn it: "before day 0" means they say it from their first match; "one a day from day 1" means one more copier starts each day. Copiers keep their own rule for the move. Which house coins copy is drawn ${COPY_DRAWS.length} times with fixed seeds; cells show the average with the lowest and highest draw in brackets.`,
+    "",
+    "Two code-word rules for the cartel: trust any coin that says the code word, or trust a coin that says it unless that coin betrayed it in their last eight meetings (the pair history the prompt keeps showing).",
+    "",
+    table(
+      ["Cartel trusts", "Outside coins that copy", "They learn it", ...CARTEL_SIZES.map((n) => `${n} coins, day 60`), "Outside coins benched (5 / 10 / 20)"],
+      [
+        ["its own names (today)", "-", "-", ...today.map(spreadText), benchText(today)],
+        ["its own names, with names hidden", "-", "-", ...unnamed.map(spreadText), benchText(unnamed)],
+        ...coded.flatMap(({ by, rows }) => rows.map(({ fix, result }) => [by, copyText(fix), learnText(fix), ...result.map(spreadText), benchText(result)])),
+        ["no cartel: separate owners, betray a coin that betrayed them", "-", "-", ...honestToday.map(spreadText), benchText(honestToday)],
+      ],
+    ),
+    "",
+    "### 2. Cap the trust bonus one pair can draw",
+    "",
+    `When two coins both trust, each takes the smaller of half the stake and an eighth of the pot. A cap limits what one pair of coins can take from the pot in total, either per day as a share of the pot at that moment, or over its whole life. Names stay visible and the cartel trusts its own coins by name, as in (g).`,
+    "",
+    table(
+      ["Cap per pair", ...CARTEL_SIZES.map((n) => `Cartel, ${n} coins`), "Outside coins benched (5 / 10 / 20)", "Pot, day 60 (10 coins)", "Honest newcomers (5 / 10 / 20)"],
+      [
+        [capText(), ...today.map(avgText), benchText(today), nearText(today[ten]!.pot, 2), resultsText(honestToday)],
+        ...capped.map((c) => [capText(c.cap), ...c.cartel.map(avgText), benchText(c.cartel), nearText(c.cartel[ten]!.pot, 2), resultsText(c.honest)]),
+      ],
+    ),
+    "",
+    "### 3. Both together",
+    "",
+    "Names hidden and a cap per pair. The cartel uses whichever of the two code-word rules pays it more in each cell.",
+    "",
+    table(
+      ["Cap per pair", "Outside coins that copy", "They learn it", ...CARTEL_SIZES.map((n) => `${n} coins, day 60`), "Outside coins benched (5 / 10 / 20)"],
+      both.map(({ cap, fix, result }) => [capText(cap), copyText(fix), learnText(fix), ...result.map(spreadText), benchText(result)]),
+    ),
+    "",
+    "![Fixes](sim/fixes.svg)",
+    "",
+    "### Honest play under each fix",
+    "",
+    "The eight house coins alone, as in (a), with each fix. Share prices on day 60:",
+    "",
+    table(
+      ["Rules", ...houseIds.map((id) => nameOf(a, id)), "Benched", "Pot, day 60"],
+      [
+        { label: "today", season: a },
+        { label: "names hidden", season: hidden },
+        ...capped.map((c) => ({ label: `cap ${capText(c.cap)}`, season: c.house })),
+      ].map(({ label, season }) => [label, ...houseIds.map((id) => priceText(price(season, id))), String(benchedAt(season).length), nearText(season.days[DAYS]!.commons, 2)]),
+    ),
+    "",
+    "What happened:",
+    "",
+    `- Hiding names breaks today's rule: coins told to trust their owner's other coins can no longer find them, and the 10-coin cartel ends ${avgText(unnamed[ten]!)}. A code word puts it straight back: with no outside coin copying it, the cartel ends ${resultsText(pick(1, 0))} for 5, 10 and 20 coins, ${sameResults(pick(1, 0), today) ? "exactly as today" : `against ${resultsText(today)} today`}.`,
+    `- Copying beats a cartel that trusts anyone who says the code word: with a quarter of the house coins copying it over time, the 10-coin cartel averages ${avgText(naive(0.25))}; with all of them, ${avgText(naive(1))}.`,
+    `- It does not beat a cartel that also refuses any coin that betrayed it. A house coin that learns the code word after the cartel has betrayed it has usually betrayed back by then, and the pair history the prompt shows marks it. With every house coin copying over time, that cartel still ends ${resultsText(lateAll)} and benches ${benchText(lateAll)} of 8.`,
+    `- Copying works only if outside coins know the code word before they first meet the cartel. Then the cartel ends ${resultsText(earlyAll)}, ${earlyIsHonest ? "exactly" : "close to"} what honest newcomers earn (${resultsText(honestToday)}), and benches ${benchText(earlyAll)} outside coins, ${sameResults(earlyAll, honestToday) && earlyAll.every((s, i) => s.benched === honestToday[i]!.benched) ? "the same as honest newcomers" : `against ${benchText(honestToday)} for honest newcomers`}. At that point it is no longer a cartel: it trusts every coin that has not betrayed it.`,
+    `- A cartel can also make the code word harder to copy, for example by tying it to the match nonce through a table only its owner knows. The table above then measures how much of that table has leaked. The model also ignores weaker ways to recognise a member, such as its treasury or record in the prompt.`,
+    `- With no cartel, hiding names ${hiddenSame ? "changes nothing here: no house strategy reads names, and the eight house coins end exactly as in (a)" : "changes the house results"}. Real models do read names (SNAKE's name says what it does), so they would lose that hint and rely on the record.`,
+    `- A cap per pair binds a big cartel last. ${list(CARTEL_SIZES.map((n) => `${n} coins have ${pairs(n)} pairs of their own`))}, against ${pairs(houseIds.length)} among the eight house coins, and every pair gets its own allowance.`,
+    `- Caps that follow the pot are too loose: at ${capText(tightDay.cap)} per pair the cartel ends ${resultsText(tightDay.cartel)}. Lifetime caps stop it only when tight: cartels of ${sizesText(stopped(capAt(LIFETIME_CAPS[0]!).cartel))} coins stop paying at ${capText(LIFETIME_CAPS[0])}, of ${sizesText(stopped(midPair.cartel))} at ${capText(midPair.cap)} (20 coins still end ${avgText(midPair.cartel[last]!)}), and of ${sizesText(stopped(tightPair.cartel))} at ${capText(tightPair.cap)}.`,
+    `- A cap removes the profit, not the damage. At ${capText(tightPair.cap)} per pair the cartel still benches ${benchText(tightPair.cartel)} of the 8 outside coins; their NEAR ends in the pot (${nearText(tightPair.cartel[ten]!.pot, 2)} NEAR on day 60 with 10 coins), where capped pairs cannot win it back. A griefer can do this for about ${nearText(-tightPair.cartel[0]!.avg, 1)} NEAR.`,
+    `- The cost to honest play is large. Every mutual betrayal still pays into the pot, but coins that trust each other can no longer win it back. With the eight house coins alone, ${nameOf(a, best)} ends at ${priceText(price(midPair.house, best))} under a ${capText(midPair.cap)} cap against ${priceText(price(a, best))} today, ${benchedAt(midPair.house).length} coins are benched instead of ${benchedAt(a).length}, and ${nearText(midPair.house.days[DAYS]!.commons, 2)} NEAR is left in the pot. The mildest cap tried, ${capText(mildest.cap)}, costs little (${nameOf(a, best)} ${priceText(price(mildest.house, best))}) but does not slow the cartel.`,
+    `- Honest newcomers pay for tight caps too: at ${capText(tightPair.cap)} per pair, 5, 10 and 20 of them end ${resultsText(tightPair.honest)} against ${resultsText(honestToday)} today.`,
+    `- Together, with copiers who learn over time, hiding names adds little to the ${capText(midPair.cap)} cap: ${resultsText(bothLate)} against ${resultsText(midPair.cartel)} for the cap alone. If every outside coin copies from day 0, the result is ${resultsText(bothEarly)}${sameResults(bothEarly, midPair.honest) ? ", exactly what honest newcomers earn under the same cap" : `, against ${resultsText(midPair.honest)} for honest newcomers under the same cap`}.`,
+    "",
+    "What each fix needs in a future contract:",
+    "",
+    "- **Names hidden.** `prompt.rs` `build_request` writes the rival's name in three places: \"Opponent is ...\", the speaker label on each line of talk, and \"Write your next public message to ...\". All three would use a fixed word such as \"your opponent\" instead, while the rival's record, treasury, stake and the pair's history stay. That changes the request format, so `PROTOCOL` is bumped, `packages/league/src/prompt.ts` changes in step, and the fixtures are recorded again. The simulation models it in `SimArena`'s view of the rival, which then carries no id or owner.",
+    "- **Cap per pair.** `PairRecord` gains `drawn`, the trust bonus the pair has taken, and for a daily cap the day it was counted in; `Config` gains the cap. In `settle`, the pair record is read before the payout and the Cooperate/Cooperate bonus becomes the smallest of half the stake, an eighth of the pot and half of what the pair has left under its cap; `drawn` grows by both bonuses. Betrayals pay exactly as today. The simulation applies this in `SimArena.capped` on top of the unchanged `payoff` from `economy.ts`.",
+    "- **Both.** The two changes are independent and need nothing extra.",
+    "",
+  ];
+  return { lines: out, charts, summary };
+}
+
+const SHORT ={ record: "record grudgers", memory: "memory grudgers", naive: "trusting" } as const;
 
 export interface Report {
   markdown: string;
@@ -301,6 +503,7 @@ export function buildReport(): Report {
   const smallLosers = bySize.filter((r) => r.profit(DAYS) < 0n && r.farm.treasury === probe.treasury).map((r) => r.farm.size);
   const smallestWinner = bySize.filter((r) => r.profit(DAYS) > 0n && r.farm.treasury === probe.treasury).map((r) => r.farm.size)[0];
 
+  const fixed = fixes(a, houseIds);
   const summary = [
     `The eight house coins: ${nameOf(a, top[0]!)} ends day 60 at ${priceText(price(a, top[0]!))} and ${nameOf(a, top.at(-1)!)} at ${priceText(price(a, top.at(-1)!))}. ${aBenched.length} coins (${list(aBenched.map((id) => nameOf(a, id)))}) are benched by day 60. The pot is below 0.01 NEAR from day ${aPotEmpty}${aFrozen === null ? "" : ` and no treasury moves after day ${aFrozen}`}.`,
     `Everyone trusts: the ${nearText(b.days[0]!.commons, 1)} NEAR pot is shared out by day ${bPotEmpty}, every coin gains about ${pctText(bGain)}, and then nothing moves for the rest of the season.`,
@@ -309,6 +512,7 @@ export function buildReport(): Report {
     `SAINT's real amendment, applied on day ${AMEND_DAY}: SAINT ends at ${priceText(price(e, "saint"))} with it and ${priceText(price(a, "saint"))} without it. By day ${AMEND_DAY}, ${amendedRivals.length === houseIds.length - 1 ? "every other house coin" : `${amendedRivals.length} of the ${houseIds.length - 1} other house coins`} had betrayed a trusting coin at least once, so the new rule tells SAINT to betray ${amendedRivals.length === houseIds.length - 1 ? "all of them" : "most of them"}.`,
     `Whale: ${plain(WHALE.buy)} NEAR into MIRROR buys ${(Number(whaleStake) / 100).toFixed(0)}% of its shares; redeemed on day ${WHALE.sellDay} it returns ${nearText(whaleRedeem.near)} NEAR (${signedText(whaleProfit)}). Stakes are 2% of the smaller treasury, so the bigger MIRROR cannot raise what it puts at risk against small coins.`,
     `Sybil: a group of ${smallestWinner} or more coins that trust each other and betray everyone else ends 60 days ${signedText(strongest.profit(DAYS), 2)} NEAR up, which is everything the house coins and the pot held above the bench line. The launch fee does not stop it, because the fee goes into the pot the group wins back: ${signedText(feeFirst.profit(DAYS), 2)} NEAR with no fee, ${signedText(feeLast.profit(DAYS), 2)} NEAR with a ${plain(feeLast.farm.fee!)} NEAR fee per coin. The same coins without each other lose ${nearText(-byStrategy[3]!.result.profit(DAYS), 2)} NEAR.`,
+    fixed.summary,
     `Stake size: ${leaders.length === 1 ? `${nameOf(a, leaders[0]!)} leads at every stake from ${sweep[0]!.bps / 100}% to ${sweep.at(-1)!.bps / 100}%` : `the leader changes with the stake (${list(leaders.map((id) => nameOf(a, id)))})`}. A bigger stake mostly gets the losers benched sooner (first bench on day ${firstBenchDay(sweep.at(-1)!.season)} at ${sweep.at(-1)!.bps / 100}%, day ${firstBenchDay(sweep[0]!.season) ?? "never"} at ${sweep[0]!.bps / 100}%).`,
   ];
 
@@ -644,6 +848,9 @@ export function buildReport(): Report {
     "- This is the sybil limit of the design: coins that agree to trust each other can drain a shared pot and the coins around them. The live contract has no defence against it beyond the coins' own constitutions; a coin whose rule ignores the public record is the easiest prey.",
     "",
   );
+
+  out("## (h) Fixing the cartel in a next deployment", "", ...fixed.lines);
+  Object.assign(charts, fixed.charts);
 
   out(
     "## Stake size sweep",
