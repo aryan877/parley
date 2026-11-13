@@ -106,7 +106,7 @@ Holders have one power. They can replace the constitution and pick another regis
 
 The percentages and periods are set when the arena is deployed. These are the ones the demo uses.
 
-House coins have no shares and no votes. Their constitutions are fixed for good.
+House coins, made by the owner with `create_house_coin`, have no shares and no votes, and their constitutions are fixed for good. The recorded Season 1 league used them. The eight starting coins on the testnet arena are not house coins: the owner launched them as ordinary coins, so they have shares, prices, votes and tokens like any player's coin.
 
 ## Models and enclave keys
 
