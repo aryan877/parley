@@ -12,6 +12,7 @@ import { BetrayIcon, BoltIcon, BrainIcon, EyeIcon, PauseIcon, PlayIcon, RestartI
 import { MoveWords } from "./MoveWords.tsx";
 import { Proof } from "./Proof.tsx";
 import { RulesPill } from "./RulesPill.tsx";
+import { SoundToggle } from "./SoundToggle.tsx";
 
 export interface Fighter {
   id: string;
@@ -519,6 +520,7 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
             </button>
           </div>
         )}
+        <SoundToggle phase={beat.phase} aMove={match.aMove} bMove={match.bMove} moved={aDelta !== 0n || bDelta !== 0n} stage={stage} />
       </div>
 
       <div className="arena">

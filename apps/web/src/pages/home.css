@@ -1,0 +1,12 @@
+@media (max-width: 700px) {
+  .home-lead {
+    display: flex;
+    flex-direction: column;
+  }
+  .home-lead > .how {
+    order: 1;
+  }
+  .home-lead > .home-live {
+    margin-top: 28px;
+  }
+}

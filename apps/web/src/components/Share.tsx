@@ -1,3 +1,4 @@
+import { ARENA_API } from "../lib/live.ts";
 import type { Match } from "../lib/model.ts";
 import { fmtNear } from "../lib/model.ts";
 import { promised } from "../lib/words.ts";
@@ -5,9 +6,16 @@ import { ShareIcon } from "./icons.tsx";
 
 const TAGS = "@NEARProtocol #NEARHackathon";
 
+/** A match links to the server's preview page, which names what happened and then opens the match. */
+function pageOf(path: string): string {
+  const match = path.match(/^\/(season\/)?match\/(\d+)$/);
+  if (match) return `${ARENA_API}/m/${match[1] ? "s" : ""}${match[2]}`;
+  return `${window.location.origin}${window.location.pathname}#${path}`;
+}
+
 /** An X post link with our line, the page and the tags. Nothing is tracked. */
 export function shareLink(text: string, path: string): string {
-  const page = `${window.location.origin}${window.location.pathname}#${path}`;
+  const page = pageOf(path);
   return `https://x.com/intent/post?text=${encodeURIComponent(`${text} ${TAGS}`)}&url=${encodeURIComponent(page)}`;
 }
 

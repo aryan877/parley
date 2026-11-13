@@ -1,0 +1,12 @@
+.stage-top .sound-toggle {
+  flex: none;
+}
+
+.stage-top .stage-tags + .sound-toggle,
+.stage-top .stake + .sound-toggle {
+  margin-left: auto;
+}
+
+.sound-toggle.on {
+  color: var(--gold);
+}

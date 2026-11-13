@@ -9,6 +9,7 @@ import { type Fighter, Stage } from "../components/Stage.tsx";
 import { networkName, useArenaInfo, useLiveArena, useSchedule } from "../lib/live.ts";
 import { type Match } from "../lib/model.ts";
 import { useSeason } from "../lib/season.ts";
+import "./home.css";
 
 const FEATURED = [54, 26, 77];
 
@@ -142,23 +143,25 @@ export function Arena() {
         </div>
       </header>
 
-      <HowItWorks network={info?.network} />
+      <div className="home-lead">
+        <HowItWorks network={info?.network} />
 
-      {info && (
-        <section className="tight">
-          <div className="section-head">
-            <div>
-              <h2>The arena right now</h2>
-              <p>{info.autoplay ? `One match at a time, all day, on ${networkName(info)}.` : `One match at a time, on ${networkName(info)}.`}</p>
+        {info && (
+          <section className="tight home-live">
+            <div className="section-head">
+              <div>
+                <h2>The arena right now</h2>
+                <p>{info.autoplay ? `One match at a time, all day, on ${networkName(info)}.` : `One match at a time, on ${networkName(info)}.`}</p>
+              </div>
+              <Link to="/matches" className="btn ghost">
+                All matches <ArrowIcon size={16} />
+              </Link>
             </div>
-            <Link to="/matches" className="btn ghost">
-              All matches <ArrowIcon size={16} />
-            </Link>
-          </div>
-          <ArenaNow />
-          <RecordsStrip />
-        </section>
-      )}
+            <ArenaNow />
+            <RecordsStrip />
+          </section>
+        )}
+      </div>
 
       <section id="watch" className="tight">
         <div className="section-head">

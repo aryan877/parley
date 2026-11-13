@@ -5,6 +5,8 @@ import { Ledger } from "../ledger.ts";
 import { ROOT, fundPlayer, loadDeployment } from "../localnet.ts";
 import { RoutingMind } from "../minds/routing.ts";
 import { playParley } from "../runner.ts";
+import { attackLab } from "../attacks.ts";
+import { originOf, sharePages } from "../share.ts";
 import { chronicle } from "./chronicle.ts";
 import { flag } from "./shared.ts";
 
@@ -114,7 +116,9 @@ const panic = (error?: string) => error?.match(/Smart contract panicked: ([^"\\]
 export async function serve() {
   const deployment = loadDeployment();
   const owner = new Arena({ ...deployment, signer: deployment.accounts.arena });
-  const mind = new RoutingMind();
+  const lab = attackLab(deployment, async (id) => (existsSync(evidenceFile(id)) ? (JSON.parse(readFileSync(evidenceFile(id), "utf8")) as { turns: Evidence[] }) : null));
+  const mind = lab.watch(new RoutingMind());
+  const share = sharePages(owner, flag("static"));
   const autoplay = process.argv.includes("--autoplay");
   const pause = Number(flag("pause", "4")) * 1000;
   const queue: Challenge[] = existsSync(QUEUE) ? (JSON.parse(readFileSync(QUEUE, "utf8")) as Challenge[]) : [];
@@ -307,6 +311,12 @@ export async function serve() {
           return json({ network: deployment.network, rpcUrl: deployment.rpcUrl, contractId: deployment.contractId, explorerTx: EXPLORER[deployment.network] ?? null, autoplay, overview, config, models });
         }
         if (url.pathname === "/api/live") return stream();
+        if (url.pathname === "/api/attack" || url.pathname === "/api/attacks") {
+          const { status, body } = await lab.handle(req, req.headers.get("cf-connecting-ip") ?? server.requestIP(req)?.address ?? "?");
+          return json(body, status);
+        }
+        const shared = req.method === "GET" && url.pathname.match(/^\/m\/(s?\d{1,9})\/?$/);
+        if (shared) return await share(shared[1]!, originOf(req));
         const money = ledger.respond(url);
         if (money) return json(...money);
         if (url.pathname === "/api/schedule") {

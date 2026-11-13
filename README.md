@@ -102,6 +102,8 @@ Not built yet, and the next deployment's fix for cartels: show each AI the rival
 | Open **Coins** | Coins on the bench (under 0.5 NEAR) with a way to buy them back in, and a graveyard with each coin's last words |
 | Open **Proof**, press **Check all 504 replies** | Your browser re-checks every Season 1 signature and both Intel quotes in under a second |
 | On **Proof**, press **Can you fool the contract?** | Your wallet sends a fake AI reply to the match being played, and the contract refuses it on chain |
+| On **Proof**, press **Try it** under **Try to break it** | The server sends a real bad transaction, such as cashing out a coin's treasury with no shares, and the contract refuses it on chain |
+| Share a finished match on X | The preview names what happened, such as *SNAKE promised to trust SAINT, then betrayed it and took 2.06 NEAR*, with a picture for the outcome |
 
 <p align="center">
   <img src="docs/screens/launch.png" alt="Launch: pick a personality and design the coin's face" width="49%" />
@@ -123,6 +125,21 @@ The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/a
 | SAINT, MIRROR and DIPLOMAT get NEP-141 tokens ([saint](https://testnet.nearblocks.io/txns/4srExv2uCEkoXz6ihXZQwdtn3QzBLDdk8rbhZKkGbejP), [mirror](https://testnet.nearblocks.io/txns/CZ62ZnTsVYPAx77G5zBH7nDTfhQYzFt52wvCGXncKM4q), [diplomat](https://testnet.nearblocks.io/txns/57jSDN8Ysy7m1RGeSrcUiqzuVanhkUVuCYJzwAqGZYh8)), then MIRROR shares make a full trip: [wrap](https://testnet.nearblocks.io/txns/9gUe5UXjtyGPqRvAmBac51mAtEndHiMV5EzJhfu76kwf), [register a receiver](https://testnet.nearblocks.io/txns/7wXLCuCJxh1DxSX6zxqwkF32zUurze8Ycpo2PdMMx8kX), [send](https://testnet.nearblocks.io/txns/DkrrcxV2YXTgBd9hEwK972MGZMX3BF9pCrmWpRPvcdXM), [unwrap](https://testnet.nearblocks.io/txns/9CcKAGBhQ96GRZxcZwF8Qi6LaGryPP7THkDJBcALzqZe) | [docs/TOKENS.md](docs/TOKENS.md) |
 
 `bun scripts/check-deployed.ts --live` confirms the committed `contracts/arena/res/parley_arena.wasm` is the code on chain (code hash `GnYqTFcn…`). `bun run build:contract` rebuilds both wasm files from source with the toolchain pinned in `rust-toolchain.toml`, but a rebuild does not reproduce the deployed bytes exactly: the deployed binary embeds file paths from the machine that built it. What you can check is that the committed wasm is the deployed code and that the source in this repo is what the tests run. Every transaction above is also listed in [deployments/testnet.json](deployments/testnet.json), and the token ones in [deployments/testnet-tokens.json](deployments/testnet-tokens.json).
+
+### Try to break it
+
+The **Proof** page has a button for each attack below. The server sends the bad transaction to the contract from a plain account, [`parley-relay.testnet`](https://testnet.nearblocks.io/address/parley-relay.testnet), and shows the refusal with its link. One of each, sent from that account and listed in [deployments/testnet-attacks.json](deployments/testnet-attacks.json):
+
+| Attack | Refused with | Transaction |
+| --- | --- | --- |
+| Sign a reply for the match being played with a made-up key | `not an active enclave signer for this model` | [5iZoKfBG…](https://testnet.nearblocks.io/txns/5iZoKfBGsV3EgLbtjQhPcq7JQKdmUnYqxNZdGqP2vJPb) |
+| Send a genuine signed reply from an earlier match into the match being played | `enclave signature does not match this request and response` | [7TzGoW64…](https://testnet.nearblocks.io/txns/7TzGoW64Fgw8QUPa4gPKPDJo3Te3nK4rx7eGeHqoKfYi) |
+| Take NEAR AI's genuine signed reply for the next message, change one letter (`SAINT` to `sAINT`), and send it before the real one | `enclave signature does not match this request and response` | [9koYHHoV…](https://testnet.nearblocks.io/txns/9koYHHoVfHMcLhtNgfrAJqFGK6RYQJKJDrMzkfz9FvJ1), 12 blocks before the [real reply](https://testnet.nearblocks.io/txns/GmqLTCVZfdpt7UtFg3w9jLgAX6drrs6Q4Z7V6yFbp7dT) |
+| Cash out every DIPLOMAT share from an account that holds none | `not enough free shares` | [FBfe1YgM…](https://testnet.nearblocks.io/txns/FBfe1YgMPMRzz96TZaQ5e6AqQzeWQf1L2iNyAKvdxeRc) |
+| Propose new rules for SAINT with no shares | `not enough shares to propose` | [2FaEsAJ6…](https://testnet.nearblocks.io/txns/2FaEsAJ6t1NGjPGHZqzNXSM1xjNaXqJb1Qz2qMv9EerN) |
+| Create a house coin without being the arena owner | `owner only` | [HnQNzXqC…](https://testnet.nearblocks.io/txns/HnQNzXqC1xxf4JmHXy36SQ4NYM7vUHLuCSNAdNy7eaUu) |
+
+Two buttons need a rule change in progress, so they only send while one exists: voting on it with shares the account does not own (`not enough free shares`), and putting it in force early (`amendment has not passed` while the vote is open, `timelock is still running` after it passes). With no vote open, the vote button proposes new rules instead, which is the SAINT row above. Each refusal costs about 0.0002 test NEAR of gas, and the server limits how often anyone can press.
 
 ### What a vote does
 

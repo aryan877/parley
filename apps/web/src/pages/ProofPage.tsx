@@ -1,6 +1,7 @@
 import { attestedKeys, checkLeague, type Finding } from "@parley/league/src/browser.ts";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { AttackLab } from "../components/AttackLab.tsx";
 import { FakeReply } from "../components/FakeReply.tsx";
 import { ProofGuide } from "../components/Guide.tsx";
 import { OnChain } from "../components/OnChain.tsx";
@@ -67,6 +68,7 @@ export function ProofPage() {
 
       <OnChain />
       <FakeReply />
+      <AttackLab />
 
       <section style={{ marginTop: 56 }}>
         <div className="section-head">
