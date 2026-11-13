@@ -276,9 +276,15 @@ export async function serve() {
       while (handedOut[0] && now - handedOut[0].at > DAY_MS) handedOut.shift();
       if (handedOut.length >= FAUCET_PER_DAY) return json({ error: "Today's free play wallets are all handed out. Try again tomorrow." }, 429);
       if (handedOut.filter((h) => h.ip === ip).length >= FAUCET_PER_IP) return json({ error: "You already have play wallets from today. Reuse the one in this browser." }, 429);
-      handedOut.push({ ip, at: now });
     }
-    const accountId = await fundPlayer(deployment, body.publicKey);
+    let accountId: string;
+    try {
+      accountId = await fundPlayer(deployment, body.publicKey);
+    } catch (error) {
+      console.error("faucet failed:", error instanceof Error ? error.message : error);
+      return json({ error: "Couldn't make a play wallet right now. Try again in a minute." }, 503);
+    }
+    if (deployment.network !== "local") handedOut.push({ ip, at: Date.now() });
     players.push(accountId);
     writeFileSync(PLAYERS, JSON.stringify(players));
     return json({ accountId });
@@ -327,7 +333,7 @@ export async function serve() {
           saveWatched();
           return json({ watching: true });
         }
-        if (url.pathname === "/api/faucet" && req.method === "POST") return faucet(req, req.headers.get("cf-connecting-ip") ?? server.requestIP(req)?.address ?? "?");
+        if (url.pathname === "/api/faucet" && req.method === "POST") return await faucet(req, req.headers.get("cf-connecting-ip") ?? server.requestIP(req)?.address ?? "?");
         const match = url.pathname.match(/^\/api\/match\/(\d+)$/);
         if (match) {
           const file = evidenceFile(Number(match[1]));
@@ -335,6 +341,7 @@ export async function serve() {
         }
         if (site && req.method === "GET" && !url.pathname.startsWith("/api/")) return page(site, url.pathname);
       } catch (error) {
+        console.error(`${req.method} ${url.pathname} failed:`, error instanceof Error ? error.message : error);
         return json({ error: error instanceof Error ? error.message : String(error) }, 500);
       }
       return json({ error: "not found" }, 404);
