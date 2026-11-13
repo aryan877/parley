@@ -1,11 +1,11 @@
-import { Arena, type Coin, type Config, type Model, type Parley, type SignedReply, panicMessage } from "@parley/sdk";
+import { Arena, type Coin, type Config, type Model, NETWORKS, type Parley, type SignedReply, panicMessage } from "@parley/sdk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
+import { attackLab } from "../attacks.ts";
 import { Ledger } from "../ledger.ts";
 import { ROOT, fundPlayer, loadDeployment } from "../localnet.ts";
 import { RoutingMind } from "../minds/routing.ts";
 import { playParley } from "../runner.ts";
-import { attackLab } from "../attacks.ts";
 import { originOf, sharePages } from "../share.ts";
 import { chronicle } from "./chronicle.ts";
 import { flag } from "./shared.ts";
@@ -41,7 +41,6 @@ const ORDERS = join(STATE, "orders.json");
 const QUEUE = join(STATE, "queue.json");
 const SCHEDULE_TTL = 8000;
 const EVIDENCE = join(STATE, "evidence");
-const EXPLORER: Record<string, string | null> = { local: null, testnet: "https://testnet.nearblocks.io/txns/" };
 const FAUCET_PER_IP = 5;
 const FAUCET_PER_DAY = 60;
 const DAY_MS = 86_400_000;
@@ -116,7 +115,9 @@ const panic = (error?: string) => panicMessage(error) ?? error ?? "refused";
 export async function serve() {
   const deployment = loadDeployment();
   const owner = new Arena({ ...deployment, signer: deployment.accounts.arena });
-  const lab = attackLab(deployment, async (id) => (existsSync(evidenceFile(id)) ? (JSON.parse(readFileSync(evidenceFile(id), "utf8")) as { turns: Evidence[] }) : null));
+  const evidenceFile = (id: number) => join(EVIDENCE, `${deployment.contractId}-${id}.json`);
+  const kept = (id: number) => (existsSync(evidenceFile(id)) ? (JSON.parse(readFileSync(evidenceFile(id), "utf8")) as { turns: Evidence[] }) : null);
+  const lab = attackLab(deployment, async (id) => kept(id));
   const mind = lab.watch(new RoutingMind());
   const share = sharePages(owner, flag("static"));
   const autoplay = process.argv.includes("--autoplay");
@@ -143,7 +144,6 @@ export async function serve() {
   const emit = (event: Event) => {
     for (const watch of watchers) watch(event);
   };
-  const evidenceFile = (id: number) => join(EVIDENCE, `${deployment.contractId}-${id}.json`);
 
   /** Fills the due orders the site told us about. Anyone may call fill_order; this just saves players the wait. */
   async function keep() {
@@ -176,8 +176,7 @@ export async function serve() {
     if (!opened.ok) return panic(opened.error);
     const id = opened.value as number;
     const parley = (await owner.parley(id))!;
-    const kept = existsSync(evidenceFile(id)) ? ((JSON.parse(readFileSync(evidenceFile(id), "utf8")) as { turns: Evidence[] }).turns ?? []) : [];
-    current = { parley, turns: kept };
+    current = { parley, turns: kept(id)?.turns ?? [] };
     currentSince = Date.now();
     emit({ type: "opened", parley, reason });
     await playParley(owner, mind, id, async ({ index, model, request, reply, txHash }) => {
@@ -304,15 +303,16 @@ export async function serve() {
     idleTimeout: 255,
     async fetch(req, server) {
       const url = new URL(req.url);
+      const ip = () => req.headers.get("cf-connecting-ip") ?? server.requestIP(req)?.address ?? "?";
       if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
       try {
         if (url.pathname === "/api/arena") {
           const [overview, config, models] = await Promise.all([owner.overview(), owner.config(), owner.models()]);
-          return json({ network: deployment.network, rpcUrl: deployment.rpcUrl, contractId: deployment.contractId, explorerTx: EXPLORER[deployment.network] ?? null, autoplay, overview, config, models });
+          return json({ network: deployment.network, rpcUrl: deployment.rpcUrl, contractId: deployment.contractId, explorerTx: NETWORKS[deployment.network].explorerTx ?? null, autoplay, overview, config, models });
         }
         if (url.pathname === "/api/live") return stream();
         if (url.pathname === "/api/attack" || url.pathname === "/api/attacks") {
-          const { status, body } = await lab.handle(req, req.headers.get("cf-connecting-ip") ?? server.requestIP(req)?.address ?? "?");
+          const { status, body } = await lab.handle(req, ip());
           return json(body, status);
         }
         const shared = req.method === "GET" && url.pathname.match(/^\/m\/(s?\d{1,9})\/?$/);
@@ -349,13 +349,13 @@ export async function serve() {
           saveWatched();
           return json({ watching: true });
         }
-        if (url.pathname === "/api/faucet" && req.method === "POST") return await faucet(req, req.headers.get("cf-connecting-ip") ?? server.requestIP(req)?.address ?? "?");
+        if (url.pathname === "/api/faucet" && req.method === "POST") return await faucet(req, ip());
         const told = await annals(url.pathname);
         if (told) return json(told.body, told.status);
         const match = url.pathname.match(/^\/api\/match\/(\d+)$/);
         if (match) {
-          const file = evidenceFile(Number(match[1]));
-          return existsSync(file) ? json(JSON.parse(readFileSync(file, "utf8"))) : json({ error: "This server did not play that match." }, 404);
+          const found = kept(Number(match[1]));
+          return found ? json(found) : json({ error: "This server did not play that match." }, 404);
         }
         if (site && req.method === "GET" && !url.pathname.startsWith("/api/")) return page(site, url.pathname);
       } catch (error) {

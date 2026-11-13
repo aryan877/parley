@@ -45,7 +45,7 @@ export function chronicle(owner: Arena, ledger: Pick<Ledger, "governance">): (pa
 
   const refreshRecords = () => {
     warming ??= loadParleys()
-      .catch((error) => console.error("records:", error instanceof Error ? error.message : error))
+      .catch((error) => console.error("records failed:", error instanceof Error ? error.message : error))
       .finally(() => (warming = null));
     return warming;
   };
