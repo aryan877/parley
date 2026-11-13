@@ -1,9 +1,11 @@
 import { LocalEnclave } from "@parley/sdk/src/enclave.ts";
+import { lacksBalance, panicMessage } from "@parley/sdk/src/rpc.ts";
 import type { Parley } from "@parley/sdk/src/types.ts";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { txLink, useSchedule } from "../lib/live.ts";
+import { clock, useNow } from "../lib/time.ts";
 import { CANCELLED, useWallet } from "../lib/wallet.tsx";
 import { BetrayIcon, ShieldCheckIcon, WalletIcon } from "./icons.tsx";
 import { Mascot } from "./Mascot.tsx";
@@ -27,25 +29,18 @@ function explain(reason: string): string {
   return "The contract would not take it. The match goes on as if you never tried.";
 }
 
-const clock = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
-
 /** Signs a made-up AI reply for the turn being played right now and lets the contract refuse it. */
 export function FakeReply() {
   const w = useWallet();
   const { schedule, skew } = useSchedule(4000);
   const [state, setState] = useState<State>({ kind: "idle" });
-  const [now, setNow] = useState(Date.now());
+  const now = useNow(state.kind === "waiting");
   const running = useRef(false);
   const deadline = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   const again = useRef<() => void>(() => {});
 
   useEffect(() => () => clearTimeout(timer.current), []);
-  useEffect(() => {
-    if (state.kind !== "waiting") return;
-    const tick = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(tick);
-  }, [state.kind]);
 
   const wait = (note?: string) => {
     deadline.current ||= Date.now() + GIVE_UP_MS;
@@ -84,7 +79,7 @@ export function FakeReply() {
       setState({ kind: "busy", step: w.kind === "near" ? "Approve it in your wallet. It goes straight to the contract…" : "Sending it to the contract…" });
       const result = await arena.submitTurn(parley.id, reply);
       w.refresh();
-      const reason = result.error?.match(/Smart contract panicked: ([^"\\]+)/)?.[1]?.trim();
+      const reason = panicMessage(result.error)?.trim();
       if (result.ok) {
         deadline.current = 0;
         setState({ kind: "accepted", parley: parley.id, hash: result.hash });
@@ -98,7 +93,7 @@ export function FakeReply() {
         setState({ kind: "refused", parley: parley.id, turn, reason, hash: result.hash });
       } else {
         deadline.current = 0;
-        const broke = /not enough balance|NotEnoughBalance|LackBalance/i.test(result.error ?? "");
+        const broke = lacksBalance(result.error);
         setState({ kind: "error", text: broke ? "Your wallet is out of test NEAR for gas." : `It never reached the contract: ${result.error?.slice(0, 160) ?? "unknown error"}` });
       }
     } catch (e) {

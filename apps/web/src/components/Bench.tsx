@@ -1,9 +1,10 @@
 import type { Coin } from "@parley/sdk/src/types.ts";
 import { Link } from "react-router-dom";
-import { type Records, chainAgo, useRecords } from "../lib/chronicle.ts";
+import { type Records, useRecords } from "../lib/chronicle.ts";
 import { useLiveArena } from "../lib/live.ts";
 import { fmtNear, plainNear } from "../lib/model.ts";
 import { useOpenAt } from "../lib/reveal.ts";
+import { chainAgo } from "../lib/time.ts";
 import { clip } from "../lib/words.ts";
 import { Mascot } from "./Mascot.tsx";
 import "./Bench.css";
@@ -50,10 +51,10 @@ export function BenchAndGraveyard() {
 
   return (
     <section className="bench-zone">
-      <h2 className="bench-title">Bench and graveyard</h2>
+      <h2 className="part-title">Bench and graveyard</h2>
       <p className="bench-lead">A coin under {line} NEAR sits out every match until its holders buy it back in.</p>
       <div className="bench-cols">
-        <div className="bench-col">
+        <div className="glass bench-col">
           <h3>On the bench</h3>
           {bench.map((c) => (
             <div key={c.id} className="bench-row">
@@ -92,7 +93,7 @@ export function BenchAndGraveyard() {
             </div>
           )}
         </div>
-        <div className="bench-col">
+        <div className="glass bench-col">
           <h3>Graveyard</h3>
           {graves.map((c) => (
             <div key={c.id} className="bench-row grave">

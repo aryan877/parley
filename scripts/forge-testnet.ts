@@ -1,5 +1,5 @@
-import { Arena, LocalEnclave } from "@parley/sdk";
-import { TESTNET_FILE, type PublicDeployment, testnetKey } from "@parley/relayer";
+import { Arena, LocalEnclave, panicMessage } from "@parley/sdk";
+import { TESTNET_FILE, publicTestnet, testnetKey } from "@parley/relayer";
 import { randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
  * Tries to cheat the live testnet arena twice and records the refusals: a reply signed by a key the arena never
  * registered, and a genuine enclave-signed reply from an earlier turn replayed against a new prompt.
  */
-const pub = JSON.parse(readFileSync(TESTNET_FILE, "utf8")) as PublicDeployment;
+const pub = publicTestnet();
 const CHEATER = process.env.PARLEY_CHEATER ?? "parley-relay.testnet";
 const arena = new Arena({ rpcUrl: process.env.PARLEY_RPC_URL ?? pub.rpcUrl, contractId: pub.contractId, signer: { accountId: CHEATER, privateKey: testnetKey(CHEATER, "cheater")! } });
 
@@ -29,7 +29,7 @@ const old = JSON.parse(readFileSync(join(dirname(TESTNET_FILE), "..", ".testnet"
 const genuine = old.turns.find((t) => t.model === open!.model)!;
 const replayed = await arena.submitTurn(open.id, genuine.reply);
 
-const why = (e?: string) => e?.match(/Smart contract panicked: ([^"\\]+)/)?.[1] ?? e ?? "";
+const why = (e?: string) => panicMessage(e) ?? e ?? "";
 const result = {
   parley: open.id,
   sender: CHEATER,

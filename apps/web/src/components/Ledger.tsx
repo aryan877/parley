@@ -1,11 +1,12 @@
 import type { Coin } from "@parley/sdk/src/types.ts";
 import { Link } from "react-router-dom";
-import { type LedgerEntry, type LedgerSummary, amount, describe, headline, useLedger, useLedgerSummary, when } from "../lib/ledger.ts";
+import { type LedgerEntry, type LedgerSummary, amount, describe, headline, useLedger, useLedgerSummary } from "../lib/ledger.ts";
 import { type ArenaInfo, txLink, useArenaInfo } from "../lib/live.ts";
 import { fmtNear } from "../lib/model.ts";
+import { shortAgo } from "../lib/time.ts";
 import { Mark } from "./Mark.tsx";
 import { Mascot } from "./Mascot.tsx";
-import "./ledger.css";
+import "./Ledger.css";
 
 const n = (yocto: string | bigint) => `${fmtNear(yocto)} NEAR`;
 const signed = (yocto: string | bigint) => `${BigInt(yocto) > 0n ? "+" : BigInt(yocto) < 0n ? "−" : ""}${amount(BigInt(yocto) < 0n ? -BigInt(yocto) : yocto)} NEAR`;
@@ -23,7 +24,7 @@ export function LedgerRow({ entry, name, info, coin }: { entry: LedgerEntry; nam
       <span className="ledger-text">
         <span>{describe(entry, name, info?.contractId)}</span>
         <span className="ledger-meta">
-          {when(entry.at)}
+          {shortAgo(entry.at)}
           {entry.parley !== undefined && (
             <>
               {" · "}
@@ -47,7 +48,7 @@ export function LedgerRow({ entry, name, info, coin }: { entry: LedgerEntry; nam
 
 export function BooksCheck({ summary }: { summary: LedgerSummary }) {
   const { books, status } = summary;
-  if (!books) return <div className="books">{status.caughtUp ? <p className="muted">The books check runs after the next read of the contract.</p> : <p className="muted">Reading every transaction since launch. {status.txs.toLocaleString("en-US")} read so far.</p>}</div>;
+  if (!books) return <div className="glass books">{status.caughtUp ? <p className="muted">The books check runs after the next read of the contract.</p> : <p className="muted">Reading every transaction since launch. {status.txs.toLocaleString("en-US")} read so far.</p>}</div>;
   const spare = BigInt(books.spare);
   const lines: [string, string][] = [
     ["Coin treasuries", books.treasuries],
@@ -56,7 +57,7 @@ export function BooksCheck({ summary }: { summary: LedgerSummary }) {
     [`Storage on NEAR (${(books.storageBytes / 1_000_000).toFixed(2)} MB)`, books.storage],
   ];
   return (
-    <div className="books">
+    <div className="glass books">
       <h2>{books.balanced ? "The books balance" : "The books are short"}</h2>
       <p className="books-lead">
         The contract holds <b>{n(books.balance)}</b>. It owes <b>{n(books.owed)}</b> to coins, the pot and open orders, and <b>{n(books.storage)}</b> pays for its storage.{" "}
@@ -95,7 +96,7 @@ export function BooksCheck({ summary }: { summary: LedgerSummary }) {
               .join(", ")}.`}
       </p>
       <p className="books-when">
-        Checked at block {books.block.toLocaleString("en-US")}, {when(books.at)}.{status.unread.length ? ` ${status.unread.length} transactions could not be read.` : ""}
+        Checked at block {books.block.toLocaleString("en-US")}, {shortAgo(books.at)}.{status.unread.length ? ` ${status.unread.length} transactions could not be read.` : ""}
       </p>
     </div>
   );

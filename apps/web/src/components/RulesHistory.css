@@ -2,12 +2,6 @@
   margin-top: 40px;
 }
 
-.rh-title {
-  font: 800 30px/1.05 var(--display);
-  letter-spacing: -0.03em;
-  margin: 0;
-}
-
 .rh-lead,
 .rh-still {
   margin: 8px 0 16px;
@@ -26,9 +20,6 @@
 
 .rh-version {
   padding: 18px 20px;
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: var(--lift);
 }
 
 .rh-version.now {
@@ -134,9 +125,6 @@
 @media (max-width: 600px) {
   .rh-version {
     padding: 16px;
-  }
-  .rh-title {
-    font-size: 26px;
   }
   .rh-text {
     font-size: 15.5px;

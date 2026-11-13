@@ -1,25 +1,22 @@
 import { type CallResult, TOKEN_DEPOSIT } from "@parley/sdk/src/arena.ts";
 import type { Coin, TokenMetadata } from "@parley/sdk/src/types.ts";
+import { YOCTO, parseNear } from "@parley/sdk/src/units.ts";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { accountLink } from "../lib/live.ts";
 import { fmtNear } from "../lib/model.ts";
 import { forget, reads, tokenChain } from "../lib/near.ts";
-import { CANCELLED, noteCoin, useWallet } from "../lib/wallet.tsx";
+import { failed, noteCoin, useWallet } from "../lib/wallet.tsx";
 import { WalletIcon } from "./icons.tsx";
 import "./TokenPanel.css";
 
-const YOCTO = 10n ** 24n;
 const ENOUGH = TOKEN_DEPOSIT + YOCTO / 10n;
 
 type Note = { tone: "good" | "bad"; text: string };
 
 function parse(text: string): bigint | null {
-  const t = text.trim();
-  if (!t || !/^\d*(\.\d*)?$/.test(t)) return null;
-  const [whole = "0", frac = ""] = t.split(".");
-  const value = BigInt(whole || "0") * YOCTO + BigInt((frac + "0".repeat(24)).slice(0, 24));
-  return value > 0n ? value : null;
+  const value = parseNear(text);
+  return value && value > 0n ? value : null;
 }
 
 const plain = (yocto: bigint) => {
@@ -27,12 +24,6 @@ const plain = (yocto: bigint) => {
   const frac = (yocto % YOCTO).toString().padStart(24, "0").replace(/0+$/, "");
   return frac ? `${whole}.${frac}` : whole.toString();
 };
-
-function failed(label: string, error?: string): string {
-  if (error === CANCELLED) return CANCELLED;
-  if (/Not enough balance|NotEnoughBalance|LackBalance/i.test(error ?? "")) return `${label} failed: not enough NEAR in your wallet for gas.`;
-  return `${label} failed: ${error?.match(/panicked: ([^"\\]+)/)?.[1] ?? error?.slice(0, 140) ?? "unknown error"}.`;
-}
 
 function Notice({ note }: { note: Note | null }) {
   return (

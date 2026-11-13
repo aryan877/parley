@@ -3,13 +3,13 @@ import { Link, useParams } from "react-router-dom";
 import { Rematch } from "../components/Challenge.tsx";
 import { ShareButton, matchShareLine } from "../components/Share.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
-import { clock } from "../components/ArenaNow.tsx";
 import { ArrowIcon } from "../components/icons.tsx";
 import { useCalls } from "../lib/calls.ts";
-import { type Match } from "../lib/model.ts";
+import { type Match, coinName } from "../lib/model.ts";
 import { loadLiveMatch, useArenaInfo, useLiveMatch, useSchedule } from "../lib/live.ts";
 import { reads } from "../lib/near.ts";
 import { useSeason } from "../lib/season.ts";
+import { clock, useNow } from "../lib/time.ts";
 import { useWallet } from "../lib/wallet.tsx";
 import type { Coin } from "@parley/sdk/src/types.ts";
 
@@ -61,11 +61,7 @@ function LiveMatch({ id }: { id: number }) {
   const { schedule, skew } = useSchedule(5000);
   const calls = useCalls();
   const openedLive = useRef<boolean | null>(null);
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const now = useNow();
   useEffect(() => {
     if (!info) return;
     let live = true;
@@ -90,7 +86,7 @@ function LiveMatch({ id }: { id: number }) {
   if (!ready) return <p className="muted loading-line">Connecting…</p>;
   if (!info) return <p className="muted loading-line">The live arena is offline right now.</p>;
   if (!shown) return <p className="muted">Loading match {id}…</p>;
-  const nameOf = (cid: string) => coins.find((x) => x.id === cid)?.name ?? cid.toUpperCase();
+  const nameOf = coinName(coins);
   const own = (cid: string) => !!w.accountId && coins.find((x) => x.id === cid)?.creator === w.accountId;
   const mine = shown.settled ? [shown.a, shown.b].find(own) : undefined;
   const fighter = (cid: string): Fighter => {

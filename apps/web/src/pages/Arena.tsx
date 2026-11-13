@@ -9,7 +9,7 @@ import { type Fighter, Stage } from "../components/Stage.tsx";
 import { networkName, useArenaInfo, useLiveArena, useSchedule } from "../lib/live.ts";
 import { type Match } from "../lib/model.ts";
 import { useSeason } from "../lib/season.ts";
-import "./home.css";
+import "./Arena.css";
 
 const FEATURED = [54, 26, 77];
 

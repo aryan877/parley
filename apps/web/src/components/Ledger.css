@@ -1,7 +1,4 @@
 .books {
-  background: var(--surface);
-  border-radius: var(--r-lg);
-  box-shadow: var(--lift);
   padding: 24px 26px 20px;
   margin-bottom: 12px;
 }

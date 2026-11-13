@@ -1,5 +1,4 @@
-import { type Model, type Parley, sha256Hex, verifyReply } from "@parley/sdk";
-import { ARCHIVAL_RPC_URLS, type ExecutionStatus, NearRpc, type TxOutcome, base64Text, functionCall } from "@parley/sdk/src/rpc.ts";
+import { ARCHIVAL_RPC_URLS, type ExecutionStatus, type Model, NearRpc, type Parley, TX_INDEX_URLS, type TxOutcome, base64Text, functionCall, panicMessage, parleyEvents, sha256Hex, verifyReply } from "@parley/sdk";
 import { type Attestation, KEPT_WASM, ROOT, committedCodeHash, publicTestnet } from "@parley/relayer";
 import { flag } from "@parley/relayer/src/commands/shared.ts";
 import { type SignerReport, checkAttestations, describeSigner, readJsonFiles, signerReport } from "@parley/league";
@@ -20,7 +19,7 @@ interface Refusal {
 }
 
 const SITE = flag("site", "https://parley.aryankumar.dev")!.replace(/\/+$/, "");
-const TX_INDEX = "https://tx.test.fastnear.com/v0";
+const TX_INDEX = `${TX_INDEX_URLS.testnet}/v0`;
 const SAINT_VS_SNAKE = 12;
 const MATCHES = Math.max(1, Math.min(20, Number(flag("matches", "3"))));
 const STEPS = [
@@ -45,12 +44,8 @@ const once = <T>(work: () => Promise<T>) => {
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 const succeeded = (status: ExecutionStatus) => "SuccessValue" in status;
-const panicOf = (tx: TxOutcome) => JSON.stringify(tx.status).match(/Smart contract panicked: ([^"\\]+)/)?.[1] ?? null;
-const events = (tx: TxOutcome) =>
-  tx.receipts_outcome
-    .flatMap((r) => r.outcome.logs)
-    .filter((log) => log.startsWith("EVENT_JSON:"))
-    .map((log) => JSON.parse(log.slice("EVENT_JSON:".length)) as { event: string; data: Record<string, unknown>[] });
+const panicOf = (tx: TxOutcome) => panicMessage(JSON.stringify(tx.status));
+const events = (tx: TxOutcome) => parleyEvents(tx.receipts_outcome.flatMap((r) => r.outcome.logs));
 
 async function http<T>(url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -75,7 +70,7 @@ const models = once(() => view<Model[]>("get_models"));
 const amendment = once(async () => {
   const { coin, constitution, steps } = record<{ coin: string; constitution: string; steps: Record<string, string> }>("testnet-amendment.json");
   const txs = await Promise.all(STEPS.map(([step]) => history.tx(steps[step] ?? "", deployment.owner)));
-  const enacted = events(txs[3]!).find((e) => e.event === "amendment_enacted")?.data[0];
+  const enacted = events(txs[3]!).find((e) => e.event === "amendment_enacted")?.data;
   return { coin, constitution, steps, txs, version: typeof enacted?.constitution_version === "number" ? enacted.constitution_version : null };
 });
 

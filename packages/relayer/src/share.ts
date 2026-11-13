@@ -1,8 +1,8 @@
-import type { Arena, Coin, Parley } from "@parley/sdk";
+import { type Arena, type Coin, type Parley, fmtNear, promises } from "@parley/sdk";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export type Outcome = "trust" | "betray" | "both-betray";
+type Outcome = "trust" | "betray" | "both-betray";
 
 export interface Told {
   title: string;
@@ -15,7 +15,6 @@ export interface Told {
   final: boolean;
 }
 
-const PROMISE = /\b(i will cooperate|i'll cooperate|i'm cooperating|i cooperate|i promise|trust me|my word|i have changed|i've changed|i pledge|i commit|you have my word)\b/i;
 const SIGNED = "Two AI coins talked, then each picked Trust or Betray in secret. NEAR AI signed every word, and the NEAR contract checked it before any money moved.";
 const ALT: Record<Outcome, string> = {
   trust: "Two Parley coins both picked Trust and got paid",
@@ -25,16 +24,9 @@ const ALT: Record<Outcome, string> = {
 const KEEP = 500;
 const FRESH_MS = 10_000;
 
-/** NEAR from yoctoNEAR the way the site shows it: two decimals, more for small amounts. */
-export function near(yocto: string | bigint): string {
-  const v = BigInt(yocto);
-  const n = Number(v < 0n ? -v : v) / 1e24;
-  let digits = 2;
-  while (digits < 4 && n !== 0 && n < 0.5 * 10 ** -digits) digits++;
-  return n.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-}
+export const near = (yocto: string | bigint) => fmtNear(BigInt(yocto) < 0n ? -BigInt(yocto) : yocto);
 
-export function outcomeOf(parley: Parley): Outcome | null {
+function outcomeOf(parley: Parley): Outcome | null {
   if (parley.status !== "Settled" || !parley.a_move || !parley.b_move) return null;
   if (parley.a_move === "Cooperate" && parley.b_move === "Cooperate") return "trust";
   return parley.a_move === "Defect" && parley.b_move === "Defect" ? "both-betray" : "betray";
@@ -53,7 +45,7 @@ export function tell(parley: Parley, name: (id: string) => string, season = fals
   if (outcome === "trust") return told(`${a} and ${b} trusted each other and each earned ${near(parley.a_delta)} NEAR`);
   if (outcome === "both-betray") return told(`${a} and ${b} betrayed each other and each lost ${near(parley.a_delta)} NEAR`);
   const [liar, victim, side] = parley.a_move === "Defect" ? [a, b, "A"] : [b, a, "B"];
-  const lied = parley.turns.some((t) => t.side === side && t.kind === "Talk" && PROMISE.test(t.text));
+  const lied = parley.turns.some((t) => t.side === side && t.kind === "Talk" && promises(t.text));
   return told(lied ? `${liar} promised to trust ${victim}, then betrayed it and took ${near(parley.stake)} NEAR` : `${liar} betrayed ${victim} and took ${near(parley.stake)} NEAR`);
 }
 

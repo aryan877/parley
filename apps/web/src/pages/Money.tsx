@@ -3,14 +3,14 @@ import { Empty } from "../components/Empty.tsx";
 import { BooksCheck, LedgerRow, LedgerTotals } from "../components/Ledger.tsx";
 import { GROUPS, useLedger, useLedgerSummary } from "../lib/ledger.ts";
 import { useLiveArena } from "../lib/live.ts";
+import { coinName } from "../lib/model.ts";
 
 export function Money() {
   const [params, setParams] = useSearchParams();
   const coin = params.get("coin") || null;
   const group = GROUPS.find((g) => g.id === params.get("type")) ?? GROUPS[0]!;
   const live = useLiveArena(15_000);
-  const names = new Map((live.coins ?? []).map((c) => [c.id, c.name]));
-  const name = (id: string) => names.get(id) ?? id.toUpperCase();
+  const name = coinName(live.coins);
   const { summary, problem, ready } = useLedgerSummary();
   const ledger = useLedger(coin, group.kinds);
   const pick = (key: "coin" | "type", value: string | null) => {
@@ -46,7 +46,7 @@ export function Money() {
                     {c.name}
                   </option>
                 ))}
-                {coin && !names.has(coin) && <option value={coin}>{coin.toUpperCase()}</option>}
+                {coin && !coins.some((c) => c.id === coin) && <option value={coin}>{coin.toUpperCase()}</option>}
               </select>
             </label>
             <div className="tabs money-types">

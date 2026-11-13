@@ -1,3 +1,4 @@
+import { panicMessage } from "@parley/sdk/src/rpc.ts";
 import type { Coin } from "@parley/sdk/src/types.ts";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -105,7 +106,7 @@ function LowFunds({ balance, need, least, room, onFit }: { balance: string; need
 function refusal(error?: string): string {
   if (error === CANCELLED || /your (NEAR )?wallet/i.test(error ?? "")) return error!;
   if (/Not enough balance/.test(error ?? "")) return "Not enough NEAR in your wallet. Keep about 0.1 NEAR for gas.";
-  const panic = error?.match(/panicked: ([^"\\]+)/)?.[1];
+  const panic = panicMessage(error);
   if (panic === "coin name taken") return "Someone just took that name. Pick another one.";
   if (panic === "coin id taken") return "That exact coin was just made. Tap Launch again.";
   return panic ?? "The arena refused this coin.";

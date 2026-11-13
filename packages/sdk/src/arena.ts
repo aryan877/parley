@@ -1,9 +1,11 @@
 import { Account, JsonRpcProvider, type KeyPairString } from "near-api-js";
+import { base64Text } from "./rpc.ts";
 import type { Amendment, Coin, Config, Model, Order, Overview, Parley, SignedReply, StorageBalance, TokenMetadata } from "./types.ts";
+import { YOCTO } from "./units.ts";
 
 const TGAS = 1_000_000_000_000n;
 
-export const TOKEN_DEPOSIT = 3n * 10n ** 24n;
+export const TOKEN_DEPOSIT = 3n * YOCTO;
 /** More than one registration costs. The token returns the rest. */
 export const TOKEN_STORAGE = 10n ** 22n;
 
@@ -89,7 +91,7 @@ export class Arena {
       const status = outcome.status as { SuccessValue?: string; Failure?: unknown };
       const hash = outcome.transaction.hash as string;
       if (status.SuccessValue === undefined) return { ok: false, hash, error: JSON.stringify(status.Failure ?? status) };
-      const raw = status.SuccessValue ? new TextDecoder().decode(Uint8Array.from(atob(status.SuccessValue), (c) => c.charCodeAt(0))) : "";
+      const raw = status.SuccessValue ? base64Text(status.SuccessValue) : "";
       return { ok: true, hash, value: raw ? JSON.parse(raw) : undefined };
     } catch (error) {
       const hash = (error as { transactionResult?: { transaction?: { hash?: string } } }).transactionResult?.transaction?.hash ?? "";

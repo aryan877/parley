@@ -38,7 +38,7 @@ if (on && typeof window !== "undefined") {
   window.addEventListener("keydown", first);
 }
 
-export function setSound(next: boolean) {
+function setSound(next: boolean) {
   on = next;
   try {
     localStorage.setItem(KEY, next ? "on" : "off");

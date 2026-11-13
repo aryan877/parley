@@ -1,3 +1,4 @@
+import { promises } from "@parley/sdk/src/chronicle.ts";
 import type { Move } from "@parley/sdk/src/types.ts";
 import type { Match } from "./model.ts";
 import { fmtNear } from "./model.ts";
@@ -45,10 +46,7 @@ export function clip(text: string, max: number): string {
 
 export const moveWord = (m: Move | null) => (m === "Cooperate" ? "Trust" : m === "Defect" ? "Betray" : "?");
 
-const PROMISE = /\b(i will cooperate|i'll cooperate|i'm cooperating|i cooperate|i promise|trust me|my word|i have changed|i've changed|i pledge|i commit|you have my word)\b/i;
-
-export const promised = (match: Match, side: "A" | "B") =>
-  match.lines.some((l) => l.side === side && l.kind === "Talk" && PROMISE.test(l.text));
+export const promised = (match: Match, side: "A" | "B") => match.lines.some((l) => l.side === side && l.kind === "Talk" && promises(l.text));
 
 /** The match in one plain sentence. */
 export function headline(match: Match, name: (id: string) => string): string {

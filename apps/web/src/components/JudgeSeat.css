@@ -13,9 +13,6 @@
 
 .judge-step {
   padding: 18px 20px;
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: var(--lift);
 }
 
 .judge-step.now {

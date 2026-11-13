@@ -1,3 +1,4 @@
+import { viewQuery, viewResult } from "@parley/sdk/src/rpc.ts";
 import type { Amendment, Coin, Order, Parley, TokenMetadata } from "@parley/sdk/src/types.ts";
 import { useSyncExternalStore } from "react";
 
@@ -85,14 +86,7 @@ export async function query<T>(chain: Chain, params: Record<string, unknown>): P
 }
 
 export async function view<T>(chain: Chain, method: string, args: Record<string, unknown> = {}): Promise<T> {
-  const result = await query<{ result: number[] }>(chain, {
-    request_type: "call_function",
-    finality: "optimistic",
-    account_id: chain.contractId,
-    method_name: method,
-    args_base64: btoa(JSON.stringify(args)),
-  });
-  return JSON.parse(new TextDecoder().decode(new Uint8Array(result.result))) as T;
+  return viewResult<T>(await query<{ result: number[] }>(chain,viewQuery(chain.contractId, method, args, { finality: "optimistic" })));
 }
 
 interface Entry {

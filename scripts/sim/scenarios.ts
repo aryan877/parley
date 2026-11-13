@@ -1,6 +1,6 @@
+import { near } from "@parley/sdk";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { near } from "@parley/sdk/src/units.ts";
 import type { CoinPlan, Scenario } from "./season.ts";
 import { type Strategy, betray, farmer, forgiving, grudge, grudger, pavlov, random, skeptic, titForTat, trust } from "./strategies.ts";
 

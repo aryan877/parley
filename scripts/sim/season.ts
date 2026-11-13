@@ -1,6 +1,4 @@
-import { near } from "@parley/sdk/src/units.ts";
-import { sharePrice } from "@parley/sdk/src/economy.ts";
-import type { Stats } from "@parley/sdk/src/types.ts";
+import { type Stats, near, sharePrice } from "@parley/sdk";
 import { type Fill, type Rules, type Settled, SimArena } from "./arena.ts";
 import { seeded } from "./random.ts";
 import type { Strategy } from "./strategies.ts";

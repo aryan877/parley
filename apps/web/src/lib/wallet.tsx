@@ -1,4 +1,5 @@
 import { Arena, type WalletCall } from "@parley/sdk/src/arena.ts";
+import { lacksBalance, panicMessage } from "@parley/sdk/src/rpc.ts";
 import { KeyPair } from "near-api-js";
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ARENA_API, type ArenaInfo, useArenaInfo } from "./live.ts";
@@ -53,6 +54,14 @@ const NEAR_STORE = "parley.near";
 const LAUNCHING = "parley.launching";
 
 export const CANCELLED = "You cancelled in your wallet.";
+
+export function whyFailed(error?: string): string {
+  if (error === CANCELLED) return "you cancelled in your wallet";
+  if (lacksBalance(error)) return "not enough NEAR in your wallet for gas";
+  return panicMessage(error) ?? error?.slice(0, 140) ?? "unknown error";
+}
+
+export const failed = (label: string, error?: string) => (error === CANCELLED ? CANCELLED : `${label} failed: ${whyFailed(error)}.`);
 
 const nearKit = () => import("./nearWallet.ts");
 

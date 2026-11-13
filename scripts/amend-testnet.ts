@@ -1,5 +1,5 @@
 import { Arena } from "@parley/sdk";
-import { TESTNET_FILE, type PublicDeployment, testnetKey } from "@parley/relayer";
+import { TESTNET_FILE, publicTestnet, testnetKey } from "@parley/relayer";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
  * A holder rewrites one coin's constitution on the live testnet arena: propose, vote, wait out the vote, finalize,
  * wait out the timelock, enact. Every step is a transaction; the next Parley that coin plays uses the new text.
  */
-const pub = JSON.parse(readFileSync(TESTNET_FILE, "utf8")) as PublicDeployment;
+const pub = publicTestnet();
 const COIN = process.argv[2] ?? "saint";
 const TEXT =
   process.argv[3] ??

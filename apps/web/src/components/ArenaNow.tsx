@@ -1,19 +1,10 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useArenaInfo, useLiveArena, useSchedule } from "../lib/live.ts";
-import { fromParley } from "../lib/model.ts";
+import { coinName, fromParley } from "../lib/model.ts";
+import { clock, useNow } from "../lib/time.ts";
 import { headline } from "../lib/words.ts";
 import { ArrowIcon } from "./icons.tsx";
 import { Mascot } from "./Mascot.tsx";
-
-function useNow(every = 1000) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), every);
-    return () => clearInterval(timer);
-  }, [every]);
-  return now;
-}
 
 function Pair({ a, b, name, mood }: { a: string; b: string; name: (id: string) => string; mood?: "thinking" }) {
   return (
@@ -29,8 +20,6 @@ function Pair({ a, b, name, mood }: { a: string; b: string; name: (id: string) =
   );
 }
 
-export const clock = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
-
 /** Answers "when do matches happen?": what is playing, what is next and when, and the rule that picks them. */
 export function ArenaNow() {
   const { coins, parleys } = useLiveArena(10_000);
@@ -38,7 +27,7 @@ export function ArenaNow() {
   const { schedule, skew } = useSchedule();
   const now = useNow();
   if (!schedule) return null;
-  const name = (id: string) => coins?.find((c) => c.id === id)?.name ?? id.toUpperCase();
+  const name = coinName(coins);
   const { current, next, queue } = schedule;
   const step = current ? Math.min(current.turns, 6) : 0;
   const wait = next ? Math.max(0, Math.round((next.at + skew - now) / 1000)) : null;

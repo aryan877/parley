@@ -1,7 +1,5 @@
 import { expect, test } from "bun:test";
-import { rulesHistory } from "@parley/sdk/src/chronicle.ts";
-import type { LedgerEntry } from "@parley/sdk/src/ledger.ts";
-import type { Coin } from "@parley/sdk/src/types.ts";
+import { type Coin, type LedgerEntry, rulesHistory } from "@parley/sdk";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

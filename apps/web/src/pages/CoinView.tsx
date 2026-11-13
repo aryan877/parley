@@ -1,4 +1,5 @@
 import type { Amendment, Coin, Order, Parley } from "@parley/sdk/src/types.ts";
+import { parseNear } from "@parley/sdk/src/units.ts";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -18,50 +19,19 @@ import { ShareButton } from "../components/Share.tsx";
 import { TokenPanel } from "../components/TokenPanel.tsx";
 import { Mascot, mascotColor } from "../components/Mascot.tsx";
 import { BoltIcon, BrainIcon, RestartIcon, TrustIcon, BetrayIcon, WalletIcon } from "../components/icons.tsx";
-import { type CoinInfo, type Match, fmtNear, fromCoin, fromParley, nearNumber, pctText, sharePrice, sinceLaunch, trustRate } from "../lib/model.ts";
+import { type CoinInfo, type Match, coinName, fmtNear, fromCoin, fromParley, nearNumber, pctText, sharePrice, sinceLaunch, trustRate } from "../lib/model.ts";
 import { ARENA_API, useArenaInfo } from "../lib/live.ts";
 import { holdings, setHolding } from "../lib/holdings.ts";
 import { type VoteLock, forget, parleysBefore, reads, view } from "../lib/near.ts";
 import { useSeason } from "../lib/season.ts";
-import { CANCELLED, noteCoin, useWallet } from "../lib/wallet.tsx";
+import { minutes, msOf, useNow } from "../lib/time.ts";
+import { failed, noteCoin, useWallet, whyFailed } from "../lib/wallet.tsx";
 import { BRAIN_LABEL, PRACTICE_NOTE, brainOf, tagline } from "../lib/words.ts";
-
-const YOCTO = 10n ** 24n;
-
-function toYocto(text: string): bigint | null {
-  if (!/^\d*(\.\d*)?$/.test(text.trim()) || !text.trim()) return null;
-  const [whole = "0", frac = ""] = text.trim().split(".");
-  return BigInt(whole || "0") * YOCTO + BigInt((frac + "0".repeat(24)).slice(0, 24));
-}
-
-const msOf = (ns: string) => Number(BigInt(ns) / 1_000_000n);
 
 function countdown(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return s < 3600 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${Math.round(s / 3600)} h`;
 }
-
-const minutes = (ns: string | undefined, fallback: number) => {
-  const m = ns ? Number(BigInt(ns) / 60_000_000_000n) : fallback;
-  return `${m} ${m === 1 ? "minute" : "minutes"}`;
-};
-
-function useNow(run: boolean) {
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    if (!run) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [run]);
-  return now;
-}
-
-const why = (error?: string) => {
-  if (error === CANCELLED) return "you cancelled in your wallet";
-  if (/Not enough balance|NotEnoughBalance|LackBalance/i.test(error ?? "")) return "not enough NEAR in your wallet for gas";
-  return error?.match(/panicked: ([^"\\]+)/)?.[1] ?? error?.slice(0, 140) ?? "unknown error";
-};
-const refusal = (label: string, error?: string) => (error === CANCELLED ? CANCELLED : `${label} failed: ${why(error)}.`);
 
 /** Treasury after each match, oldest first, counted back from the treasury now. */
 function curveOf(id: string, treasury: string, matches: Match[]): number[] {
@@ -165,7 +135,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
   }, [load]);
 
   const price = Number((BigInt(coin.treasury) * 1_000_000n) / (BigInt(coin.total_shares) || 1n)) / 1_000_000;
-  const value = toYocto(amount);
+  const value = parseNear(amount);
   const sending = w.kind === "near" ? "Approve it in your wallet…" : "Sending…";
   const run = async (label: string, action: () => Promise<{ ok: boolean; error?: string }>, done: string, placed?: Order["kind"] | null, amount?: bigint) => {
     setBusy(true);
@@ -180,7 +150,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
       fetch(`${ARENA_API}/api/watch-order`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ coin: coin.id, account: w.accountId }) }).catch(() => {});
     }
     setBusy(false);
-    setNote(result.ok ? { tone: "good", text: done } : { tone: "bad", text: /Not enough balance/.test(result.error ?? "") ? "Not enough NEAR in your wallet. Keep about 0.1 NEAR for gas." : refusal(label, result.error) });
+    setNote(result.ok ? { tone: "good", text: done } : { tone: "bad", text: /Not enough balance/.test(result.error ?? "") ? "Not enough NEAR in your wallet. Keep about 0.1 NEAR for gas." : failed(label, result.error) });
     w.refresh();
     await load();
     onDone();
@@ -387,7 +357,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     const r = await action();
     if (r.ok) noteCoin(account, coin.id);
     setBusy(false);
-    setNote(r.ok ? { tone: "good", text: done } : { tone: "bad", text: refusal(label, r.error) });
+    setNote(r.ok ? { tone: "good", text: done } : { tone: "bad", text: failed(label, r.error) });
     await refresh();
   };
 
@@ -413,7 +383,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     if (!made.ok) {
       setBusy(false);
       setStep(null);
-      setNote({ tone: "bad", text: refusal("Proposing", made.error) });
+      setNote({ tone: "bad", text: failed("Proposing", made.error) });
       return;
     }
     const id = Number(made.value);
@@ -433,7 +403,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     setNote(
       voted.ok
         ? { tone: "good", text: `Proposed, and you voted yes with ${share(ballot + add)} shares.` }
-        : { tone: "bad", text: `Proposed, but your yes vote did not go through: ${why(voted.error)}. Press Vote yes to try again.` },
+        : { tone: "bad", text: `Proposed, but your yes vote did not go through: ${whyFailed(voted.error)}. Press Vote yes to try again.` },
     );
     await refresh();
   };
@@ -632,7 +602,7 @@ function LiveCoin({ id }: { id: string }) {
     return <p className="muted loading-line">Loading…</p>;
   }
 
-  const name = (cid: string) => all?.find((x) => x.id === cid)?.name ?? cid.toUpperCase();
+  const name = coinName(all);
   const byId = new Map<number, Parley>();
   for (const p of [...older, ...recent]) byId.set(p.id, p);
   const matches = [...byId.values()]

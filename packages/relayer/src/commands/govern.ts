@@ -1,4 +1,4 @@
-import { type Arena, formatNear, near } from "@parley/sdk";
+import { type Arena, formatNear, near, panicMessage } from "@parley/sdk";
 import { RoutingMind } from "../minds/routing.ts";
 import { openAndPlay } from "../runner.ts";
 import { coinNames, deployHouse, flag, printParley } from "./shared.ts";
@@ -18,7 +18,7 @@ async function expectOk(label: string, call: Promise<{ ok: boolean; error?: stri
 async function refused(call: Promise<{ ok: boolean; error?: string }>): Promise<string> {
   const result = await call;
   if (result.ok) throw new Error("expected the contract to refuse");
-  return result.error?.match(/Smart contract panicked: ([^"\\]+)/)?.[1] ?? "refused";
+  return panicMessage(result.error) ?? "refused";
 }
 
 async function pause(seconds: bigint, why: string) {

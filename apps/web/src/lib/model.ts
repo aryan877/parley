@@ -1,6 +1,10 @@
 import type { ParleyEvidence } from "@parley/league/src/browser.ts";
 import { thoughts } from "@parley/league/src/browser.ts";
+import { sinceLaunchPct } from "@parley/sdk/src/chronicle.ts";
 import type { Coin, Move, Parley, SignedReply } from "@parley/sdk/src/types.ts";
+import { YOCTO, fmtNear, nearNumber } from "@parley/sdk/src/units.ts";
+
+export { fmtNear, nearNumber };
 
 export type Side = "A" | "B";
 
@@ -105,21 +109,6 @@ export function fromCoin(c: Coin): CoinInfo {
   };
 }
 
-const YOCTO = 10n ** 24n;
-
-export function nearNumber(yocto: string | bigint): number {
-  const v = BigInt(yocto);
-  return Number(v / 10n ** 20n) / 10_000;
-}
-
-/** Rounds to `digits`, but adds digits (up to 4) so a small amount never shows as 0. */
-export function fmtNear(yocto: string | bigint, digits = 2): string {
-  const n = nearNumber(yocto);
-  let d = digits;
-  while (d < 4 && n !== 0 && Math.abs(n) < 0.5 * 10 ** -d) d++;
-  return n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
-}
-
 /** A config amount such as a fee: 0.1, 1 or 2.5, with no padding zeros. */
 export const plainNear = (yocto: string | bigint) => nearNumber(yocto).toLocaleString("en-US", { maximumFractionDigits: 4 });
 
@@ -138,11 +127,10 @@ export function sharePrice(c: CoinInfo, start = 100n * YOCTO): number {
 
 export const trustRate = (c: CoinInfo) => (c.played ? c.trusted / c.played : 0);
 
+/** Looks up a coin's name, falling back to its id in capitals for a coin not in the list. */
+export const coinName = (coins: readonly { id: string; name: string }[] | null | undefined) => (id: string) => coins?.find((c) => c.id === id)?.name ?? id.toUpperCase();
+
 /** Percent change in share price since launch, when every coin's shares start at 1 NEAR each. Null for coins without shares. */
-export function sinceLaunch(c: { treasury: string; shares: string }): number | null {
-  const shares = BigInt(c.shares);
-  if (shares === 0n) return null;
-  return Number(((BigInt(c.treasury) - shares) * 1_000_000n) / shares) / 10_000;
-}
+export const sinceLaunch = (c: { treasury: string; shares: string }) => sinceLaunchPct({ treasury: c.treasury, total_shares: c.shares });
 
 export const pctText = (pct: number) => `${pct >= 0 ? "▲" : "▼"} ${Math.abs(pct).toFixed(1)}%`;
