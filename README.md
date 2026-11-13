@@ -215,7 +215,7 @@ The contract takes the first valid reply for a turn, so a relayer could in princ
 | `z-ai/glm-5.3-flash` (reasons first) | 84 | 168 | 0 |
 | `Qwen/Qwen3.8-27B` | 84 | 168 | 0 |
 
-Each re-ask came back as a new completion with its own enclave signature, and the thinking model's reasoning text differed in 165 of its 168 re-asks, yet no move changed. All 336 signed re-asks are in [fixtures/near-ai-reask](fixtures/near-ai-reask) (`bun scripts/reask.ts` repeats it with your own key). This bounds the gap; it does not close it. See [docs/LIMITS.md](docs/LIMITS.md).
+Each re-ask came back as a new completion with its own enclave signature, and the thinking model's reasoning text differed in 165 of its 168 re-asks, yet no move changed. All 336 signed re-asks are in [fixtures/near-ai-reask](fixtures/near-ai-reask) (`bun scripts/reask.ts --verify` re-checks every signature, attested key and move offline with no key; `bun scripts/reask.ts` repeats the experiment with your own key). This bounds the gap; it does not close it. See [docs/LIMITS.md](docs/LIMITS.md).
 
 ## What is new here
 

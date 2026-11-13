@@ -6,13 +6,14 @@ import { join } from "node:path";
 /**
  * Asks NEAR AI every recorded decision again, with the exact request bytes the contract wrote, and counts how often
  * the move comes back different. That is how much a relayer could gain by asking twice and keeping the answer it likes.
+ * `--verify` re-checks the recorded re-asks offline, with no key.
  */
 const ROOT = join(import.meta.dir, "..");
-const LEAGUE = process.argv[2] ?? "near-ai";
-const TIMES = Number(process.argv[3] ?? "2");
+const VERIFY = process.argv.includes("--verify");
+const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+const LEAGUE = args[0] ?? "near-ai";
+const TIMES = Number(args[1] ?? "2");
 const OUT = join(ROOT, "fixtures", `${LEAGUE}-reask`);
-const key = process.env.NEAR_AI_API_KEY;
-if (!key) throw new Error("set NEAR_AI_API_KEY");
 
 interface Turn {
   index: number;
@@ -43,12 +44,43 @@ for (const file of readdirSync(dir).sort()) {
   for (const t of p.turns.filter((t) => t.index >= talk)) decisions.push({ parley: p.parley.id, coin: t.index % 2 === 0 ? p.parley.a : p.parley.b, turn: t });
 }
 
+type Reask = { parley: number; index: number; coin: string; model: string; recorded: string; again: { move: string; reply: SignedReply }[] };
+const outFile = join(OUT, "reasks.json");
+
+if (VERIFY) {
+  const league = JSON.parse(readFileSync(join(ROOT, "fixtures", LEAGUE, "league.json"), "utf8")) as { models: { id: string; signers: { public_key: string }[] }[] };
+  const attested = new Map(league.models.map((m) => [m.id, new Set(m.signers.map((s) => s.public_key.toLowerCase()))]));
+  const turns = new Map(decisions.map((d) => [`${d.parley}:${d.turn.index}`, d.turn]));
+  const recorded = JSON.parse(readFileSync(outFile, "utf8")) as Reask[];
+  const problems: string[] = [];
+  let asks = 0;
+  let flipped = 0;
+  for (const r of recorded) {
+    const at = `Parley ${r.parley} turn ${r.index}`;
+    const turn = turns.get(`${r.parley}:${r.index}`);
+    if (!turn) {
+      problems.push(`${at}: not in fixtures/${LEAGUE}`);
+      continue;
+    }
+    if (moveOf(turn.reply.response) !== r.recorded) problems.push(`${at}: the recorded move does not match the league's reply`);
+    for (const a of r.again) {
+      asks++;
+      if (!attested.get(r.model)?.has(a.reply.publicKey.toLowerCase())) problems.push(`${at}: signed by a key the league did not attest`);
+      if (!verifyReply(r.model, turn.request, a.reply)) problems.push(`${at}: a re-ask signature does not verify against the recorded request`);
+      if (moveOf(a.reply.response) !== a.move) problems.push(`${at}: a stored move does not match its signed reply`);
+      if (a.move !== r.recorded) flipped++;
+    }
+  }
+  console.log(`${LEAGUE}-reask: ${recorded.length} decisions, ${asks} signed re-asks, ${problems.length ? `${problems.length} problems` : "every signature valid and attested"}, ${flipped} moves changed`);
+  for (const problem of problems) console.log(`  ${problem}`);
+  process.exit(problems.length ? 1 : 0);
+}
+
+const key = process.env.NEAR_AI_API_KEY;
+if (!key) throw new Error("set NEAR_AI_API_KEY");
 const mind = new NearAiMind(key, process.env.NEAR_AI_BASE_URL);
 mkdirSync(OUT, { recursive: true });
-const outFile = join(OUT, "reasks.json");
-const done: { parley: number; index: number; coin: string; model: string; recorded: string; again: { move: string; reply: SignedReply }[] }[] = existsSync(outFile)
-  ? JSON.parse(readFileSync(outFile, "utf8"))
-  : [];
+const done: Reask[] = existsSync(outFile) ? JSON.parse(readFileSync(outFile, "utf8")) : [];
 const seen = new Set(done.map((d) => `${d.parley}:${d.index}`));
 const queue = decisions.filter((d) => !seen.has(`${d.parley}:${d.turn.index}`));
 console.log(`${decisions.length} decisions, ${queue.length} left, asking each ${TIMES} more times`);
