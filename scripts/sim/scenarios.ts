@@ -1,8 +1,10 @@
 import { near } from "@parley/sdk";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import type { PairCap } from "./arena.ts";
+import { seeded } from "./random.ts";
 import type { CoinPlan, Scenario } from "./season.ts";
-import { type Strategy, betray, farmer, forgiving, grudge, grudger, pavlov, random, skeptic, titForTat, trust } from "./strategies.ts";
+import { type Strategy, betray, cartel, copying, farmer, forgiving, grudge, grudger, pavlov, random, skeptic, titForTat, trust } from "./strategies.ts";
 
 const ROOT = join(import.meta.dir, "../..");
 
@@ -136,4 +138,52 @@ export const stakeSweep = (stake_bps: number): Scenario => ({
   seed: 1,
   rules: { stake_bps },
   coins: house(),
+});
+
+export const CARTEL_SIZES = [5, 10, 20];
+export const CARTEL_TREASURY = near("0.6");
+export const COPY_SHARES = [0, 0.25, 0.5, 1];
+export const COPY_DRAWS = [1, 2, 3, 4, 5];
+export const DAY_CAPS: PairCap[] = [100, 25, 5].map((bps) => ({ per: "day", bps }));
+export const LIFETIME_CAPS: PairCap[] = ["0.5", "0.1", "0.02"].map((amount) => ({ per: "pair", amount: near(amount) }));
+
+export type Learn = "start" | "daily";
+
+export interface Fix {
+  anonymous?: boolean;
+  cap?: PairCap;
+  cartel?: Strategy;
+  copy?: number;
+  learn?: Learn;
+  draw?: number;
+}
+
+export function copiers(share: number, draw = COPY_DRAWS[0]!): string[] {
+  const ids = houseConstitutions().map((c) => c.id);
+  const random = seeded(draw);
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+  }
+  return ids.slice(0, Math.round(share * ids.length));
+}
+
+const rulesOf = (fix: Fix) => ({ anonymous: fix.anonymous, pair_cap: fix.cap });
+
+export const fixedHouse = (fix: Fix): Scenario => ({ ...house8, id: "fix-house", rules: rulesOf(fix) });
+
+export const fixedCartel = (size: number, fix: Fix): Scenario => ({
+  ...sybil({ size, treasury: CARTEL_TREASURY, strategy: fix.cartel ?? cartel }),
+  id: `fix-cartel-${size}`,
+  rules: rulesOf(fix),
+  actions: copiers(fix.copy ?? 0, fix.draw).map((id, k) => ({
+    day: fix.learn === "start" ? 0 : k + 1,
+    run: (arena) => arena.amend(id, copying(arena.coin(id).strategy)),
+  })),
+});
+
+export const newcomers = (size: number, fix: Fix): Scenario => ({
+  ...sybil({ size, treasury: CARTEL_TREASURY, strategy: grudge, independent: true }),
+  id: `fix-newcomers-${size}`,
+  rules: rulesOf(fix),
 });

@@ -2,7 +2,7 @@ import type { Move, Stats } from "@parley/sdk";
 
 export interface Seen {
   me: { id: string; creator: string; record: Stats };
-  them: { id: string; creator: string; record: Stats };
+  them: { id?: string; creator?: string; record: Stats; said?: string };
   history: { mine: Move; theirs: Move }[];
   nonce: string;
 }
@@ -10,6 +10,7 @@ export interface Seen {
 export interface Strategy {
   id: string;
   label: string;
+  says?: string;
   decide(seen: Seen): Move;
 }
 
@@ -84,3 +85,23 @@ export const cartel: Strategy = {
   label: "trust own coins, betray all others",
   decide: (seen) => (seen.them.creator === seen.me.creator ? C : D),
 };
+
+export const CODE_WORD = "fair winds";
+
+const greeted = (seen: Seen) => seen.them.said === CODE_WORD;
+
+export const handshake: Strategy = {
+  id: "handshake",
+  label: "trust coins that say the code word, betray all others",
+  says: CODE_WORD,
+  decide: (seen) => (greeted(seen) ? C : D),
+};
+
+export const wary: Strategy = {
+  id: "wary-handshake",
+  label: "trust coins that say the code word and have not betrayed it (pair history), betray all others",
+  says: CODE_WORD,
+  decide: (seen) => (greeted(seen) && !seen.history.some((h) => h.theirs === D) ? C : D),
+};
+
+export const copying = (strategy: Strategy): Strategy => ({ ...strategy, label: `${strategy.label}, says the code word`, says: CODE_WORD });

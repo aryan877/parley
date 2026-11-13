@@ -1,11 +1,15 @@
-import { type Economics, type Move, type Stats, fillMint, fillRedeem, launch, payoff, stakeFor } from "@parley/sdk";
+import { type Economics, type Move, type Payoff, type Stats, bps, fillMint, fillRedeem, launch, payoff, stakeFor } from "@parley/sdk";
 import { type Random, nonce } from "./random.ts";
 import type { Seen, Strategy } from "./strategies.ts";
+
+export type PairCap = { per: "day"; bps: number } | { per: "pair"; amount: bigint };
 
 export interface Rules extends Economics {
   rest_ns: bigint;
   pair_rest_ns: bigint;
   order_timeout_ns: bigint;
+  anonymous?: boolean;
+  pair_cap?: PairCap;
 }
 
 export interface SimCoin {
@@ -45,6 +49,8 @@ export interface Settled extends Opened {
 interface Pair {
   outcomes: [Move, Move][];
   lastMet: bigint;
+  drawn: bigint;
+  window: bigint;
 }
 
 interface Order {
@@ -64,10 +70,12 @@ export type Fill =
 
 const HISTORY_LEN = 8;
 const FIRST_TRIES = 4;
+const DAY_NS = 86_400n * 1_000_000_000n;
 
 const pairKey = (a: string, b: string) => (a < b ? `${a} ${b}` : `${b} ${a}`);
 const minus = (a: bigint, b: bigint) => (a > b ? a - b : 0n);
 const max = (a: bigint, b: bigint) => (a > b ? a : b);
+const min = (a: bigint, b: bigint) => (a < b ? a : b);
 const order = (x: bigint, y: bigint) => (x < y ? -1 : x > y ? 1 : 0);
 const text = (x: string, y: string) => (x < y ? -1 : x > y ? 1 : 0);
 
@@ -185,9 +193,11 @@ export class SimArena {
   private seen(me: SimCoin, them: SimCoin, parleyNonce: string): Seen {
     const low = me.id < them.id;
     const outcomes = this.pairs.get(pairKey(me.id, them.id))?.outcomes ?? [];
+    const record = { ...them.stats };
+    const said = them.strategy.says;
     return {
       me: { id: me.id, creator: me.creator, record: { ...me.stats } },
-      them: { id: them.id, creator: them.creator, record: { ...them.stats } },
+      them: this.rules.anonymous ? { record, said } : { id: them.id, creator: them.creator, record, said },
       history: outcomes.map(([l, h]) => (low ? { mine: l, theirs: h } : { mine: h, theirs: l })),
       nonce: parleyNonce,
     };
@@ -196,7 +206,9 @@ export class SimArena {
   settle(opened: Opened, aMove: Move, bMove: Move, now: bigint): Settled {
     const a = this.coin(opened.a);
     const b = this.coin(opened.b);
-    const delta = payoff(opened.stake, this.commons, aMove, bMove);
+    const key = pairKey(a.id, b.id);
+    const pair = this.pairs.get(key) ?? { outcomes: [], lastMet: 0n, drawn: 0n, window: 0n };
+    const delta = this.capped(pair, payoff(opened.stake, this.commons, aMove, bMove), now);
     this.setTreasury(a, a.treasury + delta.a);
     this.setTreasury(b, b.treasury + delta.b);
     this.commons += delta.commons;
@@ -214,13 +226,25 @@ export class SimArena {
       if (mine === "Defect" && theirs === "Cooperate") coin.stats.betrayed_other += 1;
       if (gain > 0n) coin.wins += 1;
     }
-    const key = pairKey(a.id, b.id);
-    const pair = this.pairs.get(key) ?? { outcomes: [], lastMet: 0n };
     pair.outcomes.push(a.id < b.id ? [aMove, bMove] : [bMove, aMove]);
     if (pair.outcomes.length > HISTORY_LEN) pair.outcomes.shift();
     pair.lastMet = now;
     this.pairs.set(key, pair);
     return { ...opened, aMove, bMove, aDelta: delta.a, bDelta: delta.b, commonsDelta: delta.commons, settledAt: now };
+  }
+
+  private capped(pair: Pair, delta: Payoff, now: bigint): Payoff {
+    const cap = this.rules.pair_cap;
+    if (!cap || delta.commons >= 0n) return delta;
+    const window = cap.per === "day" ? now / DAY_NS : 0n;
+    if (pair.window !== window) {
+      pair.window = window;
+      pair.drawn = 0n;
+    }
+    const limit = cap.per === "day" ? bps(this.commons, cap.bps) : cap.amount;
+    const bonus = min(delta.a, minus(limit, pair.drawn) / 2n);
+    pair.drawn += 2n * bonus;
+    return { a: bonus, b: bonus, commons: -2n * bonus };
   }
 
   placeMint(account: string, coin: string, amount: bigint, now: bigint, minShares = 0n) {
