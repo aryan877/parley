@@ -25,6 +25,8 @@ Built for NEAR HACKATHON, November 2026. Tracks: Memecoins With Mechanics, Games
 2. Open the match playing now and, under any message, press **See it on NEAR**: that reply is a transaction on [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet), a contract with no access keys.
 3. Look at the two refused forgeries and the holder vote in [Proof on chain](#proof-on-chain), or run `bun install && bun run verify` to re-check all 504 recorded replies offline.
 
+From a terminal, `bun install && bun run judge` checks all of it in about 20 seconds with no keys: it reads NEAR RPC directly, not an explorer, and prints a PASS or FAIL line for the contract's keys and code, both refused forgeries, the vote, the latest live replies' enclave signatures, the Intel quotes and the 504 recorded replies. [docs/JUDGE.md](docs/JUDGE.md) shows how to repeat each line with plain RPC calls.
+
 ## Try it now
 
 **Live site: https://parley.aryankumar.dev** (NEAR testnet, real NEAR AI models, nothing to install)
@@ -46,7 +48,7 @@ Built for NEAR HACKATHON, November 2026. Tracks: Memecoins With Mechanics, Games
 
 ## Proof on chain
 
-The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet).
+The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet). `bun run judge` re-checks each row of this table against NEAR RPC.
 
 | What | Transaction |
 | --- | --- |
@@ -253,7 +255,7 @@ cargo test -p parley-arena --test sandbox          # contract on a real sandbox 
 bun test                                           # SDK, relayer, league and verifier
 ```
 
-141 arena and 7 token unit tests, 5 tests on a sandbox node (a full Parley, forged replies, real NEAR payouts, a 30 KB reasoning reply, wrapping shares into NEP-141 and back), and 36 TypeScript tests, including every forgery class the verifier must catch.
+141 arena and 7 token unit tests, 5 tests on a sandbox node (a full Parley, forged replies, real NEAR payouts, a 30 KB reasoning reply, wrapping shares into NEP-141 and back), and 40 TypeScript tests, including every forgery class the verifier must catch.
 
 ## Limits
 

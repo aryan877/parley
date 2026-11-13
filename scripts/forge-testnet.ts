@@ -32,6 +32,7 @@ const replayed = await arena.submitTurn(open.id, genuine.reply);
 const why = (e?: string) => e?.match(/Smart contract panicked: ([^"\\]+)/)?.[1] ?? e ?? "";
 const result = {
   parley: open.id,
+  sender: CHEATER,
   triedAt: new Date().toISOString(),
   unregisteredKey: { refused: !first.ok, reason: why(first.error), tx: first.hash },
   replayedReply: { refused: !replayed.ok, reason: why(replayed.error), tx: replayed.hash },

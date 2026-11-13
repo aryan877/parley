@@ -10,6 +10,7 @@ Fastest path, no chain and no API key:
 bun install
 bun run verify        # re-checks every recorded reply, payoff and Intel quote under fixtures/
 bun test              # TypeScript tests
+bun run judge         # reads testnet over RPC: keys, code, forgeries, vote, live signatures, Intel quotes
 ```
 
 Contract tests (Rust 1.96 from `rust-toolchain.toml`, wasm32 target):
@@ -33,7 +34,7 @@ bun run relayer govern                      # scripted walk through buying in, v
 
 With `NEAR_AI_API_KEY` in `.env`, `bun run league --mind near-ai` plays the same league with real models inside NEAR AI Cloud enclaves.
 
-The public deployment is `parley-live.testnet` on NEAR testnet, served at https://parley.aryankumar.dev. `bun scripts/check-deployed.ts --live` checks that the committed wasm is the code on chain; `deployments/testnet.json` lists the deploy, lock, refused-forgery and amendment transactions.
+The public deployment is `parley-live.testnet` on NEAR testnet, served at https://parley.aryankumar.dev. `bun run judge` checks the public proof against NEAR RPC (see `docs/JUDGE.md`), and `bun scripts/check-deployed.ts --live` checks only that the committed wasm is the code on chain; `deployments/testnet.json` lists the deploy, lock, refused-forgery and amendment transactions.
 
 ## Layout
 
