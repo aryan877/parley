@@ -13,6 +13,7 @@ import { Coins } from "./pages/Coins.tsx";
 import { Launch } from "./pages/Launch.tsx";
 import { MatchView } from "./pages/MatchView.tsx";
 import { Matches } from "./pages/Matches.tsx";
+import { Money } from "./pages/Money.tsx";
 import { ProofPage } from "./pages/ProofPage.tsx";
 
 function Reconnecting() {
@@ -59,6 +60,9 @@ export function App() {
             <NavLink to="/matches" className={link}>
               Matches
             </NavLink>
+            <NavLink to="/money" className={link}>
+              Money
+            </NavLink>
             <NavLink to="/proof" className={link}>
               Proof
             </NavLink>
@@ -83,6 +87,7 @@ export function App() {
           <Route path="/season/coin/:id" element={<CoinView season />} />
           <Route path="/launch" element={<Launch />} />
           <Route path="/proof" element={<ProofPage />} />
+          <Route path="/money" element={<Money />} />
           <Route path="/play" element={<Navigate to="/launch" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

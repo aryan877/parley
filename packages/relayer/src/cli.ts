@@ -1,6 +1,7 @@
 import { Arena, formatNear, near } from "@parley/sdk";
 import { challenge } from "./commands/challenge.ts";
 import { govern } from "./commands/govern.ts";
+import { ledger } from "./commands/ledger.ts";
 import { serve } from "./commands/serve.ts";
 import { coinNames, deployHouse, flag, printParley } from "./commands/shared.ts";
 import { loadDeployment } from "./localnet.ts";
@@ -33,7 +34,7 @@ async function status() {
   }
 }
 
-const commands: Record<string, () => Promise<void>> = { deploy, play, status, challenge, govern, serve };
+const commands: Record<string, () => Promise<void>> = { deploy, play, status, challenge, govern, serve, ledger };
 const command = commands[process.argv[2] ?? ""];
 if (!command) {
   console.error(
@@ -45,6 +46,7 @@ if (!command) {
       "  govern [--mind scripted|near-ai]        walk through buying in, amending and leaving",
       "  serve [--port 8787] [--autoplay]        live arena API for the site; --autoplay keeps matches running",
       "  status                                  treasuries and records",
+      "  ledger [--last N]                       read every money move of the testnet arena and check its books",
     ].join("\n"),
   );
   process.exit(1);
