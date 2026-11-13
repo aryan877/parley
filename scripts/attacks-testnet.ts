@@ -1,5 +1,5 @@
-import { Arena, type Parley } from "@parley/sdk";
-import { NearAiMind, type PublicDeployment, TESTNET_FILE } from "@parley/relayer";
+import { Arena, NearRpc, type Parley, type TxOutcome } from "@parley/sdk";
+import { NearAiMind, TESTNET_FILE, publicTestnet } from "@parley/relayer";
 import { ATTACKS, type AttackId, type Refusal, attackLab } from "@parley/relayer/src/attacks.ts";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
  * records the refused transactions. Pass attack ids to run only those; earlier results are kept.
  * The one-letter attack needs NEAR_AI_API_KEY, because this script has no hold on the server's own replies.
  */
-const pub = JSON.parse(readFileSync(TESTNET_FILE, "utf8")) as PublicDeployment;
+const pub = publicTestnet();
 const SITE = process.env.PARLEY_SITE_URL ?? "https://parley.aryankumar.dev";
 const OUT = join(dirname(TESTNET_FILE), "testnet-attacks.json");
 const rpcUrl = process.env.PARLEY_RPC_URL ?? pub.rpcUrl;
@@ -20,6 +20,7 @@ const lab = attackLab(deployment, async (id) => {
 });
 if (!lab.account) throw new Error("no key for parley-relay.testnet; set PARLEY_RELAY_KEY or add it to ~/.near-credentials/testnet");
 const chain = new Arena({ rpcUrl, contractId: pub.contractId });
+const rpc = new NearRpc([rpcUrl]);
 
 type Kept = Refusal & { genuineTx?: string };
 const asked = process.argv.slice(2).filter((a): a is AttackId => (ATTACKS as readonly string[]).includes(a));
@@ -60,12 +61,8 @@ async function* announced(): AsyncGenerator<{ parley: Parley; at: number }> {
 }
 
 async function receiptBlock(hash: string, sender: string): Promise<number> {
-  const call = async (method: string, params: unknown) => {
-    const res = await fetch(rpcUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
-    return ((await res.json()) as { result: { receipts_outcome: { block_hash: string }[]; header: { height: number } } }).result;
-  };
-  const tx = await call("tx", { tx_hash: hash, sender_account_id: sender, wait_until: "EXECUTED_OPTIMISTIC" });
-  return (await call("block", { block_id: tx.receipts_outcome[0]!.block_hash })).header.height;
+  const tx = await rpc.call<TxOutcome>("tx", { tx_hash: hash, sender_account_id: sender, wait_until: "EXECUTED_OPTIMISTIC" });
+  return (await rpc.block(tx.receipts_outcome[0]!.block_hash)).header.height;
 }
 
 async function genuineTx(id: number, index: number): Promise<string | null> {

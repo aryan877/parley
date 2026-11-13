@@ -1,8 +1,9 @@
 import type { Books, CoinMoney, GovernanceFacts, LedgerEntry, LedgerKind, LedgerPage, LedgerStatus, LedgerSummary, LedgerTotals } from "@parley/sdk";
+import { TX_INDEX_URLS, base64Text, viewQuery, viewResult } from "@parley/sdk";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const TX_API: Record<string, string> = { testnet: "https://tx.test.fastnear.com", mainnet: "https://tx.main.fastnear.com" };
+const TX_API: Record<string, string | undefined> = TX_INDEX_URLS;
 const FORMAT = 2;
 const PAGE = 200;
 const BATCH = 20;
@@ -72,7 +73,7 @@ export interface ChainTx {
 
 function decodeArgs(base64: string | undefined): Record<string, unknown> | undefined {
   try {
-    const args = JSON.parse(Buffer.from(base64 ?? "", "base64").toString("utf8")) as unknown;
+    const args = JSON.parse(base64Text(base64 ?? "")) as unknown;
     return args && typeof args === "object" && !Array.isArray(args) ? (args as Record<string, unknown>) : undefined;
   } catch {
     return undefined;
@@ -644,10 +645,8 @@ export class Ledger {
 
   private async check(top: { block: number; at: number }): Promise<Books> {
     const id = this.options.contractId;
-    const view = async <T>(method: string, args: Record<string, unknown> = {}) => {
-      const r = await this.rpc<{ result: number[] }>("query", { request_type: "call_function", block_id: top.block, account_id: id, method_name: method, args_base64: Buffer.from(JSON.stringify(args)).toString("base64") });
-      return JSON.parse(Buffer.from(r.result).toString("utf8")) as T;
-    };
+    const view = async <T>(method: string, args: Record<string, unknown> = {}) =>
+      viewResult<T>(await this.rpc<{ result: number[] }>("query", viewQuery(id, method, args, { block_id: top.block })));
     this.perByte ??= await this.rpc<{ runtime_config?: { storage_amount_per_byte?: string } }>("EXPERIMENTAL_protocol_config", { finality: "final" })
       .then((c) => BigInt(c.runtime_config?.storage_amount_per_byte ?? STORAGE_PER_BYTE))
       .catch(() => STORAGE_PER_BYTE);

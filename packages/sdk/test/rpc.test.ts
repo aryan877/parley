@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { NearRpc, RpcRefusal, functionCall, toBase64 } from "../src/rpc.ts";
+import { NearRpc, RpcRefusal, functionCall, lacksBalance, panicMessage, toBase64 } from "../src/rpc.ts";
 
 function node(answers: Record<string, (() => Response)[]>) {
   const asked: string[] = [];
@@ -47,4 +47,11 @@ test("view results and function call arguments decode as UTF-8 JSON", async () =
   const tx = { transaction: { hash: "h", signer_id: "s", receiver_id: "r", actions: [{ FunctionCall: { method_name: "submit_turn", args: toBase64('{"id":3,"response":"é"}') } }] } };
   expect(functionCall(tx)).toEqual({ method: "submit_turn", args: { id: 3, response: "é" } });
   expect(functionCall({ transaction: { ...tx.transaction, actions: ["CreateAccount"] } })).toBeNull();
+});
+
+test("a contract's panic message is read from a failed outcome or a thrown error", () => {
+  expect(panicMessage('{"ActionError":{"kind":{"FunctionCallError":{"ExecutionError":"Smart contract panicked: coin name taken"}}}}')).toBe("coin name taken");
+  expect(panicMessage("Contract panicked: not your coin")).toBe("not your coin");
+  expect(panicMessage("Exceeded the prepaid gas")).toBeNull();
+  expect(lacksBalance('{"InvalidTxError":{"NotEnoughBalance":{}}}')).toBe(true);
 });

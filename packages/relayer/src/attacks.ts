@@ -1,4 +1,4 @@
-import { Arena, type CallResult, LocalEnclave, type Model, type Parley, type SignedReply } from "@parley/sdk";
+import { Arena, type CallResult, LocalEnclave, type Model, type Parley, type SignedReply, lacksBalance, panicMessage } from "@parley/sdk";
 import { randomBytes } from "node:crypto";
 import { type Deployment, testnetKey } from "./localnet.ts";
 import type { Mind } from "./minds/mind.ts";
@@ -48,7 +48,7 @@ const ENDED = /not open|timed out|no turn left/i;
 const RELAY = process.env.PARLEY_RELAY ?? "parley-relay.testnet";
 
 const NO_MATCH: Attempt = { status: 409, wait: true, error: "No match is being played right now." };
-const panic = (error?: string) => error?.match(/Smart contract panicked: ([^"\\]+)/)?.[1]?.trim() ?? null;
+const panic = (error?: string) => panicMessage(error)?.trim() ?? null;
 const nowNs = () => BigInt(Date.now()) * NS;
 const completion = (content: string) => JSON.stringify({ choices: [{ index: 0, message: { role: "assistant", content } }] });
 
@@ -172,8 +172,7 @@ export class AttackLab {
     if (sent.ok) return { status: 500, error: `The contract accepted it. That should never happen: ${sent.hash}` };
     const reason = panic(sent.error);
     if (!reason) {
-      const broke = /NotEnoughBalance|LackBalance|not enough balance/i.test(sent.error ?? "");
-      return { status: 502, error: broke ? "The attack account is out of test NEAR for gas." : `It never reached the contract: ${sent.error?.slice(0, 160) ?? "unknown error"}` };
+      return { status: 502, error: lacksBalance(sent.error) ?"The attack account is out of test NEAR for gas." : `It never reached the contract: ${sent.error?.slice(0, 160) ?? "unknown error"}` };
     }
     const refusal: Refusal = { attack, method, reason, tx: sent.hash, at: new Date().toISOString(), target, ...more };
     this.latest.set(attack, refusal);

@@ -1,4 +1,5 @@
 import { LocalEnclave } from "@parley/sdk/src/enclave.ts";
+import { lacksBalance, panicMessage } from "@parley/sdk/src/rpc.ts";
 import type { Parley } from "@parley/sdk/src/types.ts";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
@@ -84,7 +85,7 @@ export function FakeReply() {
       setState({ kind: "busy", step: w.kind === "near" ? "Approve it in your wallet. It goes straight to the contract…" : "Sending it to the contract…" });
       const result = await arena.submitTurn(parley.id, reply);
       w.refresh();
-      const reason = result.error?.match(/Smart contract panicked: ([^"\\]+)/)?.[1]?.trim();
+      const reason = panicMessage(result.error)?.trim();
       if (result.ok) {
         deadline.current = 0;
         setState({ kind: "accepted", parley: parley.id, hash: result.hash });
@@ -98,7 +99,7 @@ export function FakeReply() {
         setState({ kind: "refused", parley: parley.id, turn, reason, hash: result.hash });
       } else {
         deadline.current = 0;
-        const broke = /not enough balance|NotEnoughBalance|LackBalance/i.test(result.error ?? "");
+        const broke = lacksBalance(result.error);
         setState({ kind: "error", text: broke ? "Your wallet is out of test NEAR for gas." : `It never reached the contract: ${result.error?.slice(0, 160) ?? "unknown error"}` });
       }
     } catch (e) {

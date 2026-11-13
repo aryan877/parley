@@ -1,4 +1,4 @@
-import { Arena, type Coin, type Config, type Model, type Parley, type SignedReply } from "@parley/sdk";
+import { Arena, type Coin, type Config, type Model, type Parley, type SignedReply, panicMessage } from "@parley/sdk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { Ledger } from "../ledger.ts";
@@ -106,7 +106,7 @@ function page(dir: string, pathname: string): Response {
 }
 
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: CORS });
-const panic = (error?: string) => error?.match(/Smart contract panicked: ([^"\\]+)/)?.[1] ?? error ?? "refused";
+const panic = (error?: string) => panicMessage(error) ?? error ?? "refused";
 
 /**
  * The live arena behind the site. One worker plays one match at a time: queued challenges first, then, with

@@ -1,66 +1,10 @@
-import { type Coin, type Config, NETWORKS, type Overview, type Parley, formatNear, payoff, sharePrice, signed, stakeFor } from "@parley/sdk";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+
+import { type Coin, type Config, NETWORKS, NearRpc, type Overview, type Parley, formatNear, payoff, sharePrice, signed, stakeFor } from "@parley/sdk";
+import { publicTestnet } from "@parley/relayer";
 import { houseConstitutions } from "./scenarios.ts";
 import { LIVE_COMMONS, LIVE_GOVERNANCE, LIVE_RULES, MATCH_SECONDS, PAUSE_SECONDS } from "./season.ts";
 
-const ROOT = join(import.meta.dir, "../..");
 const WANT = 50;
-
-interface Deployment {
-  contractId: string;
-  rpcUrl: string;
-  owner: string;
-}
-
-class Rpc {
-  private next = 0;
-
-  constructor(private readonly urls: string[]) {}
-
-  async call<T>(method: string, params: unknown): Promise<T> {
-    let last = "";
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const url = this.urls[this.next % this.urls.length]!;
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ jsonrpc: "2.0", id: "sim", method, params }),
-          signal: AbortSignal.timeout(20_000),
-        });
-        const body = (await res.text()) || "";
-        if (res.status === 429 || res.status >= 500 || /rate limit|too many requests/i.test(body)) {
-          last = `${url}: ${res.status} ${body.slice(0, 120)}`;
-          this.next += 1;
-          await Bun.sleep(Math.min(16_000, 500 * 2 ** attempt));
-          continue;
-        }
-        const json = JSON.parse(body) as { result?: T & { error?: string }; error?: { message?: string; data?: unknown } };
-        if (json.error) throw new Error(`${method}: ${json.error.message ?? ""} ${JSON.stringify(json.error.data ?? "")}`);
-        if (json.result?.error) throw new Error(`${method}: ${json.result.error}`);
-        return json.result as T;
-      } catch (error) {
-        if (error instanceof Error && error.message.startsWith(`${method}:`)) throw error;
-        last = `${url}: ${error instanceof Error ? error.message : String(error)}`;
-        this.next += 1;
-        await Bun.sleep(Math.min(16_000, 500 * 2 ** attempt));
-      }
-    }
-    throw new Error(`no RPC answered: ${last}`);
-  }
-
-  async view<T>(contractId: string, method: string, args: Record<string, unknown>, block: number): Promise<T> {
-    const result = await this.call<{ result: number[] }>("query", {
-      request_type: "call_function",
-      block_id: block,
-      account_id: contractId,
-      method_name: method,
-      args_base64: Buffer.from(JSON.stringify(args)).toString("base64"),
-    });
-    return JSON.parse(Buffer.from(result.result).toString("utf8")) as T;
-  }
-}
 
 const near = (y: bigint, digits = 5) => formatNear(y, digits);
 const delta = (y: bigint) => `${y >= 0n ? "+" : ""}${formatNear(y, 5)}`;
@@ -87,9 +31,9 @@ function configDiffs(config: Config): string[] {
 }
 
 export async function check(): Promise<boolean> {
-  const deployment = JSON.parse(readFileSync(join(ROOT, "deployments/testnet.json"), "utf8")) as Deployment;
-  const urls = [...new Set([process.env.PARLEY_RPC_URL, deployment.rpcUrl, "https://test.rpc.fastnear.com", "https://rpc.testnet.fastnear.com", NETWORKS.testnet.rpcUrl].filter((u): u is string => !!u))];
-  const rpc = new Rpc(urls);
+  const deployment = publicTestnet();
+  const urls = [...new Set([process.env.PARLEY_RPC_URL, deployment.rpcUrl, NETWORKS.testnet.rpcUrl, "https://rpc.testnet.fastnear.com"].filter((u): u is string => !!u))];
+  const rpc = new NearRpc(urls, { attempts: 10, timeoutMs: 20_000 });
   const id = deployment.contractId;
   const head = await rpc.call<{ header: { height: number; timestamp_nanosec: string } }>("block", { finality: "final" });
   const block = head.header.height;

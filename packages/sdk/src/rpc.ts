@@ -3,6 +3,9 @@ export const ARCHIVAL_RPC_URLS = {
   testnet: ["https://archival-rpc.testnet.fastnear.com", "https://archival-rpc.testnet.near.org"],
 };
 
+/** FastNEAR's transaction index: every transaction that touched an account, with its receipts. */
+export const TX_INDEX_URLS = { testnet: "https://tx.test.fastnear.com", mainnet: "https://tx.main.fastnear.com" };
+
 export interface RpcOptions {
   attempts?: number;
   timeoutMs?: number;
@@ -48,6 +51,24 @@ export function toBase64(text: string): string {
 export function base64Text(base64: string): string {
   return new TextDecoder().decode(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
 }
+
+/** `query` params for a view call, at a block or at a finality. */
+export function viewQuery(
+  accountId: string,
+  method: string,
+  args: Record<string, unknown> = {},
+  at: { block_id: string | number } | { finality: "final" | "optimistic" } = { finality: "final" },
+) {
+  return { request_type: "call_function", ...at, account_id: accountId, method_name: method, args_base64: toBase64(JSON.stringify(args)) };
+}
+
+export const viewResult = <T>(answer: { result: number[] }): T => JSON.parse(new TextDecoder().decode(Uint8Array.from(answer.result))) as T;
+
+/** What a contract panicked with, read from a NEAR error or a failed outcome. */
+export const panicMessage = (error?: string | null): string | null => error?.match(/panicked: ([^"\\]+)/)?.[1] ?? null;
+
+/** The signer had too little NEAR for the deposit or the gas. */
+export const lacksBalance = (error?: string | null): boolean => /not enough balance|NotEnoughBalance|LackBalance/i.test(error ?? "");
 
 export type ExecutionStatus = { SuccessValue: string } | { Failure: unknown };
 
@@ -118,15 +139,8 @@ export class NearRpc {
     throw last;
   }
 
-  async view<T>(contractId: string, method: string, args: Record<string, unknown> = {}, blockId?: string): Promise<T> {
-    const result = await this.call<{ result: number[] }>("query", {
-      request_type: "call_function",
-      ...(blockId ? { block_id: blockId } : { finality: "final" }),
-      account_id: contractId,
-      method_name: method,
-      args_base64: toBase64(JSON.stringify(args)),
-    });
-    return JSON.parse(new TextDecoder().decode(Uint8Array.from(result.result))) as T;
+  async view<T>(contractId: string, method: string, args: Record<string, unknown> = {}, blockId?: string | number): Promise<T> {
+    return viewResult<T>(await this.call<{ result: number[] }>("query",viewQuery(contractId, method, args, blockId === undefined ? { finality: "final" } : { block_id: blockId })));
   }
 
   account = (accountId: string) =>
