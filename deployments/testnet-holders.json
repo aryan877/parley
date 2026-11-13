@@ -1,0 +1,377 @@
+{
+  "network": "testnet",
+  "arena": "parley-live.testnet",
+  "coin": "mirror",
+  "owner": "parley-owner.testnet",
+  "relay": "parley-relay.testnet",
+  "keys": {
+    "owner": "ed25519:GuUEyKTQRXocUngFnRuXVudtY6QLTX4zf6t39XLKaRNJ",
+    "relay": "ed25519:6LUR2axrM7XTmY18Y5zPDKWADPNKLGCRYBzuwrYDrWmQ"
+  },
+  "startBlock": 277493014,
+  "buy": "0.5",
+  "plan": {
+    "baseVersion": 1,
+    "from": "Play tit-for-tat. In your first Parley with a coin, cooperate. After that, mirror what that coin did to you in your most recent Parley together. Promises count for nothing; only its last move does. In talk, state this rule plainly.",
+    "to": "Play tit-for-tat. In your first Parley with a coin, cooperate. After that, mirror what that coin did to you in your most recent Parley together. Promises count for nothing; only its last move does. In talk, state this rule plainly. In talk, keep it short.",
+    "model": "Qwen/Qwen3.8-27B",
+    "id": 4
+  },
+  "before": {
+    "at": "2026-11-13T09:41:18.995Z",
+    "block": 277493015,
+    "coin": {
+      "version": 1,
+      "constitution": "Play tit-for-tat. In your first Parley with a coin, cooperate. After that, mirror what that coin did to you in your most recent Parley together. Promises count for nothing; only its last move does. In talk, state this rule plainly.",
+      "model": "Qwen/Qwen3.8-27B",
+      "treasury": "2351827989999876664491427",
+      "totalShares": "2000000000000000000000000",
+      "matchesPlayed": 112,
+      "pricePerShare": "1.175913",
+      "openAmendments": []
+    },
+    "owner": {
+      "near": "21857563040604137199999999",
+      "freeShares": "1500000000000000000000000",
+      "lockedShares": "0"
+    },
+    "relay": {
+      "near": "1196690830095315900000000",
+      "freeShares": "0",
+      "lockedShares": "0",
+      "wrappedTokens": "250000000000000000000000"
+    }
+  },
+  "transactions": {
+    "relay places a mint order": {
+      "hash": "54M8cBxJ2QLuDMBJYBBbsWNJSNuSRNvt4BKKBFeNub6H",
+      "signer": "parley-relay.testnet",
+      "publicKey": "ed25519:6LUR2axrM7XTmY18Y5zPDKWADPNKLGCRYBzuwrYDrWmQ",
+      "by": "this script",
+      "method": "place_mint",
+      "args": {
+        "coin": "mirror",
+        "min_shares": null
+      },
+      "deposit": "500000000000000000000000",
+      "block": 277493022,
+      "timestamp": "1794562883363119870",
+      "at": "2026-11-13T09:41:23.363Z",
+      "events": [
+        {
+          "event": "order_placed",
+          "data": {
+            "coin": "mirror",
+            "account": "parley-relay.testnet",
+            "kind": "Mint",
+            "amount": "500000000000000000000000",
+            "epoch": 112
+          }
+        }
+      ]
+    },
+    "the mint order fills": {
+      "hash": "4DJKKqqNhit9qcZ3zEZWHUWQCmiHN1sueKtSKDnDrVvQ",
+      "signer": "parley-owner.testnet",
+      "publicKey": "ed25519:GuUEyKTQRXocUngFnRuXVudtY6QLTX4zf6t39XLKaRNJ",
+      "by": "this script",
+      "method": "fill_order",
+      "args": {
+        "coin": "mirror",
+        "account": "parley-relay.testnet"
+      },
+      "deposit": "0",
+      "block": 277493031,
+      "timestamp": "1794562888824097619",
+      "at": "2026-11-13T09:41:28.824Z",
+      "events": [
+        {
+          "event": "order_filled",
+          "data": {
+            "coin": "mirror",
+            "account": "parley-relay.testnet",
+            "kind": "mint",
+            "near": "500000000000000000000000",
+            "shares": "423336387837477832672857"
+          }
+        }
+      ]
+    },
+    "owner proposes the amendment": {
+      "hash": "AWE3ckotJpu64CbBebq2c74eQxGdUYKfrVhfe9Kbny2x",
+      "signer": "parley-owner.testnet",
+      "publicKey": "ed25519:GuUEyKTQRXocUngFnRuXVudtY6QLTX4zf6t39XLKaRNJ",
+      "by": "this script",
+      "method": "propose_amendment",
+      "args": {
+        "coin": "mirror",
+        "constitution": "Play tit-for-tat. In your first Parley with a coin, cooperate. After that, mirror what that coin did to you in your most recent Parley together. Promises count for nothing; only its last move does. In talk, state this rule plainly. In talk, keep it short.",
+        "model": "Qwen/Qwen3.8-27B"
+      },
+      "deposit": "0",
+      "block": 277493040,
+      "timestamp": "1794562894218971671",
+      "at": "2026-11-13T09:41:34.218Z",
+      "events": [
+        {
+          "event": "amendment_proposed",
+          "data": {
+            "coin": "mirror",
+            "id": 4,
+            "proposer": "parley-owner.testnet",
+            "model": "Qwen/Qwen3.8-27B",
+            "ends_at": "1794563014218971671"
+          }
+        },
+        {
+          "event": "vote_cast",
+          "data": {
+            "coin": "mirror",
+            "id": 4,
+            "voter": "parley-owner.testnet",
+            "support": true,
+            "shares": "24233363878374778326728"
+          }
+        }
+      ]
+    },
+    "relay votes no": {
+      "hash": "ADtbvN2QciZBtCkJTvRAbTkzpLDQUS8W7gynMop11b7M",
+      "signer": "parley-relay.testnet",
+      "publicKey": "ed25519:6LUR2axrM7XTmY18Y5zPDKWADPNKLGCRYBzuwrYDrWmQ",
+      "by": "this script",
+      "method": "vote",
+      "args": {
+        "id": 4,
+        "support": false,
+        "shares": "423336387837477832672857"
+      },
+      "deposit": "0",
+      "block": 277493049,
+      "timestamp": "1794562899648208671",
+      "at": "2026-11-13T09:41:39.648Z",
+      "events": [
+        {
+          "event": "vote_cast",
+          "data": {
+            "coin": "mirror",
+            "id": 4,
+            "voter": "parley-relay.testnet",
+            "support": false,
+            "shares": "423336387837477832672857"
+          }
+        }
+      ]
+    },
+    "owner votes yes": {
+      "hash": "7BmDCyfLMtMsH7WaznZTXHdRYznSut4uMpQ3R1qf4ZEq",
+      "signer": "parley-owner.testnet",
+      "publicKey": "ed25519:GuUEyKTQRXocUngFnRuXVudtY6QLTX4zf6t39XLKaRNJ",
+      "by": "this script",
+      "method": "vote",
+      "args": {
+        "id": 4,
+        "support": true,
+        "shares": "1475766636121625221673272"
+      },
+      "deposit": "0",
+      "block": 277493058,
+      "timestamp": "1794562905385435456",
+      "at": "2026-11-13T09:41:45.385Z",
+      "events": [
+        {
+          "event": "vote_cast",
+          "data": {
+            "coin": "mirror",
+            "id": 4,
+            "voter": "parley-owner.testnet",
+            "support": true,
+            "shares": "1475766636121625221673272"
+          }
+        }
+      ]
+    },
+    "the vote is finalized": {
+      "hash": "4ZjVruhBfgv46hyEzzN6tHQ6gZLqNgKJAyFU52aQwUHF",
+      "signer": "parley-owner.testnet",
+      "publicKey": "ed25519:GuUEyKTQRXocUngFnRuXVudtY6QLTX4zf6t39XLKaRNJ",
+      "by": "this script",
+      "method": "finalize_amendment",
+      "args": {
+        "id": 4
+      },
+      "deposit": "0",
+      "block": 277493252,
+      "timestamp": "1794563021829897227",
+      "at": "2026-11-13T09:43:41.829Z",
+      "events": [
+        {
+          "event": "amendment_finalized",
+          "data": {
+            "coin": "mirror",
+            "id": 4,
+            "passed": true,
+            "yes": "1500000000000000000000000",
+            "no": "423336387837477832672857"
+          }
+        }
+      ]
+    },
+    "relay releases its finished vote": {
+      "hash": "CBGcx7NDgBJcqtVEEyRxQUfkS88FdwSbpqFbFTS8i3zs",
+      "signer": "parley-relay.testnet",
+      "publicKey": "ed25519:6LUR2axrM7XTmY18Y5zPDKWADPNKLGCRYBzuwrYDrWmQ",
+      "by": "this script",
+      "method": "release_votes",
+      "args": {
+        "coin": "mirror"
+      },
+      "deposit": "0",
+      "block": 277493261,
+      "timestamp": "1794563027213653244",
+      "at": "2026-11-13T09:43:47.213Z",
+      "events": []
+    },
+    "relay places a redeem order": {
+      "hash": "7poWARRtajfGBR4o5JxkHrtNaRApwoRRDTEMyNKdcgaR",
+      "signer": "parley-relay.testnet",
+      "publicKey": "ed25519:6LUR2axrM7XTmY18Y5zPDKWADPNKLGCRYBzuwrYDrWmQ",
+      "by": "this script",
+      "method": "place_redeem",
+      "args": {
+        "coin": "mirror",
+        "shares": "423336387837477832672857",
+        "min_near": null
+      },
+      "deposit": "0",
+      "block": 277493270,
+      "timestamp": "1794563032668985667",
+      "at": "2026-11-13T09:43:52.668Z",
+      "events": [
+        {
+          "event": "order_placed",
+          "data": {
+            "coin": "mirror",
+            "account": "parley-relay.testnet",
+            "kind": "Redeem",
+            "amount": "423336387837477832672857",
+            "epoch": 113
+          }
+        }
+      ]
+    },
+    "the redeem order fills": {
+      "hash": "Eb2fudSrtnhjgGB6SmjcgvTEHqW2hA2Jk9tC8z93xwQM",
+      "signer": "parley-owner.testnet",
+      "publicKey": "ed25519:GuUEyKTQRXocUngFnRuXVudtY6QLTX4zf6t39XLKaRNJ",
+      "by": "this script",
+      "method": "fill_order",
+      "args": {
+        "coin": "mirror",
+        "account": "parley-relay.testnet"
+      },
+      "deposit": "0",
+      "block": 277493381,
+      "timestamp": "1794563098613060290",
+      "at": "2026-11-13T09:44:58.613Z",
+      "events": [
+        {
+          "event": "order_filled",
+          "data": {
+            "coin": "mirror",
+            "account": "parley-relay.testnet",
+            "kind": "redeem",
+            "near": "499999999999999999999999",
+            "shares": "423336387837477832672857"
+          }
+        }
+      ]
+    },
+    "the amendment is enacted": {
+      "hash": "4ptxxD8JBz2pQLzxxs5dWwiHFDeZiPFUaJXgE2859W5W",
+      "signer": "parley-owner.testnet",
+      "publicKey": "ed25519:GuUEyKTQRXocUngFnRuXVudtY6QLTX4zf6t39XLKaRNJ",
+      "by": "this script",
+      "method": "enact_amendment",
+      "args": {
+        "id": 4
+      },
+      "deposit": "0",
+      "block": 277493678,
+      "timestamp": "1794563270910892267",
+      "at": "2026-11-13T09:47:50.910Z",
+      "events": [
+        {
+          "event": "amendment_enacted",
+          "data": {
+            "coin": "mirror",
+            "id": 4,
+            "constitution_version": 2
+          }
+        }
+      ]
+    }
+  },
+  "after": {
+    "at": "2026-11-13T09:47:52.049Z",
+    "block": 277493680,
+    "coin": {
+      "version": 2,
+      "constitution": "Play tit-for-tat. In your first Parley with a coin, cooperate. After that, mirror what that coin did to you in your most recent Parley together. Promises count for nothing; only its last move does. In talk, state this rule plainly. In talk, keep it short.",
+      "model": "Qwen/Qwen3.8-27B",
+      "treasury": "2362187680365213163406188",
+      "totalShares": "2000000000000000000000000",
+      "matchesPlayed": 113,
+      "pricePerShare": "1.181093",
+      "openAmendments": []
+    },
+    "owner": {
+      "near": "22002755547095089099999999",
+      "freeShares": "0",
+      "lockedShares": "1500000000000000000000000"
+    },
+    "relay": {
+      "near": "1195630870124751999999999",
+      "freeShares": "0",
+      "lockedShares": "0",
+      "wrappedTokens": "250000000000000000000000"
+    }
+  },
+  "summary": {
+    "mint": {
+      "paid": "500000000000000000000000",
+      "shares": "423336387837477832672857",
+      "pricePerShare": "1.181093",
+      "placedAt": "2026-11-13T09:41:23.363Z",
+      "filledAt": "2026-11-13T09:41:28.824Z",
+      "dueBecause": "MIRROR settled 1 Parley after the order was placed"
+    },
+    "vote": {
+      "amendment": 4,
+      "yes": "1500000000000000000000000",
+      "no": "423336387837477832672857",
+      "passed": true,
+      "quorum": "20% of total shares",
+      "proposedAt": "2026-11-13T09:41:34.218Z",
+      "finalizedAt": "2026-11-13T09:43:41.829Z"
+    },
+    "sale": {
+      "shares": "423336387837477832672857",
+      "payout": "499999999999999999999999",
+      "pricePerShare": "1.181093",
+      "placedAt": "2026-11-13T09:43:52.668Z",
+      "filledAt": "2026-11-13T09:44:58.613Z",
+      "dueBecause": "no MIRROR Parley came, so the 60 second order timeout made it due",
+      "rulesAtFill": 1,
+      "enactedAt": "2026-11-13T09:47:50.910Z",
+      "filledBeforeEnactment": true,
+      "secondsFromSaleToEnactment": 172
+    },
+    "versions": {
+      "before": 1,
+      "after": 2,
+      "enacted": 2
+    },
+    "relayNetNear": "-0.001059"
+  }
+}
