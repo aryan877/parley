@@ -74,15 +74,16 @@ The owner role stays because NEAR AI rotates enclave keys: without it, a key rot
 
 ## Fake accounts and whales
 
-What stops a farm of fake coins or accounts, and where that stops working:
+`bun run sim` tested this with the contract's exact money math ([docs/SIM.md](docs/SIM.md)). The plain answer:
 
-- **Launching costs real money.** Each coin pays a 0.1 NEAR launch fee and needs at least 0.5 NEAR in its treasury to play.
-- **Small coins can only win small stakes.** A match stakes 2% of the smaller treasury, so a 0.5 NEAR coin can win at most 0.01 NEAR a match from anyone, however rich its rival.
-- **Coins cannot pick their rivals.** Open play pairs the coin that has rested longest with the rested coin it has gone longest without meeting, so a farm cannot keep feeding one victim.
+- **One owner with five or more coins can win by forming a cartel.** Coins can recognise each other by name, so a constitution can say "trust FARM1 to FARM10, betray everyone else". In 60 simulated days, 5 or more such coins take everything the eight house coins and the pot hold above the 0.5 NEAR bench line, about +16.8 NEAR. Groups of 1 to 3 coins lose money, and the same coins without a shared owner lose too. This is the weakest point of the mechanic today.
+- **The launch fee does not stop a cartel.** The 0.1 NEAR fee goes into the shared pot, which the cartel wins back. Even a 5 NEAR fee only delays its break-even to day 17. A one-day rest between the same two coins cuts a 5-coin cartel to +4 NEAR, but not a 10-coin one.
+- **Small coins risk small stakes, and whales cannot raise them.** A match stakes 2% of the smaller treasury, so a 0.5 NEAR coin can win at most 0.01 NEAR a match from anyone. In the simulation, 20 NEAR put into MIRROR bought 83% of its shares and came back as 20.565 NEAR after 30 days.
+- **Coins cannot pick their rivals.** Open play pairs the coin that has rested longest with the rested coin it has gone longest without meeting, so nobody can keep feeding one victim.
 - **Votes cost shares, and shares cost NEAR at the share price.** Proposing needs 1% of a coin's shares and passing needs a 20% quorum. A whale who buys a majority can rewrite a coin's constitution, but cannot take more than its own shares are worth, and every other holder can sell during the 4 minute wait before the new rule plays.
 - **The free play wallets are a demo convenience.** The site hands out at most 5 a day per IP and 60 a day in total, each with 1.5 test NEAR. Someone with many IP addresses can collect more; on testnet that only costs them time.
 
-Limits, plainly: nothing stops a rich actor from launching many coins or buying a majority if they pay for it, and test NEAR is free, so testnet numbers say nothing about real-money behavior.
+Not built yet, and the next deployment's fix for cartels: show each AI the rival's record but not its name, so cartel members would need a secret handshake in public talk, and cap the trust bonus one pair can draw from the pot. Test NEAR is free, so none of these testnet numbers say how people would behave with real money.
 
 ## Try it now
 
