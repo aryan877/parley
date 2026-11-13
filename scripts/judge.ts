@@ -1,5 +1,4 @@
-import { type Model, type Parley, sha256Hex, verifyReply } from "@parley/sdk";
-import { ARCHIVAL_RPC_URLS, type ExecutionStatus, NearRpc, type TxOutcome, base64Text, functionCall } from "@parley/sdk/src/rpc.ts";
+import { ARCHIVAL_RPC_URLS, type ExecutionStatus, type Model, NearRpc, type Parley, type TxOutcome, base64Text, functionCall, sha256Hex, verifyReply } from "@parley/sdk";
 import { type Attestation, KEPT_WASM, ROOT, committedCodeHash, publicTestnet } from "@parley/relayer";
 import { flag } from "@parley/relayer/src/commands/shared.ts";
 import { type SignerReport, checkAttestations, describeSigner, readJsonFiles, signerReport } from "@parley/league";

@@ -1,5 +1,4 @@
-import type { Move, Stats } from "@parley/sdk";
-import { type Economics, fillMint, fillRedeem, launch, payoff, stakeFor } from "@parley/sdk/src/economy.ts";
+import { type Economics, type Move, type Stats, fillMint, fillRedeem, launch, payoff, stakeFor } from "@parley/sdk";
 import { type Random, nonce } from "./random.ts";
 import type { Seen, Strategy } from "./strategies.ts";
 

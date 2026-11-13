@@ -1,5 +1,4 @@
-import type { GovernanceFacts } from "@parley/sdk/src/chronicle.ts";
-import type { Books, CoinMoney, LedgerEntry, LedgerKind, LedgerPage, LedgerStatus, LedgerSummary, LedgerTotals } from "@parley/sdk/src/ledger.ts";
+import type { Books, CoinMoney, GovernanceFacts, LedgerEntry, LedgerKind, LedgerPage, LedgerStatus, LedgerSummary, LedgerTotals } from "@parley/sdk";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 

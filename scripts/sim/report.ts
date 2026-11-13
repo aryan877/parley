@@ -1,7 +1,6 @@
+import { formatNear, near, worth } from "@parley/sdk";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { worth } from "@parley/sdk/src/economy.ts";
-import { formatNear, near } from "@parley/sdk/src/units.ts";
 import { type Chart, lineChart } from "./chart.ts";
 import {
   AMEND_DAY,

@@ -1,4 +1,4 @@
-import { ARCHIVAL_RPC_URLS, NearRpc } from "@parley/sdk/src/rpc.ts";
+import { ARCHIVAL_RPC_URLS, NearRpc } from "@parley/sdk";
 import { committedCodeHash, publicTestnet } from "@parley/relayer";
 
 /** The committed arena wasm is the code running on testnet: its sha256 must equal the deployed code hash. */

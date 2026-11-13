@@ -1,6 +1,4 @@
-import { Arena, formatNear } from "@parley/sdk";
-import { rulesHistory } from "@parley/sdk/src/chronicle.ts";
-import type { LedgerEntry } from "@parley/sdk/src/ledger.ts";
+import { Arena, type LedgerEntry, formatNear, rulesHistory } from "@parley/sdk";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Ledger } from "../ledger.ts";

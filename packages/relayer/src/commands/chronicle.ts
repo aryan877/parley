@@ -1,5 +1,4 @@
-import type { Arena, Coin, Parley } from "@parley/sdk";
-import { type Records, arenaRecords, rulesHistory } from "@parley/sdk/src/chronicle.ts";
+import { type Arena, type Coin, type Parley, type Records, arenaRecords, rulesHistory } from "@parley/sdk";
 import type { Ledger } from "../ledger.ts";
 
 const PARLEY_PAGE = 50;

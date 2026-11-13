@@ -1,9 +1,6 @@
+import { type Coin, type Config, NETWORKS, type Overview, type Parley, formatNear, payoff, sharePrice, signed, stakeFor } from "@parley/sdk";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { payoff, sharePrice, signed, stakeFor } from "@parley/sdk/src/economy.ts";
-import { NETWORKS } from "@parley/sdk/src/networks.ts";
-import type { Coin, Config, Overview, Parley } from "@parley/sdk/src/types.ts";
-import { formatNear } from "@parley/sdk/src/units.ts";
 import { houseConstitutions } from "./scenarios.ts";
 import { LIVE_COMMONS, LIVE_GOVERNANCE, LIVE_RULES, MATCH_SECONDS, PAUSE_SECONDS } from "./season.ts";
 
