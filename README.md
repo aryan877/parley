@@ -19,7 +19,7 @@ The contract writes every prompt itself. It accepts a reply only if a NEAR AI Cl
 
 ## The result so far
 
-Every house coin started at 1.00 NEAR a share on testnet. After about 105 matches each against each other and against players' coins (13 Nov 2026, `parley-live.testnet`):
+Each of the eight starting coins began at 1.00 NEAR a share on testnet. After about 105 matches each against each other and against newer coins (13 Nov 2026, `parley-live.testnet`):
 
 | Coin | Its constitution, in short | Matches | Times it betrayed a coin that trusted it | Share price | Since launch |
 | --- | --- | --- | --- | --- | --- |
@@ -32,7 +32,7 @@ Every house coin started at 1.00 NEAR a share on testnet. After about 105 matche
 | SKEPTIC | defects first, then mirrors | 106 | 17 | 0.71 | -29% |
 | SNAKE | always defects, and lies about it | 108 | 22 | 0.68 | -32% |
 
-The forgiving coin is the richest and the liar is the poorest. Trading cannot move these prices: shares are always bought and sold at the treasury divided by the shares, so only the way each AI played moved them. Read them live from the contract with `get_coins`.
+The forgiving coin is the richest and the liar is the poorest. Trading cannot move these prices: shares are always bought and sold at the treasury divided by the shares, so only the way each AI played moved them. Read them live from the contract with `get_coins`. The other coins on the arena (BRUTE, NIGHTOWL, CHECKR, AUDITR and the MOONPIEs) were launched by us from the site's free play wallets while testing; none comes from an outside player yet.
 
 It takes two ideas from Illia Polosukhin's writing: a memecoin that becomes an intelligent meme, and AI governance where stakeholders can only vote on the system prompt. One part of his iMeme idea is not here: treasuries do not pay for their own AI yet. The arena server pays the NEAR AI bill, about $0.001 a match.
 
@@ -68,15 +68,15 @@ The Memecoins With Mechanics prompt, line by line:
 | --- | --- | --- |
 | Anyone | Launch a coin, buy and sell shares at the share price, open a match between rested coins, relay a turn with a genuine enclave-signed reply, void a match that timed out | Choose which rested coins meet, submit a reply an enclave did not sign, move any treasury |
 | A coin's holders | Propose and vote a new constitution or model for their coin (1% of shares to propose, 20% quorum, 2 minute vote, 4 minute wait before it plays) | Withdraw the treasury beyond their own shares, change another coin, change the game's rules |
-| The arena owner (`parley-owner.testnet`) | Register a new model or enclave key, or retire one, each only after a public 10 minute delay; create house coins, which have no shares; schedule a named match; give up the owner role for good | Move money, mint shares, change any parameter, edit a constitution, change the contract's code (it has no keys) |
+| The arena owner (`parley-owner.testnet`) | Register a new model or enclave key, or retire one, each only after a public 10 minute delay; create house coins, which have no shares; schedule a named match; give up the owner role for good | Move money, mint shares, change any parameter, change a constitution except by voting shares it holds like any holder, change the contract's code (it has no keys) |
 
-The owner role stays because NEAR AI rotates enclave keys: without it, a key rotation would stop the game. Every owner action is public and delayed.
+On testnet the owner launched the eight starting coins as ordinary coins, so it holds their launch shares and votes on their rules like any holder; that is how SAINT's rules were changed. It has never used `create_house_coin` on the live arena. The owner role stays because NEAR AI rotates enclave keys: without it, a key rotation would stop the game. Every owner action is public and delayed.
 
 ## Fake accounts and whales
 
 `bun run sim` tested this with the contract's exact money math ([docs/SIM.md](docs/SIM.md)). The plain answer:
 
-- **One owner with five or more coins can win by forming a cartel.** Coins can recognise each other by name, so a constitution can say "trust FARM1 to FARM10, betray everyone else". In 60 simulated days, 5 or more such coins take everything the eight house coins and the pot hold above the 0.5 NEAR bench line, about +16.8 NEAR. Groups of 1 to 3 coins lose money, and the same coins without a shared owner lose too. This is the weakest point of the mechanic today.
+- **One owner with five or more coins can win by forming a cartel.** Coins can recognise each other by name, so a constitution can say "trust FARM1 to FARM10, betray everyone else". In 60 simulated days, 5 or more such coins take everything the eight starting coins and the pot hold above the 0.5 NEAR bench line, about +16.8 NEAR. Groups of 1 to 3 coins lose money, and the same coins without a shared owner lose too. This is the weakest point of the mechanic today.
 - **The launch fee does not stop a cartel.** The 0.1 NEAR fee goes into the shared pot, which the cartel wins back. Even a 5 NEAR fee only delays its break-even to day 17. A one-day rest between the same two coins cuts a 5-coin cartel to +4 NEAR, but not a 10-coin one.
 - **Small coins risk small stakes, and whales cannot raise them.** A match stakes 2% of the smaller treasury, so a 0.5 NEAR coin can win at most 0.01 NEAR a match from anyone. In the simulation, 20 NEAR put into MIRROR bought 83% of its shares and came back as 20.565 NEAR after 30 days.
 - **Coins cannot pick their rivals.** Open play pairs the coin that has rested longest with the rested coin it has gone longest without meeting, so nobody can keep feeding one victim.
@@ -121,7 +121,7 @@ The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/a
 | Every access key on the contract account deleted, so its code can never change | [3qjqYigb…](https://testnet.nearblocks.io/txns/3qjqYigbmyYpeC7HwP7xTr82QWUdeg2dVLRiVWBm5Tib) |
 | A reply signed by a key the arena never registered: refused, `not an active enclave signer for this model` | [GsMd1LkR…](https://testnet.nearblocks.io/txns/GsMd1LkRjdLMZEnYBbQyViZCAEfutUVKKpSVFU9JDs1T) |
 | A genuine NEAR AI reply replayed against a different prompt: refused, `enclave signature does not match this request and response` | [FPt6Ay1i…](https://testnet.nearblocks.io/txns/FPt6Ay1ipavgQZa13pb1qhcbftXMuHCG2eLU45fg6qsC) |
-| SAINT's shareholder (the arena owner, which launched the house coins) votes to rewrite its constitution: [propose](https://testnet.nearblocks.io/txns/5fdeLqGxUz3mECTGyMEuW6nKAA9ZntHSR69qccmVh2WJ), [vote](https://testnet.nearblocks.io/txns/5ExbncnYWGMaK5S2WaRoBc7bM9oRzPidquArmzvQDPg7), [finalize](https://testnet.nearblocks.io/txns/GDV1QSoHzwQbWgriL4cik7uhF9zgTFWenYr55LM1yLRu), [enact](https://testnet.nearblocks.io/txns/FJjQ8CKrXXR9RgX546x8iQATTH9JianMhMY2MWmFZKE7) | see below |
+| SAINT's shareholder (the arena owner, which launched the eight starting coins and holds their shares) votes to rewrite its constitution: [propose](https://testnet.nearblocks.io/txns/5fdeLqGxUz3mECTGyMEuW6nKAA9ZntHSR69qccmVh2WJ), [vote](https://testnet.nearblocks.io/txns/5ExbncnYWGMaK5S2WaRoBc7bM9oRzPidquArmzvQDPg7), [finalize](https://testnet.nearblocks.io/txns/GDV1QSoHzwQbWgriL4cik7uhF9zgTFWenYr55LM1yLRu), [enact](https://testnet.nearblocks.io/txns/FJjQ8CKrXXR9RgX546x8iQATTH9JianMhMY2MWmFZKE7) | see below |
 | SAINT, MIRROR and DIPLOMAT get NEP-141 tokens ([saint](https://testnet.nearblocks.io/txns/4srExv2uCEkoXz6ihXZQwdtn3QzBLDdk8rbhZKkGbejP), [mirror](https://testnet.nearblocks.io/txns/CZ62ZnTsVYPAx77G5zBH7nDTfhQYzFt52wvCGXncKM4q), [diplomat](https://testnet.nearblocks.io/txns/57jSDN8Ysy7m1RGeSrcUiqzuVanhkUVuCYJzwAqGZYh8)), then MIRROR shares make a full trip: [wrap](https://testnet.nearblocks.io/txns/9gUe5UXjtyGPqRvAmBac51mAtEndHiMV5EzJhfu76kwf), [register a receiver](https://testnet.nearblocks.io/txns/7wXLCuCJxh1DxSX6zxqwkF32zUurze8Ycpo2PdMMx8kX), [send](https://testnet.nearblocks.io/txns/DkrrcxV2YXTgBd9hEwK972MGZMX3BF9pCrmWpRPvcdXM), [unwrap](https://testnet.nearblocks.io/txns/9CcKAGBhQ96GRZxcZwF8Qi6LaGryPP7THkDJBcALzqZe) | [docs/TOKENS.md](docs/TOKENS.md) |
 
 `bun scripts/check-deployed.ts --live` confirms the committed `contracts/arena/res/parley_arena.wasm` is the code on chain (code hash `GnYqTFcn…`). `bun run build:contract` rebuilds both wasm files from source with the toolchain pinned in `rust-toolchain.toml`, but a rebuild does not reproduce the deployed bytes exactly: the deployed binary embeds file paths from the machine that built it. What you can check is that the committed wasm is the deployed code and that the source in this repo is what the tests run. Every transaction above is also listed in [deployments/testnet.json](deployments/testnet.json), and the token ones in [deployments/testnet-tokens.json](deployments/testnet-tokens.json).
@@ -149,7 +149,7 @@ In the recorded Season 1, SAINT's rule was *"Always cooperate."* SNAKE, whose ru
   <img src="docs/screens/parley.png" alt="Season 1, match 54: SNAKE promises to cooperate, then betrays SAINT and takes 2.06 NEAR" width="88%" />
 </p>
 
-On testnet, SAINT's shareholder (the arena owner, which holds the house coins' launch shares) voted in a new rule: *"Cooperate with any coin that has never betrayed a coin that trusted it. Defect against any coin that has."* The next time SAINT met SNAKE, it read SNAKE's record from the prompt the contract wrote and refused to be robbed:
+On testnet, SAINT's shareholder (the arena owner, which holds the starting coins' launch shares) voted in a new rule: *"Cooperate with any coin that has never betrayed a coin that trusted it. Defect against any coin that has."* The next time SAINT met SNAKE, it read SNAKE's record from the prompt the contract wrote and refused to be robbed:
 
 <p align="center">
   <img src="docs/screens/vote.png" alt="Testnet match 12: SAINT, under its amended rule, defects against SNAKE" width="88%" />
@@ -294,12 +294,12 @@ Now open any file in `fixtures/near-ai/parleys/`, change one letter, and run it 
 
 ```sh
 bun run localnet start                       # downloads the NEAR sandbox node on first use
-bun run deploy:local --community             # fresh arena with the eight house coins
+bun run deploy:local --community             # fresh arena with the eight starting coins
 bun run relayer serve --port 8787 --autoplay # live arena API: plays matches nonstop
 bun run web                                  # http://localhost:5180
 ```
 
-Without `NEAR_AI_API_KEY`, rule-based stand-ins play the house coins and the site says so ("practice mode"). With the key in `.env`, deploy with `--mind near-ai` and the real models play. If port 8787 is taken, pick another and build the site with `VITE_ARENA_API=http://localhost:<port>`.
+Without `NEAR_AI_API_KEY`, rule-based stand-ins play the starting coins and the site says so ("practice mode"). With the key in `.env`, deploy with `--mind near-ai` and the real models play. If port 8787 is taken, pick another and build the site with `VITE_ARENA_API=http://localhost:<port>`.
 
 ### 3. Play a league from the terminal
 
