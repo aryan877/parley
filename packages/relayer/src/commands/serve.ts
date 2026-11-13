@@ -5,6 +5,7 @@ import { Ledger } from "../ledger.ts";
 import { ROOT, fundPlayer, loadDeployment } from "../localnet.ts";
 import { RoutingMind } from "../minds/routing.ts";
 import { playParley } from "../runner.ts";
+import { chronicle } from "./chronicle.ts";
 import { flag } from "./shared.ts";
 
 interface Evidence {
@@ -128,6 +129,7 @@ export async function serve() {
   let currentSince = 0;
   let lastEnded = Date.now();
   mkdirSync(EVIDENCE, { recursive: true });
+  const annals = chronicle(owner, deployment.network, join(STATE, "chronicle.json"));
   const handedOut: { ip: string; at: number }[] = [];
   let wake: (() => void) | null = null;
   const rest = (ms: number) => Promise.race([Bun.sleep(ms), new Promise<void>((resolve) => (wake = resolve))]).finally(() => (wake = null));
@@ -338,6 +340,8 @@ export async function serve() {
           return json({ watching: true });
         }
         if (url.pathname === "/api/faucet" && req.method === "POST") return await faucet(req, req.headers.get("cf-connecting-ip") ?? server.requestIP(req)?.address ?? "?");
+        const told = await annals(url.pathname);
+        if (told) return json(told.body, told.status);
         const match = url.pathname.match(/^\/api\/match\/(\d+)$/);
         if (match) {
           const file = evidenceFile(Number(match[1]));

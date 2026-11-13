@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { BenchAndGraveyard } from "../components/Bench.tsx";
 import { CoinCard } from "../components/CoinCard.tsx";
 import { shareWhy } from "../components/Guide.tsx";
 import { MyCoins } from "../components/MyCoins.tsx";
@@ -73,6 +74,7 @@ export function Coins() {
               .map((c, i) => <CoinCard key={c.id} coin={c} rank={i + 1} history={season!.history(c.id)} start={season!.start} curve={season!.curve(c.id)} to={`/season/coin/${c.id}`} />)}
       </div>
       )}
+      {showLive && <BenchAndGraveyard />}
     </>
   );
 }
