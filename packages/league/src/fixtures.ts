@@ -55,7 +55,7 @@ export function writeLeague(dir: string, manifest: LeagueManifest, attestations:
   for (const a of attestations) writeFileSync(join(dir, "attestation", `${slug(a.model)}.json`), `${JSON.stringify(a, null, 2)}\n`);
 }
 
-function readAll<T>(dir: string): T[] {
+export function readJsonFiles<T>(dir: string): T[] {
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
     .filter((file) => file.endsWith(".json"))
@@ -66,8 +66,8 @@ function readAll<T>(dir: string): T[] {
 export function readLeague(dir: string): League {
   return {
     manifest: JSON.parse(readFileSync(join(dir, "league.json"), "utf8")) as LeagueManifest,
-    evidence: readAll<ParleyEvidence>(join(dir, "parleys")),
-    attestations: readAll<Attestation>(join(dir, "attestation")),
+    evidence: readJsonFiles<ParleyEvidence>(join(dir, "parleys")),
+    attestations: readJsonFiles<Attestation>(join(dir, "attestation")),
     stats: existsSync(join(dir, "stats.json")) ? (JSON.parse(readFileSync(join(dir, "stats.json"), "utf8")) as LeagueStats) : undefined,
   };
 }

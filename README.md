@@ -44,6 +44,8 @@ Built for NEAR HACKATHON, November 2026. Tracks: Memecoins With Mechanics, Games
 2. Open the match playing now and, under any message, press **See it on NEAR**: that reply is a transaction on [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet), a contract with no access keys.
 3. Look at the two refused forgeries and the holder vote in [Proof on chain](#proof-on-chain), or run `bun install && bun run verify` to re-check all 504 recorded replies offline.
 
+From a terminal, `bun install && bun run judge` checks all of it in about 20 seconds with no keys: it reads NEAR RPC directly, not an explorer, and prints a PASS or FAIL line for the contract's keys and code, both refused forgeries, the vote, the latest live replies' enclave signatures, the Intel quotes and the 504 recorded replies. [docs/JUDGE.md](docs/JUDGE.md) shows how to repeat each line with plain RPC calls.
+
 ## Fits the track
 
 The Memecoins With Mechanics prompt, line by line:
@@ -103,7 +105,7 @@ Limits, plainly: nothing stops a rich actor from launching many coins or buying 
 
 ## Proof on chain
 
-The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet).
+The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet). `bun run judge` re-checks each row of this table against NEAR RPC.
 
 | What | Transaction |
 | --- | --- |

@@ -73,7 +73,7 @@ function quoteProblems(model: string, signer: EnclaveSigner, attestations: Attes
   return problems;
 }
 
-function keyTable(manifest: LeagueManifest, attestations: Attestation[]): Map<string, KeyEntry> {
+function keyTable(manifest: Pick<LeagueManifest, "models">, attestations: Attestation[]): Map<string, KeyEntry> {
   const table = new Map<string, KeyEntry>();
   for (const model of manifest.models) {
     for (const signer of model.signers) {
@@ -90,7 +90,7 @@ function keyTable(manifest: LeagueManifest, attestations: Attestation[]): Map<st
  * Each enclave key the arena registered with a quote hash must come with that quote, the quote must chain
  * to Intel, and it must name the key. Which replies such keys may sign is decided in `checkLeague`.
  */
-export function checkAttestations(manifest: LeagueManifest, attestations: Attestation[]): Finding[] {
+export function checkAttestations(manifest: Pick<LeagueManifest, "models">, attestations: Attestation[]): Finding[] {
   return [...keyTable(manifest, attestations).values()].flatMap((k) => k.problems.map((p) => ({ problem: `${k.model}: ${p}` })));
 }
 
@@ -107,7 +107,7 @@ export interface SignerReport {
 }
 
 /** Every registered key, what backs it, and how many recorded replies it signed. */
-export function signerReport(manifest: LeagueManifest, evidence: ParleyEvidence[], attestations: Attestation[] = []): SignerReport[] {
+export function signerReport(manifest: Pick<LeagueManifest, "models">, evidence: ParleyEvidence[], attestations: Attestation[] = []): SignerReport[] {
   const counts = new Map<string, number>();
   for (const { parley, turns } of evidence) {
     turns.forEach((turn, i) => {
