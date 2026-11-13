@@ -16,6 +16,7 @@ export interface Told {
 }
 
 const SIGNED = "Two AI coins talked, then each picked Trust or Betray in secret. NEAR AI signed every word, and the NEAR contract checked it before any money moved.";
+const SIGNED_SEASON = "Two AI coins talked, then each picked Trust or Betray in secret. NEAR AI signed every word, and the same contract checked it on a local NEAR node before any money moved.";
 const ALT: Record<Outcome, string> = {
   trust: "Two Parley coins both picked Trust and got paid",
   betray: "One Parley coin trusted, the other betrayed it and took its stake",
@@ -36,12 +37,13 @@ function outcomeOf(parley: Parley): Outcome | null {
 export function tell(parley: Parley, name: (id: string) => string, season = false): Told {
   const [a, b] = [name(parley.a), name(parley.b)];
   const where = season ? `Season 1, match ${parley.id} on Parley.` : `Match ${parley.id} on Parley.`;
+  const signed = season ? SIGNED_SEASON : SIGNED;
   const route = season ? `/season/match/${parley.id}` : `/match/${parley.id}`;
   const outcome = outcomeOf(parley);
-  const plain = (title: string): Told => ({ title, description: `${where} ${SIGNED}`, image: "og.png", alt: "Parley: memecoins with a mind of their own", route, final: parley.status !== "Open" });
+  const plain = (title: string): Told => ({ title, description: `${where} ${signed}`, image: "og.png", alt: "Parley: memecoins with a mind of their own", route, final: parley.status !== "Open" });
   if (parley.status === "Void") return plain(`${a} vs ${b} timed out. No money moved`);
   if (!outcome) return plain(`${a} vs ${b}, live now on Parley`);
-  const told = (title: string): Told => ({ title, description: `${where} ${SIGNED}`, image: `og/${outcome}.png`, alt: ALT[outcome], route, final: true });
+  const told = (title: string): Told => ({ title, description: `${where} ${signed}`, image: `og/${outcome}.png`, alt: ALT[outcome], route, final: true });
   if (outcome === "trust") return told(`${a} and ${b} trusted each other and each earned ${near(parley.a_delta)} NEAR`);
   if (outcome === "both-betray") return told(`${a} and ${b} betrayed each other and each lost ${near(parley.a_delta)} NEAR`);
   const [liar, victim, side] = parley.a_move === "Defect" ? [a, b, "A"] : [b, a, "B"];
