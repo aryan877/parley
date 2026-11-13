@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 396" width="760" height="396" role="img" aria-label="SAINT amended on day 20">
+<style>
+.bg{fill:#fcfcfb}.t{fill:#0b0b0b;font:600 15px system-ui,-apple-system,'Segoe UI',sans-serif}.st{fill:#52514e;font:12px system-ui,-apple-system,'Segoe UI',sans-serif}.ax{fill:#898781;font:11px system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}.lg{fill:#0b0b0b;font:12px system-ui,-apple-system,'Segoe UI',sans-serif}.lv{fill:#52514e;font:12px system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}.grid{stroke:#e1e0d9;stroke-width:1}.base{stroke:#c3c2b7;stroke-width:1}.ref{stroke:#898781;stroke-width:1}.line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.dot{stroke:#fcfcfb;stroke-width:2}.muted{stroke:#898781;fill:#898781}
+.s1{stroke:#2a78d6;fill:#2a78d6}.s2{stroke:#eb6834;fill:#eb6834}.s3{stroke:#1baf7a;fill:#1baf7a}.s4{stroke:#eda100;fill:#eda100}.s5{stroke:#e87ba4;fill:#e87ba4}.s6{stroke:#008300;fill:#008300}.s7{stroke:#6250d6;fill:#6250d6}.s8{stroke:#e34948;fill:#e34948}
+@media (prefers-color-scheme:dark){.bg{fill:#1a1a19}.t,.lg{fill:#f0efec}.st,.lv{fill:#c3c2b7}.grid{stroke:#2c2c2a}.base{stroke:#383835}.dot{stroke:#1a1a19}.s1{stroke:#3987e5;fill:#3987e5}.s2{stroke:#d95926;fill:#d95926}.s3{stroke:#199e70;fill:#199e70}.s4{stroke:#c98500;fill:#c98500}.s5{stroke:#d55181;fill:#d55181}.s6{stroke:#008300;fill:#008300}.s7{stroke:#9085e9;fill:#9085e9}.s8{stroke:#e66767;fill:#e66767}}
+</style>
+<rect class="bg" width="760" height="396" rx="8"/>
+<text class="t" x="16" y="26">SAINT amended on day 20</text>
+<text class="st" x="16" y="46">SAINT's share price with and without the real testnet amendment</text>
+<line class="base" x1="56" x2="564" y1="352" y2="352"/>
+<text class="ax" x="48" y="356" text-anchor="end">0</text>
+<line class="grid" x1="56" x2="564" y1="285" y2="285"/>
+<text class="ax" x="48" y="289" text-anchor="end">0.5</text>
+<line class="grid" x1="56" x2="564" y1="218" y2="218"/>
+<text class="ax" x="48" y="222" text-anchor="end">1</text>
+<line class="grid" x1="56" x2="564" y1="151" y2="151"/>
+<text class="ax" x="48" y="155" text-anchor="end">1.5</text>
+<line class="grid" x1="56" x2="564" y1="84" y2="84"/>
+<text class="ax" x="48" y="88" text-anchor="end">2</text>
+<text class="ax" x="56" y="370" text-anchor="middle">0</text>
+<text class="ax" x="140.667" y="370" text-anchor="middle">10</text>
+<text class="ax" x="225.333" y="370" text-anchor="middle">20</text>
+<text class="ax" x="310" y="370" text-anchor="middle">30</text>
+<text class="ax" x="394.667" y="370" text-anchor="middle">40</text>
+<text class="ax" x="479.333" y="370" text-anchor="middle">50</text>
+<text class="ax" x="564" y="370" text-anchor="middle">60</text>
+<text class="ax" x="564" y="388" text-anchor="end">day</text>
+<text class="ax" x="48" y="68" text-anchor="end">price</text>
+<line class="ref" x1="56" x2="564" y1="218" y2="218"/>
+<text class="ax" x="560" y="214" text-anchor="end">launch</text>
+<line class="ref" x1="225.333" x2="225.333" y1="80" y2="352"/>
+<text class="ax" x="229.333" y="78">amendment</text>
+<g><title>SAINT, unchanged: 1.279 on day 60</title>
+<path class="line s1" style="fill:none" d="M56 218L64.467 193.415L72.933 157.138L81.4 155.893L89.867 151.774L98.333 152.497L106.8 155.524L115.267 147.886L123.733 147.761L132.2 146.786L140.667 147.031L149.133 147.516L157.6 148.59L166.067 148.404L174.533 149.812L183 150.983L191.467 153.062L199.933 157.3L208.4 161.434L216.867 164.081L225.333 167.745L233.8 170.87L242.267 173.856L250.733 176.769L259.2 178.633L267.667 180.626L276.133 180.62L284.6 180.62L293.067 180.62L301.533 180.62L310 180.62L318.467 180.62L326.933 180.62L335.4 180.62L343.867 180.62L352.333 180.62L360.8 180.62L369.267 180.62L377.733 180.62L386.2 180.62L394.667 180.62L403.133 180.62L411.6 180.62L420.067 180.62L428.533 180.62L437 180.62L445.467 180.62L453.933 180.62L462.4 180.62L470.867 180.62L479.333 180.62L487.8 180.62L496.267 180.62L504.733 180.62L513.2 180.62L521.667 180.62L530.133 180.62L538.6 180.62L547.067 180.62L555.533 180.62L564 180.62"/>
+<circle class="dot s1" cx="564" cy="180.62" r="4"/>
+</g>
+<g><title>SAINT, amended: 0.248 on day 60</title>
+<path class="line s2" style="fill:none" d="M56 218L64.467 193.415L72.933 157.138L81.4 155.893L89.867 151.774L98.333 152.497L106.8 155.524L115.267 147.886L123.733 147.761L132.2 146.786L140.667 147.031L149.133 147.516L157.6 148.59L166.067 148.404L174.533 149.812L183 150.983L191.467 153.062L199.933 157.3L208.4 161.434L216.867 164.081L225.333 167.745L233.8 208.059L242.267 265.148L250.733 298.007L259.2 318.76L267.667 318.76L276.133 318.76L284.6 318.76L293.067 318.76L301.533 318.76L310 318.76L318.467 318.76L326.933 318.76L335.4 318.76L343.867 318.76L352.333 318.76L360.8 318.76L369.267 318.76L377.733 318.76L386.2 318.76L394.667 318.76L403.133 318.76L411.6 318.76L420.067 318.76L428.533 318.76L437 318.76L445.467 318.76L453.933 318.76L462.4 318.76L470.867 318.76L479.333 318.76L487.8 318.76L496.267 318.76L504.733 318.76L513.2 318.76L521.667 318.76L530.133 318.76L538.6 318.76L547.067 318.76L555.533 318.76L564 318.76"/>
+<circle class="dot s2" cx="564" cy="318.76" r="4"/>
+</g>
+<line class="line s1" x1="588" x2="604" y1="90" y2="90"/>
+<text class="lg" x="610" y="94">SAINT, unchanged</text>
+<text class="lv" x="748" y="94" text-anchor="end">1.28</text>
+<line class="line s2" x1="588" x2="604" y1="110" y2="110"/>
+<text class="lg" x="610" y="114">SAINT, amended</text>
+<text class="lv" x="748" y="114" text-anchor="end">0.25</text>
+</svg>

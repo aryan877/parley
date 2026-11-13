@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 396" width="760" height="396" role="img" aria-label="A farm of 10 coins with one owner">
+<style>
+.bg{fill:#fcfcfb}.t{fill:#0b0b0b;font:600 15px system-ui,-apple-system,'Segoe UI',sans-serif}.st{fill:#52514e;font:12px system-ui,-apple-system,'Segoe UI',sans-serif}.ax{fill:#898781;font:11px system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}.lg{fill:#0b0b0b;font:12px system-ui,-apple-system,'Segoe UI',sans-serif}.lv{fill:#52514e;font:12px system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}.grid{stroke:#e1e0d9;stroke-width:1}.base{stroke:#c3c2b7;stroke-width:1}.ref{stroke:#898781;stroke-width:1}.line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.dot{stroke:#fcfcfb;stroke-width:2}.muted{stroke:#898781;fill:#898781}
+.s1{stroke:#2a78d6;fill:#2a78d6}.s2{stroke:#eb6834;fill:#eb6834}.s3{stroke:#1baf7a;fill:#1baf7a}.s4{stroke:#eda100;fill:#eda100}.s5{stroke:#e87ba4;fill:#e87ba4}.s6{stroke:#008300;fill:#008300}.s7{stroke:#6250d6;fill:#6250d6}.s8{stroke:#e34948;fill:#e34948}
+@media (prefers-color-scheme:dark){.bg{fill:#1a1a19}.t,.lg{fill:#f0efec}.st,.lv{fill:#c3c2b7}.grid{stroke:#2c2c2a}.base{stroke:#383835}.dot{stroke:#1a1a19}.s1{stroke:#3987e5;fill:#3987e5}.s2{stroke:#d95926;fill:#d95926}.s3{stroke:#199e70;fill:#199e70}.s4{stroke:#c98500;fill:#c98500}.s5{stroke:#d55181;fill:#d55181}.s6{stroke:#008300;fill:#008300}.s7{stroke:#9085e9;fill:#9085e9}.s8{stroke:#e66767;fill:#e66767}}
+</style>
+<rect class="bg" width="760" height="396" rx="8"/>
+<text class="t" x="16" y="26">A farm of 10 coins with one owner</text>
+<text class="st" x="16" y="46">NEAR held by the farm, by the eight house coins and in the pot (the farm trusts its own coins, betrays all others)</text>
+<line class="base" x1="56" x2="564" y1="352" y2="352"/>
+<text class="ax" x="48" y="356" text-anchor="end">0</text>
+<line class="grid" x1="56" x2="564" y1="298.4" y2="298.4"/>
+<text class="ax" x="48" y="302.4" text-anchor="end">5</text>
+<line class="grid" x1="56" x2="564" y1="244.8" y2="244.8"/>
+<text class="ax" x="48" y="248.8" text-anchor="end">10</text>
+<line class="grid" x1="56" x2="564" y1="191.2" y2="191.2"/>
+<text class="ax" x="48" y="195.2" text-anchor="end">15</text>
+<line class="grid" x1="56" x2="564" y1="137.6" y2="137.6"/>
+<text class="ax" x="48" y="141.6" text-anchor="end">20</text>
+<line class="grid" x1="56" x2="564" y1="84" y2="84"/>
+<text class="ax" x="48" y="88" text-anchor="end">25</text>
+<text class="ax" x="56" y="370" text-anchor="middle">0</text>
+<text class="ax" x="140.667" y="370" text-anchor="middle">10</text>
+<text class="ax" x="225.333" y="370" text-anchor="middle">20</text>
+<text class="ax" x="310" y="370" text-anchor="middle">30</text>
+<text class="ax" x="394.667" y="370" text-anchor="middle">40</text>
+<text class="ax" x="479.333" y="370" text-anchor="middle">50</text>
+<text class="ax" x="564" y="370" text-anchor="middle">60</text>
+<text class="ax" x="564" y="388" text-anchor="end">day</text>
+<text class="ax" x="48" y="68" text-anchor="end">NEAR</text>
+<line class="ref" x1="56" x2="564" y1="276.96" y2="276.96"/>
+<text class="ax" x="560" y="272.96" text-anchor="end">farm paid in</text>
+<g><title>farm (10 coins): 23.818 on day 60</title>
+<path class="line s1" style="fill:none" d="M56 287.68L64.467 275.382L72.933 267.138L81.4 260.24L89.867 250.856L98.333 241.933L106.8 232.362L115.267 223.322L123.733 214.809L132.2 203.681L140.667 192.428L149.133 175.236L157.6 150.548L166.067 113.559L174.533 98.446L183 96.676L191.467 96.676L199.933 96.676L208.4 96.676L216.867 96.676L225.333 96.676L233.8 96.676L242.267 96.676L250.733 96.676L259.2 96.676L267.667 96.676L276.133 96.676L284.6 96.676L293.067 96.676L301.533 96.676L310 96.676L318.467 96.676L326.933 96.676L335.4 96.676L343.867 96.676L352.333 96.676L360.8 96.676L369.267 96.676L377.733 96.676L386.2 96.676L394.667 96.676L403.133 96.676L411.6 96.676L420.067 96.676L428.533 96.676L437 96.676L445.467 96.676L453.933 96.676L462.4 96.676L470.867 96.676L479.333 96.676L487.8 96.676L496.267 96.676L504.733 96.676L513.2 96.676L521.667 96.676L530.133 96.676L538.6 96.676L547.067 96.676L555.533 96.676L564 96.676"/>
+<circle class="dot s1" cx="564" cy="96.676" r="4"/>
+</g>
+<g><title>house coins: 3.982 on day 60</title>
+<path class="line s2" style="fill:none" d="M56 180.48L64.467 185.375L72.933 193.944L81.4 201.752L89.867 212.512L98.333 222.089L106.8 235.2L115.267 249.128L123.733 260.426L132.2 272.083L140.667 282.459L149.133 290.982L157.6 298.188L166.067 303.222L174.533 307.712L183 309.308L191.467 309.308L199.933 309.308L208.4 309.308L216.867 309.308L225.333 309.308L233.8 309.308L242.267 309.308L250.733 309.308L259.2 309.308L267.667 309.308L276.133 309.308L284.6 309.308L293.067 309.308L301.533 309.308L310 309.308L318.467 309.308L326.933 309.308L335.4 309.308L343.867 309.308L352.333 309.308L360.8 309.308L369.267 309.308L377.733 309.308L386.2 309.308L394.667 309.308L403.133 309.308L411.6 309.308L420.067 309.308L428.533 309.308L437 309.308L445.467 309.308L453.933 309.308L462.4 309.308L470.867 309.308L479.333 309.308L487.8 309.308L496.267 309.308L504.733 309.308L513.2 309.308L521.667 309.308L530.133 309.308L538.6 309.308L547.067 309.308L555.533 309.308L564 309.308"/>
+<circle class="dot s2" cx="564" cy="309.308" r="4"/>
+</g>
+<g><title>pot: 0.000 on day 60</title>
+<path class="line s3" style="fill:none" d="M56 289.824L64.467 297.227L72.933 296.903L81.4 295.992L89.867 294.616L98.333 293.962L106.8 290.423L115.267 285.534L123.733 282.749L132.2 282.22L140.667 283.097L149.133 291.766L157.6 309.247L166.067 341.203L174.533 351.826L183 352L191.467 352L199.933 352L208.4 352L216.867 352L225.333 352L233.8 352L242.267 352L250.733 352L259.2 352L267.667 352L276.133 352L284.6 352L293.067 352L301.533 352L310 352L318.467 352L326.933 352L335.4 352L343.867 352L352.333 352L360.8 352L369.267 352L377.733 352L386.2 352L394.667 352L403.133 352L411.6 352L420.067 352L428.533 352L437 352L445.467 352L453.933 352L462.4 352L470.867 352L479.333 352L487.8 352L496.267 352L504.733 352L513.2 352L521.667 352L530.133 352L538.6 352L547.067 352L555.533 352L564 352"/>
+<circle class="dot s3" cx="564" cy="352" r="4"/>
+</g>
+<line class="line s1" x1="588" x2="604" y1="90" y2="90"/>
+<text class="lg" x="610" y="94">farm (10 coins)</text>
+<text class="lv" x="748" y="94" text-anchor="end">23.82</text>
+<line class="line s2" x1="588" x2="604" y1="110" y2="110"/>
+<text class="lg" x="610" y="114">house coins</text>
+<text class="lv" x="748" y="114" text-anchor="end">3.98</text>
+<line class="line s3" x1="588" x2="604" y1="130" y2="130"/>
+<text class="lg" x="610" y="134">pot</text>
+<text class="lv" x="748" y="134" text-anchor="end">0.00</text>
+</svg>

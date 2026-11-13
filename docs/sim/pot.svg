@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 396" width="760" height="396" role="img" aria-label="The pot">
+<style>
+.bg{fill:#fcfcfb}.t{fill:#0b0b0b;font:600 15px system-ui,-apple-system,'Segoe UI',sans-serif}.st{fill:#52514e;font:12px system-ui,-apple-system,'Segoe UI',sans-serif}.ax{fill:#898781;font:11px system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}.lg{fill:#0b0b0b;font:12px system-ui,-apple-system,'Segoe UI',sans-serif}.lv{fill:#52514e;font:12px system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}.grid{stroke:#e1e0d9;stroke-width:1}.base{stroke:#c3c2b7;stroke-width:1}.ref{stroke:#898781;stroke-width:1}.line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.dot{stroke:#fcfcfb;stroke-width:2}.muted{stroke:#898781;fill:#898781}
+.s1{stroke:#2a78d6;fill:#2a78d6}.s2{stroke:#eb6834;fill:#eb6834}.s3{stroke:#1baf7a;fill:#1baf7a}.s4{stroke:#eda100;fill:#eda100}.s5{stroke:#e87ba4;fill:#e87ba4}.s6{stroke:#008300;fill:#008300}.s7{stroke:#6250d6;fill:#6250d6}.s8{stroke:#e34948;fill:#e34948}
+@media (prefers-color-scheme:dark){.bg{fill:#1a1a19}.t,.lg{fill:#f0efec}.st,.lv{fill:#c3c2b7}.grid{stroke:#2c2c2a}.base{stroke:#383835}.dot{stroke:#1a1a19}.s1{stroke:#3987e5;fill:#3987e5}.s2{stroke:#d95926;fill:#d95926}.s3{stroke:#199e70;fill:#199e70}.s4{stroke:#c98500;fill:#c98500}.s5{stroke:#d55181;fill:#d55181}.s6{stroke:#008300;fill:#008300}.s7{stroke:#9085e9;fill:#9085e9}.s8{stroke:#e66767;fill:#e66767}}
+</style>
+<rect class="bg" width="760" height="396" rx="8"/>
+<text class="t" x="16" y="26">The pot</text>
+<text class="st" x="16" y="46">Commons in NEAR over 60 days</text>
+<line class="base" x1="56" x2="564" y1="352" y2="352"/>
+<text class="ax" x="48" y="356" text-anchor="end">0</text>
+<line class="grid" x1="56" x2="564" y1="285" y2="285"/>
+<text class="ax" x="48" y="289" text-anchor="end">5</text>
+<line class="grid" x1="56" x2="564" y1="218" y2="218"/>
+<text class="ax" x="48" y="222" text-anchor="end">10</text>
+<line class="grid" x1="56" x2="564" y1="151" y2="151"/>
+<text class="ax" x="48" y="155" text-anchor="end">15</text>
+<line class="grid" x1="56" x2="564" y1="84" y2="84"/>
+<text class="ax" x="48" y="88" text-anchor="end">20</text>
+<text class="ax" x="56" y="370" text-anchor="middle">0</text>
+<text class="ax" x="140.667" y="370" text-anchor="middle">10</text>
+<text class="ax" x="225.333" y="370" text-anchor="middle">20</text>
+<text class="ax" x="310" y="370" text-anchor="middle">30</text>
+<text class="ax" x="394.667" y="370" text-anchor="middle">40</text>
+<text class="ax" x="479.333" y="370" text-anchor="middle">50</text>
+<text class="ax" x="564" y="370" text-anchor="middle">60</text>
+<text class="ax" x="564" y="388" text-anchor="end">day</text>
+<text class="ax" x="48" y="68" text-anchor="end">NEAR</text>
+<g><title>house coins: 0.000 on day 60</title>
+<path class="line s1" style="fill:none" d="M56 287.68L64.467 313.987L72.933 350.338L81.4 350.978L89.867 351.808L98.333 351.256L106.8 351.498L115.267 351.412L123.733 351.256L132.2 351.329L140.667 351.426L149.133 351.81L157.6 351.386L166.067 351.79L174.533 351.429L183 351.505L191.467 351.743L199.933 351.803L208.4 351.587L216.867 351.733L225.333 351.804L233.8 351.819L242.267 351.861L250.733 351.709L259.2 351.812L267.667 351.994L276.133 352L284.6 352L293.067 352L301.533 352L310 352L318.467 352L326.933 352L335.4 352L343.867 352L352.333 352L360.8 352L369.267 352L377.733 352L386.2 352L394.667 352L403.133 352L411.6 352L420.067 352L428.533 352L437 352L445.467 352L453.933 352L462.4 352L470.867 352L479.333 352L487.8 352L496.267 352L504.733 352L513.2 352L521.667 352L530.133 352L538.6 352L547.067 352L555.533 352L564 352"/>
+<circle class="dot s1" cx="564" cy="352" r="4"/>
+</g>
+<g><title>everyone trusts: 0.000 on day 60</title>
+<path class="line s2" style="fill:none" d="M56 287.68L64.467 352L72.933 352L81.4 352L89.867 352L98.333 352L106.8 352L115.267 352L123.733 352L132.2 352L140.667 352L149.133 352L157.6 352L166.067 352L174.533 352L183 352L191.467 352L199.933 352L208.4 352L216.867 352L225.333 352L233.8 352L242.267 352L250.733 352L259.2 352L267.667 352L276.133 352L284.6 352L293.067 352L301.533 352L310 352L318.467 352L326.933 352L335.4 352L343.867 352L352.333 352L360.8 352L369.267 352L377.733 352L386.2 352L394.667 352L403.133 352L411.6 352L420.067 352L428.533 352L437 352L445.467 352L453.933 352L462.4 352L470.867 352L479.333 352L487.8 352L496.267 352L504.733 352L513.2 352L521.667 352L530.133 352L538.6 352L547.067 352L555.533 352L564 352"/>
+<circle class="dot s2" cx="564" cy="352" r="4"/>
+</g>
+<g><title>SNAKE invasion: 0.000 on day 60</title>
+<path class="line s3" style="fill:none" d="M56 287.68L64.467 313.987L72.933 350.338L81.4 350.978L89.867 351.808L98.333 351.256L106.8 351.498L115.267 351.412L123.733 351.256L132.2 351.329L140.667 340.706L149.133 313.675L157.6 272.687L166.067 237.241L174.533 199.865L183 169.596L191.467 143.895L199.933 121.1L208.4 109.136L216.867 96.046L225.333 215.83L233.8 352L242.267 352L250.733 352L259.2 352L267.667 352L276.133 352L284.6 352L293.067 352L301.533 352L310 352L318.467 352L326.933 352L335.4 352L343.867 352L352.333 352L360.8 352L369.267 352L377.733 352L386.2 352L394.667 352L403.133 352L411.6 352L420.067 352L428.533 352L437 352L445.467 352L453.933 352L462.4 352L470.867 352L479.333 352L487.8 352L496.267 352L504.733 352L513.2 352L521.667 352L530.133 352L538.6 352L547.067 352L555.533 352L564 352"/>
+<circle class="dot s3" cx="564" cy="352" r="4"/>
+</g>
+<line class="line s1" x1="588" x2="604" y1="90" y2="90"/>
+<text class="lg" x="610" y="94">house coins</text>
+<text class="lv" x="748" y="94" text-anchor="end">0.00</text>
+<line class="line s2" x1="588" x2="604" y1="110" y2="110"/>
+<text class="lg" x="610" y="114">everyone trusts</text>
+<text class="lv" x="748" y="114" text-anchor="end">0.00</text>
+<line class="line s3" x1="588" x2="604" y1="130" y2="130"/>
+<text class="lg" x="610" y="134">SNAKE invasion</text>
+<text class="lv" x="748" y="134" text-anchor="end">0.00</text>
+</svg>
