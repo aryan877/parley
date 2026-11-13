@@ -1,4 +1,5 @@
 import type { Amendment, Coin, Order, Parley } from "@parley/sdk/src/types.ts";
+import { parseNear } from "@parley/sdk/src/units.ts";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -23,16 +24,8 @@ import { ARENA_API, useArenaInfo } from "../lib/live.ts";
 import { holdings, setHolding } from "../lib/holdings.ts";
 import { type VoteLock, forget, parleysBefore, reads, view } from "../lib/near.ts";
 import { useSeason } from "../lib/season.ts";
-import { CANCELLED, noteCoin, useWallet } from "../lib/wallet.tsx";
+import { failed, noteCoin, useWallet, whyFailed } from "../lib/wallet.tsx";
 import { BRAIN_LABEL, PRACTICE_NOTE, brainOf, tagline } from "../lib/words.ts";
-
-const YOCTO = 10n ** 24n;
-
-function toYocto(text: string): bigint | null {
-  if (!/^\d*(\.\d*)?$/.test(text.trim()) || !text.trim()) return null;
-  const [whole = "0", frac = ""] = text.trim().split(".");
-  return BigInt(whole || "0") * YOCTO + BigInt((frac + "0".repeat(24)).slice(0, 24));
-}
 
 const msOf = (ns: string) => Number(BigInt(ns) / 1_000_000n);
 
@@ -55,13 +48,6 @@ function useNow(run: boolean) {
   }, [run]);
   return now;
 }
-
-const why = (error?: string) => {
-  if (error === CANCELLED) return "you cancelled in your wallet";
-  if (/Not enough balance|NotEnoughBalance|LackBalance/i.test(error ?? "")) return "not enough NEAR in your wallet for gas";
-  return error?.match(/panicked: ([^"\\]+)/)?.[1] ?? error?.slice(0, 140) ?? "unknown error";
-};
-const refusal = (label: string, error?: string) => (error === CANCELLED ? CANCELLED : `${label} failed: ${why(error)}.`);
 
 /** Treasury after each match, oldest first, counted back from the treasury now. */
 function curveOf(id: string, treasury: string, matches: Match[]): number[] {
@@ -165,7 +151,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
   }, [load]);
 
   const price = Number((BigInt(coin.treasury) * 1_000_000n) / (BigInt(coin.total_shares) || 1n)) / 1_000_000;
-  const value = toYocto(amount);
+  const value = parseNear(amount);
   const sending = w.kind === "near" ? "Approve it in your wallet…" : "Sending…";
   const run = async (label: string, action: () => Promise<{ ok: boolean; error?: string }>, done: string, placed?: Order["kind"] | null, amount?: bigint) => {
     setBusy(true);
@@ -180,7 +166,7 @@ function Trade({ coin, onDone }: { coin: Coin; onDone: () => void }) {
       fetch(`${ARENA_API}/api/watch-order`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ coin: coin.id, account: w.accountId }) }).catch(() => {});
     }
     setBusy(false);
-    setNote(result.ok ? { tone: "good", text: done } : { tone: "bad", text: /Not enough balance/.test(result.error ?? "") ? "Not enough NEAR in your wallet. Keep about 0.1 NEAR for gas." : refusal(label, result.error) });
+    setNote(result.ok ? { tone: "good", text: done } : { tone: "bad", text: /Not enough balance/.test(result.error ?? "") ? "Not enough NEAR in your wallet. Keep about 0.1 NEAR for gas." : failed(label, result.error) });
     w.refresh();
     await load();
     onDone();
@@ -387,7 +373,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     const r = await action();
     if (r.ok) noteCoin(account, coin.id);
     setBusy(false);
-    setNote(r.ok ? { tone: "good", text: done } : { tone: "bad", text: refusal(label, r.error) });
+    setNote(r.ok ? { tone: "good", text: done } : { tone: "bad", text: failed(label, r.error) });
     await refresh();
   };
 
@@ -413,7 +399,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     if (!made.ok) {
       setBusy(false);
       setStep(null);
-      setNote({ tone: "bad", text: refusal("Proposing", made.error) });
+      setNote({ tone: "bad", text: failed("Proposing", made.error) });
       return;
     }
     const id = Number(made.value);
@@ -433,7 +419,7 @@ function Rules({ coin, onDone }: { coin: Coin; onDone: () => void }) {
     setNote(
       voted.ok
         ? { tone: "good", text: `Proposed, and you voted yes with ${share(ballot + add)} shares.` }
-        : { tone: "bad", text: `Proposed, but your yes vote did not go through: ${why(voted.error)}. Press Vote yes to try again.` },
+        : { tone: "bad", text: `Proposed, but your yes vote did not go through: ${whyFailed(voted.error)}. Press Vote yes to try again.` },
     );
     await refresh();
   };

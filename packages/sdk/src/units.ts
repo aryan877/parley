@@ -5,6 +5,12 @@ export function near(amount: number | string): bigint {
   return BigInt(whole || "0") * YOCTO + BigInt((frac + "0".repeat(24)).slice(0, 24));
 }
 
+/** A typed amount such as "1.5", or null when it is not a plain decimal number. */
+export function parseNear(text: string): bigint | null {
+  const t = text.trim();
+  return t && /^\d*(\.\d*)?$/.test(t) ? near(t) : null;
+}
+
 export function formatNear(yocto: bigint | string, digits = 2): string {
   const value = BigInt(yocto);
   const sign = value < 0n ? "-" : "";
