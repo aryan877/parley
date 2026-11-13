@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 396" width="760" height="396" role="img" aria-label="Candidate fixes against a 10-coin cartel">
+<style>
+.bg{fill:#fcfcfb}.t{fill:#0b0b0b;font:600 15px system-ui,-apple-system,'Segoe UI',sans-serif}.st{fill:#52514e;font:12px system-ui,-apple-system,'Segoe UI',sans-serif}.ax{fill:#898781;font:11px system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}.lg{fill:#0b0b0b;font:12px system-ui,-apple-system,'Segoe UI',sans-serif}.lv{fill:#52514e;font:12px system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}.grid{stroke:#e1e0d9;stroke-width:1}.base{stroke:#c3c2b7;stroke-width:1}.ref{stroke:#898781;stroke-width:1}.line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.dot{stroke:#fcfcfb;stroke-width:2}.muted{stroke:#898781;fill:#898781}
+.s1{stroke:#2a78d6;fill:#2a78d6}.s2{stroke:#eb6834;fill:#eb6834}.s3{stroke:#1baf7a;fill:#1baf7a}.s4{stroke:#eda100;fill:#eda100}.s5{stroke:#e87ba4;fill:#e87ba4}.s6{stroke:#008300;fill:#008300}.s7{stroke:#6250d6;fill:#6250d6}.s8{stroke:#e34948;fill:#e34948}
+@media (prefers-color-scheme:dark){.bg{fill:#1a1a19}.t,.lg{fill:#f0efec}.st,.lv{fill:#c3c2b7}.grid{stroke:#2c2c2a}.base{stroke:#383835}.dot{stroke:#1a1a19}.s1{stroke:#3987e5;fill:#3987e5}.s2{stroke:#d95926;fill:#d95926}.s3{stroke:#199e70;fill:#199e70}.s4{stroke:#c98500;fill:#c98500}.s5{stroke:#d55181;fill:#d55181}.s6{stroke:#008300;fill:#008300}.s7{stroke:#9085e9;fill:#9085e9}.s8{stroke:#e66767;fill:#e66767}}
+</style>
+<rect class="bg" width="760" height="396" rx="8"/>
+<text class="t" x="16" y="26">Candidate fixes against a 10-coin cartel</text>
+<text class="st" x="16" y="46">NEAR the cartel's coins could redeem, names hidden or trust bonus capped per pair</text>
+<line class="base" x1="56" x2="564" y1="352" y2="352"/>
+<text class="ax" x="48" y="356" text-anchor="end">0</text>
+<line class="grid" x1="56" x2="564" y1="298.4" y2="298.4"/>
+<text class="ax" x="48" y="302.4" text-anchor="end">5</text>
+<line class="grid" x1="56" x2="564" y1="244.8" y2="244.8"/>
+<text class="ax" x="48" y="248.8" text-anchor="end">10</text>
+<line class="grid" x1="56" x2="564" y1="191.2" y2="191.2"/>
+<text class="ax" x="48" y="195.2" text-anchor="end">15</text>
+<line class="grid" x1="56" x2="564" y1="137.6" y2="137.6"/>
+<text class="ax" x="48" y="141.6" text-anchor="end">20</text>
+<line class="grid" x1="56" x2="564" y1="84" y2="84"/>
+<text class="ax" x="48" y="88" text-anchor="end">25</text>
+<text class="ax" x="56" y="370" text-anchor="middle">0</text>
+<text class="ax" x="140.667" y="370" text-anchor="middle">10</text>
+<text class="ax" x="225.333" y="370" text-anchor="middle">20</text>
+<text class="ax" x="310" y="370" text-anchor="middle">30</text>
+<text class="ax" x="394.667" y="370" text-anchor="middle">40</text>
+<text class="ax" x="479.333" y="370" text-anchor="middle">50</text>
+<text class="ax" x="564" y="370" text-anchor="middle">60</text>
+<text class="ax" x="564" y="388" text-anchor="end">day</text>
+<text class="ax" x="48" y="68" text-anchor="end">NEAR</text>
+<line class="ref" x1="56" x2="564" y1="276.96" y2="276.96"/>
+<text class="ax" x="560" y="272.96" text-anchor="end">cartel paid in</text>
+<g><title>today: 23.818 on day 60</title>
+<path class="line s1" style="fill:none" d="M56 287.68L64.467 275.382L72.933 267.138L81.4 260.24L89.867 250.856L98.333 241.933L106.8 232.362L115.267 223.322L123.733 214.809L132.2 203.681L140.667 192.428L149.133 175.236L157.6 150.548L166.067 113.559L174.533 98.446L183 96.676L191.467 96.676L199.933 96.676L208.4 96.676L216.867 96.676L225.333 96.676L233.8 96.676L242.267 96.676L250.733 96.676L259.2 96.676L267.667 96.676L276.133 96.676L284.6 96.676L293.067 96.676L301.533 96.676L310 96.676L318.467 96.676L326.933 96.676L335.4 96.676L343.867 96.676L352.333 96.676L360.8 96.676L369.267 96.676L377.733 96.676L386.2 96.676L394.667 96.676L403.133 96.676L411.6 96.676L420.067 96.676L428.533 96.676L437 96.676L445.467 96.676L453.933 96.676L462.4 96.676L470.867 96.676L479.333 96.676L487.8 96.676L496.267 96.676L504.733 96.676L513.2 96.676L521.667 96.676L530.133 96.676L538.6 96.676L547.067 96.676L555.533 96.676L564 96.676"/>
+<circle class="dot s1" cx="564" cy="96.676" r="4"/>
+</g>
+<g><title>hidden, late copy: 22.610 on day 60</title>
+<path class="line s2" style="fill:none" d="M56 287.68L64.467 275.382L72.933 267.661L81.4 261.094L89.867 251.906L98.333 243.169L106.8 233.637L115.267 224.55L123.733 216.088L132.2 205.197L140.667 194.855L149.133 181.93L157.6 161.83L166.067 136.948L174.533 115.896L183 112.819L191.467 110.259L199.933 109.624L208.4 109.624L216.867 109.624L225.333 109.624L233.8 109.624L242.267 109.624L250.733 109.624L259.2 109.624L267.667 109.624L276.133 109.624L284.6 109.624L293.067 109.624L301.533 109.624L310 109.624L318.467 109.624L326.933 109.624L335.4 109.624L343.867 109.624L352.333 109.624L360.8 109.624L369.267 109.624L377.733 109.624L386.2 109.624L394.667 109.624L403.133 109.624L411.6 109.624L420.067 109.624L428.533 109.624L437 109.624L445.467 109.624L453.933 109.624L462.4 109.624L470.867 109.624L479.333 109.624L487.8 109.624L496.267 109.624L504.733 109.624L513.2 109.624L521.667 109.624L530.133 109.624L538.6 109.624L547.067 109.624L555.533 109.624L564 109.624"/>
+<circle class="dot s2" cx="564" cy="109.624" r="4"/>
+</g>
+<g><title>hidden, early copy: 12.756 on day 60</title>
+<path class="line s3" style="fill:none" d="M56 287.68L64.467 279.81L72.933 265.941L81.4 252.446L89.867 247.387L98.333 242.938L106.8 238.647L115.267 233.661L123.733 229.738L132.2 226.224L140.667 222.521L149.133 219.963L157.6 218.09L166.067 216.871L174.533 215.763L183 215.257L191.467 215.257L199.933 215.257L208.4 215.257L216.867 215.257L225.333 215.257L233.8 215.257L242.267 215.257L250.733 215.257L259.2 215.257L267.667 215.257L276.133 215.257L284.6 215.257L293.067 215.257L301.533 215.257L310 215.257L318.467 215.257L326.933 215.257L335.4 215.257L343.867 215.257L352.333 215.257L360.8 215.257L369.267 215.257L377.733 215.257L386.2 215.257L394.667 215.257L403.133 215.257L411.6 215.257L420.067 215.257L428.533 215.257L437 215.257L445.467 215.257L453.933 215.257L462.4 215.257L470.867 215.257L479.333 215.257L487.8 215.257L496.267 215.257L504.733 215.257L513.2 215.257L521.667 215.257L530.133 215.257L538.6 215.257L547.067 215.257L555.533 215.257L564 215.257"/>
+<circle class="dot s3" cx="564" cy="215.257" r="4"/>
+</g>
+<g><title>0.1 NEAR pair cap: 6.939 on day 60</title>
+<path class="line s4" style="fill:none" d="M56 287.68L64.467 275.382L72.933 267.138L81.4 260.24L89.867 250.856L98.333 243.152L106.8 244.736L115.267 248.779L123.733 255.261L132.2 261.445L140.667 268.965L149.133 275.07L157.6 277.614L166.067 277.614L174.533 277.614L183 277.614L191.467 277.614L199.933 277.614L208.4 277.614L216.867 277.614L225.333 277.614L233.8 277.614L242.267 277.614L250.733 277.614L259.2 277.614L267.667 277.614L276.133 277.614L284.6 277.614L293.067 277.614L301.533 277.614L310 277.614L318.467 277.614L326.933 277.614L335.4 277.614L343.867 277.614L352.333 277.614L360.8 277.614L369.267 277.614L377.733 277.614L386.2 277.614L394.667 277.614L403.133 277.614L411.6 277.614L420.067 277.614L428.533 277.614L437 277.614L445.467 277.614L453.933 277.614L462.4 277.614L470.867 277.614L479.333 277.614L487.8 277.614L496.267 277.614L504.733 277.614L513.2 277.614L521.667 277.614L530.133 277.614L538.6 277.614L547.067 277.614L555.533 277.614L564 277.614"/>
+<circle class="dot s4" cx="564" cy="277.614" r="4"/>
+</g>
+<g><title>cap, early copy: 10.462 on day 60</title>
+<path class="line s5" style="fill:none" d="M56 287.68L64.467 279.81L72.933 265.941L81.4 252.168L89.867 239.862L98.333 234.412L106.8 229.643L115.267 225.616L123.733 228.56L132.2 230.966L140.667 232.382L149.133 234.936L157.6 237.028L166.067 238.579L174.533 239.513L183 239.845L191.467 239.845L199.933 239.845L208.4 239.845L216.867 239.845L225.333 239.845L233.8 239.845L242.267 239.845L250.733 239.845L259.2 239.845L267.667 239.845L276.133 239.845L284.6 239.845L293.067 239.845L301.533 239.845L310 239.845L318.467 239.845L326.933 239.845L335.4 239.845L343.867 239.845L352.333 239.845L360.8 239.845L369.267 239.845L377.733 239.845L386.2 239.845L394.667 239.845L403.133 239.845L411.6 239.845L420.067 239.845L428.533 239.845L437 239.845L445.467 239.845L453.933 239.845L462.4 239.845L470.867 239.845L479.333 239.845L487.8 239.845L496.267 239.845L504.733 239.845L513.2 239.845L521.667 239.845L530.133 239.845L538.6 239.845L547.067 239.845L555.533 239.845L564 239.845"/>
+<circle class="dot s5" cx="564" cy="239.845" r="4"/>
+</g>
+<line class="line s1" x1="588" x2="604" y1="90" y2="90"/>
+<text class="lg" x="610" y="94">today</text>
+<text class="lv" x="748" y="94" text-anchor="end">23.82</text>
+<line class="line s2" x1="588" x2="604" y1="110" y2="110"/>
+<text class="lg" x="610" y="114">hidden, late copy</text>
+<text class="lv" x="748" y="114" text-anchor="end">22.61</text>
+<line class="line s3" x1="588" x2="604" y1="130" y2="130"/>
+<text class="lg" x="610" y="134">hidden, early copy</text>
+<text class="lv" x="748" y="134" text-anchor="end">12.76</text>
+<line class="line s5" x1="588" x2="604" y1="150" y2="150"/>
+<text class="lg" x="610" y="154">cap, early copy</text>
+<text class="lv" x="748" y="154" text-anchor="end">10.46</text>
+<line class="line s4" x1="588" x2="604" y1="170" y2="170"/>
+<text class="lg" x="610" y="174">0.1 NEAR pair cap</text>
+<text class="lv" x="748" y="174" text-anchor="end">6.94</text>
+</svg>

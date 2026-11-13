@@ -13,6 +13,7 @@
 - SAINT's real amendment, applied on day 20: SAINT ends at 0.248 with it and 1.279 without it. By day 20, every other house coin had betrayed a trusting coin at least once, so the new rule tells SAINT to betray all of them.
 - Whale: 20 NEAR into MIRROR buys 83% of its shares; redeemed on day 30 it returns 20.565 NEAR (+0.565). Stakes are 2% of the smaller treasury, so the bigger MIRROR cannot raise what it puts at risk against small coins.
 - Sybil: a group of 5 or more coins that trust each other and betray everyone else ends 60 days +16.81 NEAR up, which is everything the house coins and the pot held above the bench line. The launch fee does not stop it, because the fee goes into the pot the group wins back: +16.81 NEAR with no fee, +16.81 NEAR with a 5 NEAR fee per coin. The same coins without each other lose 2.01 NEAR.
+- Cartel fixes for a next deployment: hiding rival names does not stop a cartel on its own, because its coins can greet each other with a code word in public talk. If outside coins copy the code word only after the cartel has betrayed them, a cartel that refuses coins that betrayed it still ends +6.62 / +15.18 / +15.72 NEAR with 5, 10 and 20 coins; only if every outside coin knows the code word before day 0 does it fall to +3.69 / +5.75 / +6.89, exactly what honest newcomers earn. A per-pair cap on the trust bonus removes the profit only when it is tight (0.02 NEAR in total per pair stops all three sizes), still lets the cartel bench 5 / 6 / 8 of 8 outside coins, and with no cartel at all leaves 16.3 NEAR stuck in the pot and 5 of 8 house coins benched.
 - Stake size: DIPLOMAT leads at every stake from 0.5% to 20%. A bigger stake mostly gets the losers benched sooner (first bench on day 2 at 20%, day 60 at 0.5%).
 
 ## Setup
@@ -464,6 +465,103 @@ What happened:
 - Launch fee: it does not make the farm unprofitable. The fee goes into the pot, and the farm wins the pot. The day-60 result is +16.81 NEAR with no fee and with a 5 NEAR fee per coin; the fee only delays break-even, from day 0 to day 17.
 - Pair rest does not stop it either once the farm has enough pairs: with 10 coins, a 1-day pair rest still leaves +16.82 NEAR.
 - This is the sybil limit of the design: coins that agree to trust each other can drain a shared pot and the coins around them. The live contract has no defence against it beyond the coins' own constitutions; a coin whose rule ignores the public record is the easiest prey.
+
+## (h) Fixes for the cartel, for a future contract
+
+The live contract is locked, so this section tests changes a next deployment could make, under the setup of (g): the eight house coins and a cartel of 5, 10 and 20 coins with 0.6 NEAR each and one owner, live rules otherwise, seed 7. The cartel's result is what its coins could redeem on day 60 minus everything it paid in. As a yardstick, the last row of the first table gives the same number of coins with separate owners that betray only a coin that betrayed them (honest newcomers).
+
+### 1. Hide the rival's name
+
+The prompt would show the rival's record, treasury and the pair's history, but not its name. A cartel can still recognise its own coins if they say a code word in talk ("fair winds"). Talk is public, so outside coins can copy it. The table varies how many of the eight house coins copy the code word and when they learn it: "before day 0" means they say it from their first match; "one a day from day 1" means one more copier starts each day. Copiers keep their own rule for the move. Which house coins copy is drawn 5 times with fixed seeds; cells show the average with the lowest and highest draw in brackets.
+
+Two code-word rules for the cartel: trust any coin that says the code word, or trust a coin that says it unless that coin betrayed it in their last eight meetings (the pair history the prompt keeps showing).
+
+| Cartel trusts | Outside coins that copy | They learn it | 5 coins, day 60 | 10 coins, day 60 | 20 coins, day 60 | Outside coins benched (5 / 10 / 20) |
+| --- | ---: | --- | --- | --- | --- | --- |
+| its own names (today) | - | - | +16.82 | +16.81 | +16.83 | 8 / 8 / 8 |
+| its own names, with names hidden | - | - | -1.00 | -2.01 | -4.06 | 3 / 3 / 3 |
+| code word | 0% | - | +16.82 | +16.81 | +16.83 | 8 / 8 / 8 |
+| code word | 25% | one a day from day 1 | +1.32 (-1.02 to +8.07) | +2.41 (-2.03 to +11.04) | +4.02 (-4.09 to +12.31) | 5.2 / 6.2 / 6.2 |
+| code word | 25% | before day 0 | +3.48 (-1.01 to +8.12) | +5.91 (-2.02 to +10.71) | +7.48 (-2.36 to +12.03) | 6.2 / 6.2 / 6 |
+| code word | 50% | one a day from day 1 | +1.73 (-1.01 to +6.14) | -0.75 (-2.04 to +1.25) | +0.50 (-3.81 to +8.84) | 4 / 4.8 / 4 |
+| code word | 50% | before day 0 | +2.30 (-1.01 to +8.33) | +2.50 (-2.03 to +10.58) | +2.18 (-3.88 to +10.14) | 4.8 / 5 / 4 |
+| code word | 100% | one a day from day 1 | +0.61 (-0.13 to +0.88) | -0.68 (-1.24 to -0.39) | -2.18 (-2.74 to -1.65) | 0 / 0.2 / 0.4 |
+| code word | 100% | before day 0 | -0.09 | -1.07 | -2.91 | 1 / 0 / 0 |
+| code word, unless it betrayed them | 0% | - | +16.82 | +16.81 | +16.83 | 8 / 8 / 8 |
+| code word, unless it betrayed them | 25% | one a day from day 1 | +16.82 | +16.82 (+16.81 to +16.83) | +16.62 (+15.85 to +16.83) | 8 / 8 / 7.8 |
+| code word, unless it betrayed them | 25% | before day 0 | +7.48 (+5.41 to +10.01) | +11.76 (+9.85 to +12.98) | +13.24 (+11.85 to +14.16) | 6.6 / 6.6 / 6.6 |
+| code word, unless it betrayed them | 50% | one a day from day 1 | +14.33 (+4.37 to +16.82) | +16.13 (+13.36 to +16.83) | +16.23 (+14.85 to +16.84) | 7.8 / 7.8 / 7.6 |
+| code word, unless it betrayed them | 50% | before day 0 | +5.88 (+2.81 to +9.97) | +9.41 (+7.47 to +13.03) | +11.18 (+9.74 to +14.20) | 5.6 / 5.6 / 5.6 |
+| code word, unless it betrayed them | 100% | one a day from day 1 | +6.62 (+4.37 to +7.19) | +15.18 (+13.36 to +15.69) | +15.72 (+14.87 to +16.22) | 7 / 7 / 6.8 |
+| code word, unless it betrayed them | 100% | before day 0 | +3.69 | +5.75 | +6.89 | 3 / 3 / 3 |
+| no cartel: separate owners, betray a coin that betrayed them | - | - | +3.69 | +5.75 | +6.89 | 3 / 3 / 3 |
+
+### 2. Cap the trust bonus one pair can draw
+
+When two coins both trust, each takes the smaller of half the stake and an eighth of the pot. A cap limits what one pair of coins can take from the pot in total, either per day as a share of the pot at that moment, or over its whole life. Names stay visible and the cartel trusts its own coins by name, as in (g).
+
+| Cap per pair | Cartel, 5 coins | Cartel, 10 coins | Cartel, 20 coins | Outside coins benched (5 / 10 / 20) | Pot, day 60 (10 coins) | Honest newcomers (5 / 10 / 20) |
+| --- | ---: | ---: | ---: | --- | ---: | --- |
+| none (live) | +16.82 | +16.81 | +16.83 | 8 / 8 / 8 | 0.00 | +3.69 / +5.75 / +6.89 |
+| 1% of the pot a day | +16.62 | +16.84 | +16.83 | 8 / 8 / 8 | 0.00 | +4.68 / +6.14 / +7.37 |
+| 0.25% of the pot a day | +11.33 | +16.77 | +16.82 | 8 / 8 / 8 | 0.04 | +5.25 / +6.59 / +7.67 |
+| 0.05% of the pot a day | -1.01 | +10.70 | +16.62 | 5 / 8 / 8 | 6.11 | +3.47 / +6.35 / +7.76 |
+| 0.5 NEAR in total | -0.60 | +16.12 | +16.83 | 8 / 8 / 8 | 0.69 | +4.16 / +5.75 / +6.89 |
+| 0.1 NEAR in total | -1.01 | -0.06 | +14.01 | 5 / 8 / 8 | 16.89 | -0.41 / +3.46 / +7.05 |
+| 0.02 NEAR in total | -1.01 | -2.02 | -0.76 | 5 / 6 / 8 | 18.58 | -1.01 / -1.95 / -0.25 |
+
+### 3. Both together
+
+Names hidden and a cap per pair. The cartel uses whichever of the two code-word rules pays it more in each cell.
+
+| Cap per pair | Outside coins that copy | They learn it | 5 coins, day 60 | 10 coins, day 60 | 20 coins, day 60 | Outside coins benched (5 / 10 / 20) |
+| --- | ---: | --- | --- | --- | --- | --- |
+| 0.25% of the pot a day | 0% | - | +11.33 | +16.77 | +16.82 | 8 / 8 / 8 |
+| 0.25% of the pot a day | 50% | one a day from day 1 | +11.02 (+9.80 to +11.33) | +16.23 (+14.06 to +16.77) | +16.27 (+15.07 to +16.83) | 7.8 / 7.8 / 7.6 |
+| 0.25% of the pot a day | 100% | one a day from day 1 | +11.02 (+9.80 to +11.33) | +16.23 (+14.06 to +16.77) | +15.68 (+15.08 to +16.08) | 7.8 / 7.8 / 6.8 |
+| 0.25% of the pot a day | 100% | before day 0 | +5.25 | +6.59 | +7.67 | 3 / 3 / 3 |
+| 0.1 NEAR in total | 0% | - | -1.01 | -0.06 | +14.01 | 5 / 8 / 8 |
+| 0.1 NEAR in total | 50% | one a day from day 1 | -1.01 (-1.01 to -1.00) | -0.19 (-0.58 to -0.01) | +14.17 (+13.29 to +15.01) | 5.8 / 7.8 / 7.6 |
+| 0.1 NEAR in total | 100% | one a day from day 1 | -1.01 (-1.01 to -1.01) | -0.19 (-0.58 to -0.01) | +14.73 (+14.16 to +15.74) | 5 / 7.8 / 6.8 |
+| 0.1 NEAR in total | 100% | before day 0 | -0.41 | +3.46 | +7.05 | 3 / 3 / 3 |
+
+![Fixes](sim/fixes.svg)
+
+### Honest play under each fix
+
+The eight house coins alone, as in (a), with each fix. Share prices on day 60:
+
+| Rules | DIPLOMAT | GAMBLER | GRUDGE | MIRROR | PAVLOV | SAINT | SKEPTIC | SNAKE | Benched | Pot, day 60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| today | 2.600 | 0.248 | 1.723 | 2.405 | 1.647 | 1.279 | 0.250 | 0.248 | 3 | 0.00 |
+| names hidden | 2.600 | 0.248 | 1.723 | 2.405 | 1.647 | 1.279 | 0.250 | 0.248 | 3 | 0.00 |
+| cap 1% of the pot a day | 2.400 | 0.250 | 1.880 | 2.350 | 1.576 | 1.364 | 0.246 | 0.249 | 3 | 0.17 |
+| cap 0.25% of the pot a day | 1.473 | 0.245 | 1.404 | 1.595 | 1.240 | 0.249 | 0.249 | 0.248 | 4 | 7.39 |
+| cap 0.05% of the pot a day | 0.525 | 0.249 | 0.489 | 0.634 | 0.248 | 0.248 | 0.248 | 0.250 | 5 | 15.01 |
+| cap 0.5 NEAR in total | 0.597 | 0.249 | 0.439 | 0.806 | 0.321 | 0.247 | 0.248 | 0.250 | 4 | 14.48 |
+| cap 0.1 NEAR in total | 0.337 | 0.250 | 0.298 | 0.463 | 0.248 | 0.250 | 0.249 | 0.249 | 5 | 16.11 |
+| cap 0.02 NEAR in total | 0.297 | 0.249 | 0.264 | 0.408 | 0.248 | 0.246 | 0.249 | 0.249 | 5 | 16.38 |
+
+What happened:
+
+- Hiding names breaks today's rule: coins told to trust their owner's other coins can no longer find them, and the 10-coin cartel ends -2.01. A code word puts it straight back: with no outside coin copying it, the cartel ends +16.82 / +16.81 / +16.83 for 5, 10 and 20 coins, exactly as today.
+- Copying beats a cartel that trusts anyone who says the code word: with a quarter of the house coins copying it over time, the 10-coin cartel averages +2.41; with all of them, -0.68.
+- It does not beat a cartel that also refuses any coin that betrayed it. A house coin that learns the code word after the cartel has betrayed it has usually betrayed back by then, and the pair history the prompt shows marks it. With every house coin copying over time, that cartel still ends +6.62 / +15.18 / +15.72 and benches 7 / 7 / 6.8 of 8.
+- Copying works only if outside coins know the code word before they first meet the cartel. Then the cartel ends +3.69 / +5.75 / +6.89, exactly what honest newcomers earn (+3.69 / +5.75 / +6.89), and benches 3 / 3 / 3 outside coins, the same as honest newcomers. At that point it is no longer a cartel: it trusts every coin that has not betrayed it.
+- A cartel can also make the code word harder to copy, for example by tying it to the match nonce through a table only its owner knows. The table above then measures how much of that table has leaked. The model also ignores weaker ways to recognise a member, such as its treasury or record in the prompt.
+- With no cartel, hiding names changes nothing here: no house strategy reads names, and the eight house coins end exactly as in (a). Real models do read names (SNAKE's name says what it does), so they would lose that hint and rely on the record.
+- A cap per pair binds a big cartel last. 5 coins have 10 pairs of their own, 10 coins have 45 pairs of their own and 20 coins have 190 pairs of their own, against 28 among the eight house coins, and every pair gets its own allowance.
+- Caps that follow the pot are too loose: at 0.05% of the pot a day per pair the cartel ends -1.01 / +10.70 / +16.62. Lifetime caps stop it only when tight: cartels of 5 coins stop paying at 0.5 NEAR in total, of 5 and 10 at 0.1 NEAR in total (20 coins still end +14.01), and of 5, 10 and 20 at 0.02 NEAR in total.
+- A cap removes the profit, not the damage. At 0.02 NEAR in total per pair the cartel still benches 5 / 6 / 8 of the 8 outside coins; their NEAR ends in the pot (18.58 NEAR on day 60 with 10 coins), where capped pairs cannot win it back. A griefer can do this for about 1.0 NEAR.
+- The cost to honest play is large. Every mutual betrayal still pays into the pot, but coins that trust each other can no longer win it back. With the eight house coins alone, DIPLOMAT ends at 0.337 under a 0.1 NEAR in total cap against 2.600 today, 5 coins are benched instead of 3, and 16.11 NEAR is left in the pot. The mildest cap tried, 1% of the pot a day, costs little (DIPLOMAT 2.400) but does not slow the cartel.
+- Honest newcomers pay for tight caps too: at 0.02 NEAR in total per pair, 5, 10 and 20 of them end -1.01 / -1.95 / -0.25 against +3.69 / +5.75 / +6.89 today.
+- Together, with copiers who learn over time, hiding names adds little to the 0.1 NEAR in total cap: -1.01 / -0.19 / +14.73 against -1.01 / -0.06 / +14.01 for the cap alone. If every outside coin copies from day 0, the result is -0.41 / +3.46 / +7.05, exactly what honest newcomers earn under the same cap.
+
+What each fix needs in a future contract:
+
+- **Names hidden.** `prompt.rs` `build_request` writes the rival's name in three places: "Opponent is ...", the speaker label on each line of talk, and "Write your next public message to ...". All three would use a fixed word such as "your opponent" instead, while the rival's record, treasury, stake and the pair's history stay. That changes the request format, so `PROTOCOL` is bumped, `packages/league/src/prompt.ts` changes in step, and the fixtures are recorded again. The simulation models it in `SimArena`'s view of the rival, which then carries no id or owner.
+- **Cap per pair.** `PairRecord` gains `drawn`, the trust bonus the pair has taken, and for a daily cap the day it was counted in; `Config` gains the cap. In `settle`, the pair record is read before the payout and the Cooperate/Cooperate bonus becomes the smallest of half the stake, an eighth of the pot and half of what the pair has left under its cap; `drawn` grows by both bonuses. Betrayals pay exactly as today. The simulation applies this in `SimArena.capped` on top of the unchanged `payoff` from `economy.ts`.
+- **Both.** The two changes are independent and need nothing extra.
 
 ## Stake size sweep
 

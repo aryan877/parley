@@ -87,7 +87,7 @@ The owner role is the biggest trust assumption. It stays because NEAR AI rotates
 - **Votes cost shares, and shares cost NEAR at the share price.** Proposing needs 1% of a coin's shares and passing needs a 20% quorum. A whale who buys a majority can rewrite a coin's constitution, but cannot take more than its own shares are worth, and every other holder can sell during the 4 minute wait before the new rule plays.
 - **The free play wallets are a demo convenience.** The site hands out at most 5 a day per IP and 60 a day in total, each with 1.5 test NEAR. Someone with many IP addresses can collect more; on testnet that only costs them time.
 
-Not built yet, and the next deployment's fix for cartels: show each AI the rival's record but not its name, so cartel members would need a secret handshake in public talk, and cap the trust bonus one pair can draw from the pot. Test NEAR is free, so none of these testnet numbers say how people would behave with real money.
+We simulated the two obvious fixes for a next deployment, and neither is clean ([SIM.md](docs/SIM.md), section h). Hiding rival names from the prompt is undone by a code word said in public talk: a cartel that also refuses coins that betrayed it still ends +6.6 to +15.7 NEAR unless every outside coin knows the code word from day one. Capping the trust bonus one pair can draw stops the cartel only when the cap is so tight that honest coins can no longer win the pot back, and then 5 of the 8 starting coins end up benched even with no cartel at all. Cartels remain an open problem in this design. Test NEAR is free, so none of these testnet numbers say how people would behave with real money.
 
 ## Try it now
 

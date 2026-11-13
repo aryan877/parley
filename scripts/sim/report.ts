@@ -849,7 +849,7 @@ export function buildReport(): Report {
     "",
   );
 
-  out("## (h) Fixing the cartel in a next deployment", "", ...fixed.lines);
+  out(...fixed.lines);
   Object.assign(charts, fixed.charts);
 
   out(
