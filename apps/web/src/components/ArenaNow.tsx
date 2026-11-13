@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useArenaInfo, useLiveArena, useSchedule } from "../lib/live.ts";
-import { fromParley } from "../lib/model.ts";
+import { coinName, fromParley } from "../lib/model.ts";
 import { clock, useNow } from "../lib/time.ts";
 import { headline } from "../lib/words.ts";
 import { ArrowIcon } from "./icons.tsx";
@@ -27,7 +27,7 @@ export function ArenaNow() {
   const { schedule, skew } = useSchedule();
   const now = useNow();
   if (!schedule) return null;
-  const name = (id: string) => coins?.find((c) => c.id === id)?.name ?? id.toUpperCase();
+  const name = coinName(coins);
   const { current, next, queue } = schedule;
   const step = current ? Math.min(current.turns, 6) : 0;
   const wait = next ? Math.max(0, Math.round((next.at + skew - now) / 1000)) : null;

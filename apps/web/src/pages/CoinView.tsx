@@ -19,7 +19,7 @@ import { ShareButton } from "../components/Share.tsx";
 import { TokenPanel } from "../components/TokenPanel.tsx";
 import { Mascot, mascotColor } from "../components/Mascot.tsx";
 import { BoltIcon, BrainIcon, RestartIcon, TrustIcon, BetrayIcon, WalletIcon } from "../components/icons.tsx";
-import { type CoinInfo, type Match, fmtNear, fromCoin, fromParley, nearNumber, pctText, sharePrice, sinceLaunch, trustRate } from "../lib/model.ts";
+import { type CoinInfo, type Match, coinName, fmtNear, fromCoin, fromParley, nearNumber, pctText, sharePrice, sinceLaunch, trustRate } from "../lib/model.ts";
 import { ARENA_API, useArenaInfo } from "../lib/live.ts";
 import { holdings, setHolding } from "../lib/holdings.ts";
 import { type VoteLock, forget, parleysBefore, reads, view } from "../lib/near.ts";
@@ -602,7 +602,7 @@ function LiveCoin({ id }: { id: string }) {
     return <p className="muted loading-line">Loading…</p>;
   }
 
-  const name = (cid: string) => all?.find((x) => x.id === cid)?.name ?? cid.toUpperCase();
+  const name = coinName(all);
   const byId = new Map<number, Parley>();
   for (const p of [...older, ...recent]) byId.set(p.id, p);
   const matches = [...byId.values()]

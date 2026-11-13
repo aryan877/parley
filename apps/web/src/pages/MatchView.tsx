@@ -5,7 +5,7 @@ import { ShareButton, matchShareLine } from "../components/Share.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
 import { ArrowIcon } from "../components/icons.tsx";
 import { useCalls } from "../lib/calls.ts";
-import { type Match } from "../lib/model.ts";
+import { type Match, coinName } from "../lib/model.ts";
 import { loadLiveMatch, useArenaInfo, useLiveMatch, useSchedule } from "../lib/live.ts";
 import { reads } from "../lib/near.ts";
 import { useSeason } from "../lib/season.ts";
@@ -86,7 +86,7 @@ function LiveMatch({ id }: { id: number }) {
   if (!ready) return <p className="muted loading-line">Connecting…</p>;
   if (!info) return <p className="muted loading-line">The live arena is offline right now.</p>;
   if (!shown) return <p className="muted">Loading match {id}…</p>;
-  const nameOf = (cid: string) => coins.find((x) => x.id === cid)?.name ?? cid.toUpperCase();
+  const nameOf = coinName(coins);
   const own = (cid: string) => !!w.accountId && coins.find((x) => x.id === cid)?.creator === w.accountId;
   const mine = shown.settled ? [shown.a, shown.b].find(own) : undefined;
   const fighter = (cid: string): Fighter => {

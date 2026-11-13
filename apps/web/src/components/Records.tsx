@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useRecords } from "../lib/chronicle.ts";
 import { useLiveArena } from "../lib/live.ts";
-import { fmtNear } from "../lib/model.ts";
+import { coinName, fmtNear } from "../lib/model.ts";
 import { Mascot } from "./Mascot.tsx";
 import "./Records.css";
 
@@ -18,7 +18,7 @@ export function RecordsStrip() {
   const records = useRecords();
   const { coins } = useLiveArena(10_000);
   if (!records || !records.matches) return null;
-  const name = (id: string) => coins?.find((c) => c.id === id)?.name ?? id.toUpperCase();
+  const name = coinName(coins);
   const { betrayal, streak, richest, improved } = records;
   const tiles: Tile[] = [];
   if (betrayal) {

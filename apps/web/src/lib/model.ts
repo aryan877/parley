@@ -127,6 +127,9 @@ export function sharePrice(c: CoinInfo, start = 100n * YOCTO): number {
 
 export const trustRate = (c: CoinInfo) => (c.played ? c.trusted / c.played : 0);
 
+/** Looks up a coin's name, falling back to its id in capitals for a coin not in the list. */
+export const coinName = (coins: readonly { id: string; name: string }[] | null | undefined) => (id: string) => coins?.find((c) => c.id === id)?.name ?? id.toUpperCase();
+
 /** Percent change in share price since launch, when every coin's shares start at 1 NEAR each. Null for coins without shares. */
 export const sinceLaunch = (c: { treasury: string; shares: string }) => sinceLaunchPct({ treasury: c.treasury, total_shares: c.shares });
 
