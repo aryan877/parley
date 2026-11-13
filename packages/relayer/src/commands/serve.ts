@@ -2,6 +2,7 @@ import { Arena, type Coin, type Config, type Model, NETWORKS, type Parley, type 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { attackLab } from "../attacks.ts";
+import { Challenges } from "../challenges.ts";
 import { Ledger } from "../ledger.ts";
 import { ROOT, fundPlayer, loadDeployment } from "../localnet.ts";
 import { RoutingMind } from "../minds/routing.ts";
@@ -25,16 +26,9 @@ type Event =
   | { type: "settled"; parley: Parley }
   | { type: "idle"; reason: string };
 
-interface Challenge {
-  a: string;
-  b: string;
-  since?: number;
-}
-
 const CHALLENGE_PATIENCE_MS = 10 * 60_000;
 
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
-const MAX_QUEUE = 12;
 const STATE = join(ROOT, process.env.PARLEY_NETWORK === "testnet" ? ".testnet" : ".localnet");
 const PLAYERS = join(STATE, "players.json");
 const ORDERS = join(STATE, "orders.json");
@@ -122,8 +116,8 @@ export async function serve() {
   const share = sharePages(owner, flag("static"));
   const autoplay = process.argv.includes("--autoplay");
   const pause = Number(flag("pause", "4")) * 1000;
-  const queue: Challenge[] = existsSync(QUEUE) ? (JSON.parse(readFileSync(QUEUE, "utf8")) as Challenge[]) : [];
-  const saveQueue = () => writeFileSync(QUEUE, JSON.stringify(queue));
+  const challenges = new Challenges(QUEUE);
+  const held = async (coin: string) => (await owner.amendments(coin)).length > 0;
   const watchers = new Set<(event: Event) => void>();
   const players: string[] = existsSync(PLAYERS) ? (JSON.parse(readFileSync(PLAYERS, "utf8")) as string[]) : [];
   const watched = new Set<string>(existsSync(ORDERS) ? (JSON.parse(readFileSync(ORDERS, "utf8")) as string[]) : []);
@@ -136,7 +130,7 @@ export async function serve() {
   mkdirSync(EVIDENCE, { recursive: true });
   const handedOut: { ip: string; at: number }[] = [];
   let wake: (() => void) | null = null;
-  const rest = (ms: number) => Promise.race([Bun.sleep(ms), new Promise<void>((resolve) => (wake = resolve))]).finally(() => (wake = null));
+  const rest = (ms: number) => Promise.race([Bun.sleep(ms).then(() => false), new Promise<boolean>((resolve) => (wake = () => resolve(true)))]).finally(() => (wake = null));
   const site = flag("static");
   const ledger = new Ledger({ dir: STATE, network: deployment.network, contractId: deployment.contractId, rpcUrl: deployment.rpcUrl });
   const annals = chronicle(owner, ledger);
@@ -207,8 +201,7 @@ export async function serve() {
   async function work() {
     for (;;) {
       const stuck = await unfinished().catch(() => null);
-      const next = stuck === null ? queue.shift() : undefined;
-      if (next) saveQueue();
+      const next = stuck === null ? await challenges.take(held).catch(() => undefined) : undefined;
       let problem: string | null = null;
       try {
         if (stuck !== null) {
@@ -220,10 +213,7 @@ export async function serve() {
         } else if (next) {
           problem = await play(() => owner.openParleyBetween(next.a, next.b), "challenge");
           const since = next.since ?? Date.now();
-          if (problem?.includes("already in a Parley") && Date.now() - since < CHALLENGE_PATIENCE_MS) {
-            queue.push({ ...next, since });
-            saveQueue();
-          }
+          if (problem?.includes("already in a Parley") && Date.now() - since < CHALLENGE_PATIENCE_MS) challenges.later(next, since);
         }
         else if (autoplay) problem = await play(() => owner.openParley(), "the contract's pairing");
         else problem = "waiting for a challenge";
@@ -232,11 +222,10 @@ export async function serve() {
         current = null;
       }
       if (problem) emit({ type: "idle", reason: problem });
-      const until = Date.now() + (stuck !== null && problem ? Math.max(pause, 30_000) : queue.length ? 3000 : problem ? Math.max(pause, 3000) : pause);
-      while (Date.now() < until && !queue.length) {
+      const until = Date.now() + (stuck !== null && problem ? Math.max(pause, 30_000) : challenges.queue.length ? 3000 : problem ? Math.max(pause, 3000) : pause);
+      do {
         await govern().catch(() => {});
-        await rest(Math.min(60_000, Math.max(0, until - Date.now())));
-      }
+      } while (Date.now() < until && !(await rest(Math.min(60_000, until - Date.now()))));
     }
   }
 
@@ -247,7 +236,7 @@ export async function serve() {
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         const send = (event: Event) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-        send({ type: "hello", current, queue: queue.length });
+        send({ type: "hello", current, queue: challenges.queue.length });
         // Proxies buffer idle streams; 20s keeps the live arena feed alive without spamming.
         heartbeat = setInterval(() => controller.enqueue(encoder.encode(": still here\n\n")), 20_000);
         watch = send;
@@ -261,18 +250,17 @@ export async function serve() {
     return new Response(body, { headers: { ...CORS, "content-type": "text/event-stream", "cache-control": "no-cache" } });
   }
 
-  async function challenge(req: Request): Promise<Response> {
+  async function challenge(req: Request, ip: string): Promise<Response> {
     const body = (await req.json().catch(() => null)) as { coin?: string; opponents?: string[] } | null;
     const coins = await owner.coins();
     const mine = coins.find((c) => c.id === body?.coin);
     if (!mine) return json({ error: "No such coin." }, 400);
-    const opponents = (body?.opponents ?? []).filter((o) => o !== mine.id && coins.some((c) => c.id === o)).slice(0, 3);
+    const opponents = [...new Set(body?.opponents ?? [])].flatMap((o) => coins.filter((c) => c.id === o && o !== mine.id)).slice(0, 3);
     if (!opponents.length) return json({ error: "Pick at least one coin to meet." }, 400);
-    if (queue.length + opponents.length > MAX_QUEUE) return json({ error: "The arena is busy. Try again in a minute." }, 429);
-    opponents.forEach((o, i) => queue.push(i % 2 === 0 ? { a: mine.id, b: o } : { a: o, b: mine.id }));
-    saveQueue();
+    const { queued, refusal, retryAt } = await challenges.book(mine, opponents, ip, held);
+    if (!queued.length) return json({ error: refusal, retryAt }, 429);
     wake?.();
-    return json({ queued: opponents.length, ahead: queue.length - opponents.length + (current ? 1 : 0) });
+    return json({ queued: queued.length, ahead: challenges.queue.length - queued.length + (current ? 1 : 0), ...(refusal && { note: refusal }) });
   }
 
   async function faucet(req: Request, ip: string): Promise<Response> {
@@ -322,9 +310,11 @@ export async function serve() {
         if (url.pathname === "/api/schedule") {
           if (schedule && Date.now() - schedule.at < SCHEDULE_TTL) return json({ ...(schedule.body as object), now: Date.now() });
           const [coins, config, models] = await Promise.all([owner.coins(), owner.config(), owner.models()]);
-          const queued = queue.map((q) => ({ a: q.a, b: q.b }));
-          const next: Next | null = queued[0]
-            ? { ...queued[0], at: current ? 0 : Date.now(), why: "challenge" }
+          const changing = new Set(coins.filter((c) => c.amendments?.length).map((c) => c.id));
+          const queued = challenges.line((id) => changing.has(id));
+          const ready = queued.find((q) => !q.held);
+          const next: Next | null = ready
+            ? { a: ready.a, b: ready.b, at: current ? 0 : Date.now(), why: "challenge" }
             : autoplay
               ? await predict(owner, coins.filter((c) => c.id !== current?.parley.a && c.id !== current?.parley.b), config, models, pairs)
               : null;
@@ -341,7 +331,7 @@ export async function serve() {
           schedule = { at: Date.now(), body };
           return json(body);
         }
-        if (url.pathname === "/api/challenge" && req.method === "POST") return challenge(req);
+        if (url.pathname === "/api/challenge" && req.method === "POST") return await challenge(req, ip());
         if (url.pathname === "/api/watch-order" && req.method === "POST") {
           const body = (await req.json().catch(() => null)) as { coin?: string; account?: string } | null;
           if (!body?.coin || !body.account || !/^[a-z0-9._-]{2,64}$/.test(body.account) || !(await owner.coin(body.coin))) return json({ error: "Send a coin and an account." }, 400);

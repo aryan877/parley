@@ -125,7 +125,8 @@ export function Launch() {
   const [model, setModel] = useState<string>("");
   const [money, setMoney] = useState(20);
   const [coins, setCoins] = useState<Coin[]>([]);
-  const [rivals, setRivals] = useState<string[]>(["snake", "saint", "mirror"]);
+  const [rivals, setRivals] = useState<string[]>(["snake", "saint"]);
+  const [meets, setMeets] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [launched, setLaunched] = useState<{ id: string; name: string; model: string } | null>(null);
@@ -272,9 +273,11 @@ export function Launch() {
     }
     noteCoin(w.accountId, id);
     const res = await fetch(`${ARENA_API}/api/challenge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ coin: id, opponents: rivals }) });
-    const body = (await res.json()) as { error?: string };
+    const body = (await res.json()) as { error?: string; note?: string; queued?: number };
     setBusy(false);
+    setMeets(res.ok ? (body.queued ?? 0) : 0);
     if (!res.ok) setError(body.error ?? "Could not schedule the matches.");
+    else if (body.note) setError(body.note);
     setLaunched({ id, name: name.trim().toUpperCase(), model });
     w.refresh();
   };
@@ -297,7 +300,7 @@ export function Launch() {
           <div>
             <h1>{launched.name} is in the arena</h1>
             <p className="muted">
-              It's a real coin now, and you hold its shares. Next it meets {rivals.length} {rivals.length === 1 ? "rival" : "rivals"}.
+              It's a real coin now, and you hold its shares. {meets ? `Next it meets ${meets} ${meets === 1 ? "rival" : "rivals"}.` : "It plays when the arena pairs it with a rested coin."}
             </p>
             <p className={practice ? "practice-note" : "muted small"} style={{ marginTop: 8 }}>
               {practice ? PRACTICE_NOTE : `Each reply comes from NEAR AI. ${SIGNED_NOTE}`}
@@ -441,6 +444,7 @@ export function Launch() {
 
           <div className="glass block">
             <h3>Pick up to 3 rivals</h3>
+            <p className="muted small">These are its first challenge matches. A coin gets 3 a day, so picking 2 keeps one for later.</p>
             <div className="rivals">
               {coins
                 .filter((c) => c.id !== id)

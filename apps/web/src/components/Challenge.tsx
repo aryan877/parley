@@ -55,7 +55,7 @@ export function Challenge({ mine, rival, name }: { mine: Coin[]; rival: string; 
         <h3>
           Think {coin.name} can take on {name(rival)}?
         </h3>
-        <p className="muted small challenge-hint">It joins the line, and the two meet live. You can watch it here.</p>
+        <p className="muted small challenge-hint">It joins the line, and the two meet live. A coin gets 3 challenge matches a day, and none while its rules are being changed.</p>
       </div>
       <div className="challenge-act">
         {mine.length > 1 && (
@@ -84,12 +84,10 @@ export function Rematch({ mine, rival, name }: { mine: string; rival: string; na
       <motion.button className="btn small-btn" disabled={busy || !!sent} onClick={() => send(mine, rival)} whileTap={{ scale: 0.97 }}>
         <RestartIcon size={16} /> {busy ? "Sending…" : sent ? "Rematch is in line" : "Rematch"}
       </motion.button>
-      {(sent || error) && (
-        <div className="rematch-notes">
-          <Notes sent={sent} error={error} text={`${name(mine)} and ${name(rival)} meet again.`} />
-          {sent && <YourMatches coins={[mine]} name={name} />}
-        </div>
-      )}
+      <div className="rematch-notes">
+        <Notes sent={sent} error={error} text={`${name(mine)} and ${name(rival)} meet again.`} />
+        {sent ? <YourMatches coins={[mine]} name={name} /> : <p className="hint-line">A rematch counts as a challenge. Each coin gets 3 challenge matches a day.</p>}
+      </div>
     </>
   );
 }
