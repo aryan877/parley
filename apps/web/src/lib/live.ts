@@ -1,5 +1,6 @@
 import type { Coin, Config, Model, Overview, Parley, SignedReply } from "@parley/sdk/src/types.ts";
 import { useEffect, useRef, useState } from "react";
+import type { Fighter } from "../components/Stage.tsx";
 import { type Match, fromParley } from "./model.ts";
 import { forget, reads } from "./near.ts";
 
@@ -245,6 +246,20 @@ export async function loadLiveMatch(i: ArenaInfo, id: number): Promise<Match | n
     .then((r) => (r.ok ? (r.json() as Promise<{ turns: Evidence[] }>) : null))
     .catch(() => null);
   return fromParley(parley, kept?.turns ?? []);
+}
+
+/** Live coins as fighters in match `id`, each with its treasury before it: today's treasury less every settled result from that match on. */
+export function liveFighters(coins: Coin[] | null, recent: Parley[], id: number): (coin: string) => Fighter {
+  const later = new Map<string, bigint>();
+  for (const p of recent) {
+    if (p.id < id || p.status !== "Settled") continue;
+    later.set(p.a, (later.get(p.a) ?? 0n) + BigInt(p.a_delta));
+    later.set(p.b, (later.get(p.b) ?? 0n) + BigInt(p.b_delta));
+  }
+  return (cid) => {
+    const c = coins?.find((x) => x.id === cid);
+    return { id: cid, name: c?.name ?? cid.toUpperCase(), rules: c?.constitution ?? "", before: (BigInt(c?.treasury ?? "0") - (later.get(cid) ?? 0n)).toString() };
+  };
 }
 
 export interface Schedule {

@@ -622,7 +622,7 @@ section.tight {
 
 .arena-now {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
@@ -686,13 +686,6 @@ section.tight {
   color: var(--faint);
 }
 
-.now-progress {
-  width: 100%;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.now-progress .bar,
 .trust-bar,
 .vote-bar {
   height: 6px;
@@ -701,11 +694,6 @@ section.tight {
   overflow: hidden;
 }
 
-.now-progress .bar {
-  margin-bottom: 8px;
-}
-
-.now-progress .bar i,
 .trust-bar i,
 .vote-bar i {
   display: block;
@@ -713,10 +701,6 @@ section.tight {
   border-radius: 999px;
   background: var(--trust);
   transition: width 0.6s ease;
-}
-
-.now-progress .bar i {
-  background: linear-gradient(90deg, var(--mind), var(--trust));
 }
 
 .now-when {
@@ -2350,12 +2334,6 @@ section.tight {
   .cards {
     grid-template-columns: repeat(2, 1fr);
   }
-  .arena-now {
-    grid-template-columns: 1fr 1fr;
-  }
-  .now-col.rule {
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-width: 900px) {
@@ -2854,27 +2832,6 @@ section.tight {
 
 .page-tabs {
   margin: 0 0 16px;
-}
-
-.now-idle {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.now-sub {
-  margin-bottom: -4px;
-  font-size: 12.5px;
-  font-weight: 650;
-  color: var(--faint);
-}
-
-.now-result {
-  margin: 0;
-}
-
-.now-idle p {
-  margin: 0;
 }
 
 .now-when.calm {
