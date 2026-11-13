@@ -2,7 +2,7 @@ import { type Arena, type Coin, type Parley, fmtNear, promises } from "@parley/s
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export type Outcome = "trust" | "betray" | "both-betray";
+type Outcome = "trust" | "betray" | "both-betray";
 
 export interface Told {
   title: string;
