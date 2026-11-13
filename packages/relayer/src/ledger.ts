@@ -1,8 +1,10 @@
+import type { GovernanceFacts } from "@parley/sdk/src/chronicle.ts";
 import type { Books, CoinMoney, LedgerEntry, LedgerKind, LedgerPage, LedgerStatus, LedgerSummary, LedgerTotals } from "@parley/sdk/src/ledger.ts";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const TX_API: Record<string, string> = { testnet: "https://tx.test.fastnear.com", mainnet: "https://tx.main.fastnear.com" };
+const FORMAT = 2;
 const PAGE = 200;
 const BATCH = 20;
 const SETTLE_BLOCKS = 20;
@@ -11,6 +13,8 @@ const PACE_MS = 250;
 const POLL_MS = 60_000;
 const RETRY_MS = 20_000;
 const STORAGE_PER_BYTE = 10n ** 19n;
+const RULE_CALLS = new Set(["create_coin", "create_house_coin", "propose_amendment"]);
+const GOVERNANCE_EVENTS = new Set(["coin_created", "amendment_proposed", "vote_cast", "amendment_finalized", "amendment_enacted", "amendment_lapsed"]);
 
 type Entry = Omit<LedgerEntry, "seq">;
 
@@ -22,7 +26,11 @@ interface Outcome {
   outcome: { logs: string[]; receipt_ids: string[]; status: Record<string, unknown> };
 }
 
-type Action = string | { FunctionCall?: { method_name: string; deposit?: string }; Transfer?: { deposit?: string } };
+type Action = string | { FunctionCall?: { method_name: string; args?: string; deposit?: string }; Transfer?: { deposit?: string } };
+
+/** JSON reviver that keeps FastNEAR's nanosecond `block_timestamp` numbers as exact strings. */
+export const exactTimestamps = (key: string, value: unknown, context?: { source?: string }) =>
+  key === "block_timestamp" && typeof value === "number" ? (context?.source ?? String(value)) : value;
 
 export interface FastTx {
   execution_outcome: Outcome;
@@ -37,22 +45,39 @@ interface AccountRow {
   tx_block_height: number;
 }
 
+export interface Call {
+  method: string;
+  /** Kept only for the calls that set a constitution. */
+  args?: Record<string, unknown>;
+}
+
 export interface Receipt {
   block: number;
   at: number;
+  /** Nanoseconds, as the chain reports them. */
+  timestamp: string;
   order: number;
   predecessor: string;
   ok: boolean;
   logs: string[];
   deposit: bigint;
   transfer: bigint;
-  methods: string[];
+  calls: Call[];
 }
 
 export interface ChainTx {
   hash: string;
   receipts: Receipt[];
   complete: boolean;
+}
+
+function decodeArgs(base64: string | undefined): Record<string, unknown> | undefined {
+  try {
+    const args = JSON.parse(Buffer.from(base64 ?? "", "base64").toString("utf8")) as unknown;
+    return args && typeof args === "object" && !Array.isArray(args) ? (args as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function readTx(raw: FastTx, contractId: string): ChainTx {
@@ -63,12 +88,13 @@ export function readTx(raw: FastTx, contractId: string): ChainTx {
     .map((r): Receipt => {
       let deposit = 0n;
       let transfer = 0n;
-      const methods: string[] = [];
+      const calls: Call[] = [];
       for (const action of r.receipt.receipt.Action?.actions ?? []) {
         if (typeof action === "string") continue;
         if (action.FunctionCall) {
+          const method = action.FunctionCall.method_name;
           deposit += BigInt(action.FunctionCall.deposit ?? 0);
-          methods.push(action.FunctionCall.method_name);
+          calls.push(RULE_CALLS.has(method) ? { method, args: decodeArgs(action.FunctionCall.args) } : { method });
         }
         if (action.Transfer) transfer += BigInt(action.Transfer.deposit ?? 0);
       }
@@ -77,13 +103,14 @@ export function readTx(raw: FastTx, contractId: string): ChainTx {
       return {
         block: o.block_height,
         at: Math.floor(Number(o.block_timestamp) / 1e6),
+        timestamp: String(o.block_timestamp),
         order: o.index ?? 0,
         predecessor: r.receipt.predecessor_id,
         ok: "SuccessValue" in status || "SuccessReceiptId" in status,
         logs: o.outcome.logs,
         deposit,
         transfer,
-        methods,
+        calls,
       };
     })
     .sort((x, y) => x.block - y.block || x.order - y.order);
@@ -155,8 +182,8 @@ export function entriesOf(tx: ChainTx, orders: OpenOrders): Entry[] {
   for (const r of tx.receipts) {
     if (!r.ok) continue;
     if (r.transfer > 0n) out.push(make(tx.hash, r, "received", { account: r.predecessor, near: r.transfer, wallets: r.transfer }));
-    if (r.methods.includes("new") && r.deposit > 0n) out.push(make(tx.hash, r, "seeded", { account: r.predecessor, near: r.deposit, pot: r.deposit, wallets: r.deposit }));
-    if (r.methods.includes("create_token")) tokenPayment = { payer: r.predecessor, deposit: r.deposit };
+    if (r.calls.some((c) => c.method === "new") && r.deposit > 0n) out.push(make(tx.hash, r, "seeded", { account: r.predecessor, near: r.deposit, pot: r.deposit, wallets: r.deposit }));
+    if (r.calls.some((c) => c.method === "create_token")) tokenPayment = { payer: r.predecessor, deposit: r.deposit };
     for (const { event, data } of events(r.logs)) {
       const text = (key: string) => String(data[key] ?? "");
       const amount = (key: string) => BigInt(String(data[key] ?? 0));
@@ -215,6 +242,48 @@ export function entriesOf(tx: ChainTx, orders: OpenOrders): Entry[] {
     }
   }
   return out;
+}
+
+export interface GovernanceRecord {
+  tx: string;
+  block: number;
+  /** Nanoseconds of the block that ran the receipt. */
+  at: string;
+  /** The account that made the call. */
+  by: string;
+  calls: Call[];
+  events: { event: string; data: EventData }[];
+}
+
+export function governanceOf(tx: ChainTx): GovernanceRecord[] {
+  return tx.receipts.flatMap((r) => {
+    const found = r.ok ? events(r.logs).filter((e) => GOVERNANCE_EVENTS.has(e.event)) : [];
+    return found.length ? [{ tx: tx.hash, block: r.block, at: r.timestamp, by: r.predecessor, calls: r.calls, events: found }] : [];
+  });
+}
+
+/** One coin's launch, proposals, closing tallies and enactments, joining each event to the call that carried its text. */
+export function governanceFacts(records: Iterable<GovernanceRecord>, coin: string): GovernanceFacts {
+  const facts: GovernanceFacts = { created: null, proposals: {}, tallies: {}, enactments: [] };
+  for (const r of records) {
+    const args = (methods: string[], key: string) => r.calls.find((c) => methods.includes(c.method) && c.args?.[key] === coin)?.args;
+    for (const { event, data } of r.events) {
+      if (data.coin !== coin) continue;
+      const id = Number(data.id);
+      if (event === "coin_created") {
+        const call = args(["create_coin", "create_house_coin"], "id");
+        if (call) facts.created = { constitution: String(call.constitution ?? ""), model: String(call.model ?? data.model ?? ""), by: r.by, at: r.at, tx: r.tx };
+      } else if (event === "amendment_proposed") {
+        const call = args(["propose_amendment"], "coin");
+        if (call) facts.proposals[id] = { coin, constitution: String(call.constitution ?? ""), model: String(data.model ?? call.model ?? ""), proposer: String(data.proposer ?? r.by), tx: r.tx };
+      } else if (event === "amendment_finalized") {
+        facts.tallies[id] = { yes: String(data.yes ?? "0"), no: String(data.no ?? "0") };
+      } else if (event === "amendment_enacted") {
+        facts.enactments.push({ coin, id, version: Number(data.constitution_version), at: r.at, tx: r.tx });
+      }
+    }
+  }
+  return facts;
 }
 
 export function openOrders(entries: Iterable<LedgerEntry>): OpenOrders {
@@ -403,9 +472,24 @@ export function balanceBooks(
   };
 }
 
+function readLines<T>(file: string): T[] {
+  if (!existsSync(file)) return [];
+  return readFileSync(file, "utf8")
+    .split("\n")
+    .flatMap((line) => {
+      if (!line.trim()) return [];
+      try {
+        return [JSON.parse(line) as T];
+      } catch {
+        return [];
+      }
+    });
+}
+
 class Refused extends Error {}
 
 interface Cursor {
+  format: number;
   height: number;
   seen: string[];
   txs: number;
@@ -425,12 +509,15 @@ export interface LedgerOptions {
 
 export class Ledger {
   readonly entries: LedgerEntry[] = [];
+  private readonly governed: GovernanceRecord[] = [];
   private readonly api: string | null;
   private readonly file: string;
+  private readonly governanceFile: string;
   private readonly cursorFile: string;
   private readonly known = new Set<string>();
+  private readonly governedTxs = new Set<string>();
   private orders: OpenOrders = new Map();
-  private cursor: Cursor = { height: 0, seen: [], txs: 0, through: null, unread: [], books: null };
+  private cursor: Cursor = { format: FORMAT, height: 0, seen: [], txs: 0, through: null, unread: [], books: null };
   private caughtUp = false;
   private error: string | null = null;
   private last = 0;
@@ -440,18 +527,18 @@ export class Ledger {
   constructor(private readonly options: LedgerOptions) {
     this.api = options.txApi ?? process.env.PARLEY_TX_API ?? TX_API[options.network] ?? null;
     this.file = join(options.dir, `ledger-${options.contractId}.jsonl`);
+    this.governanceFile = join(options.dir, `ledger-${options.contractId}-governance.jsonl`);
     this.cursorFile = join(options.dir, `ledger-${options.contractId}.json`);
-    if (existsSync(this.cursorFile)) this.cursor = { ...this.cursor, ...(JSON.parse(readFileSync(this.cursorFile, "utf8")) as Cursor) };
-    if (existsSync(this.file)) {
-      for (const line of readFileSync(this.file, "utf8").split("\n")) {
-        if (!line.trim()) continue;
-        try {
-          const entry = JSON.parse(line) as LedgerEntry;
-          if (entry.seq > (this.entries.at(-1)?.seq ?? 0)) this.entries.push(entry);
-        } catch {}
-      }
+    if (existsSync(this.cursorFile)) {
+      const saved = JSON.parse(readFileSync(this.cursorFile, "utf8")) as Partial<Cursor>;
+      if (saved.format === FORMAT) this.cursor = { ...this.cursor, ...saved };
     }
+    for (const entry of readLines<LedgerEntry>(this.file)) {
+      if (entry.seq > (this.entries.at(-1)?.seq ?? 0)) this.entries.push(entry);
+    }
+    this.governed.push(...readLines<GovernanceRecord>(this.governanceFile));
     for (const e of this.entries) this.known.add(e.tx);
+    for (const r of this.governed) this.governedTxs.add(r.tx);
     this.orders = openOrders(this.entries);
   }
 
@@ -512,6 +599,7 @@ export class Ledger {
     const found = await this.post<{ transactions?: FastTx[] }>(`${this.api}/v0/transactions`, { tx_hashes: rows.map((r) => r.transaction_hash) });
     const byHash = new Map((found.transactions ?? []).map((t) => [t.execution_outcome.id, t]));
     const fresh: Entry[] = [];
+    const governance: GovernanceRecord[] = [];
     let ok = true;
     for (const row of rows) {
       const raw = byHash.get(row.transaction_hash);
@@ -521,22 +609,30 @@ export class Ledger {
         break;
       }
       if (!tx) this.cursor.unread.push(row.transaction_hash);
-      else if (!this.known.has(tx.hash)) fresh.push(...entriesOf(tx, this.orders));
+      else {
+        if (!this.known.has(tx.hash)) fresh.push(...entriesOf(tx, this.orders));
+        if (!this.governedTxs.has(tx.hash)) governance.push(...governanceOf(tx));
+      }
       if (row.tx_block_height > this.cursor.height) this.cursor = { ...this.cursor, height: row.tx_block_height, seen: [] };
       this.cursor.seen.push(row.transaction_hash);
       this.cursor.txs += 1;
     }
-    this.commit(fresh);
+    this.commit(fresh, governance);
     return ok;
   }
 
-  private commit(fresh: Entry[]): void {
+  private commit(fresh: Entry[], governance: GovernanceRecord[]): void {
     let seq = this.entries.at(-1)?.seq ?? 0;
     const numbered = fresh.map((e) => ({ seq: ++seq, ...e }));
     if (numbered.length) appendFileSync(this.file, numbered.map((e) => JSON.stringify(e)).join("\n") + "\n");
     for (const e of numbered) {
       this.entries.push(e);
       this.known.add(e.tx);
+    }
+    if (governance.length) appendFileSync(this.governanceFile, governance.map((r) => JSON.stringify(r)).join("\n") + "\n");
+    for (const r of governance) {
+      this.governed.push(r);
+      this.governedTxs.add(r.tx);
     }
     this.save();
   }
@@ -611,7 +707,7 @@ export class Ledger {
           signal: AbortSignal.timeout(30_000),
         });
         if (res.ok) {
-          const parsed = (await res.json()) as T & { error?: { cause?: { name?: string } } };
+          const parsed = JSON.parse(await res.text(), exactTimestamps) as T & { error?: { cause?: { name?: string } } };
           if (parsed?.error?.cause?.name !== "TOO_MANY_REQUESTS") return parsed;
         } else {
           if (res.status !== 429 && res.status < 500) throw new Refused(`${new URL(url).host} answered ${res.status}: ${(await res.text()).slice(0, 200)}`);
@@ -656,6 +752,10 @@ export class Ledger {
       entries.push(e);
     }
     return { entries, next: more ? entries.at(-1)!.seq : null, status: this.status() };
+  }
+
+  governance(coin: string): GovernanceFacts {
+    return governanceFacts(this.governed, coin);
   }
 
   summary(): LedgerSummary {

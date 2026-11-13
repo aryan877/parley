@@ -129,12 +129,12 @@ export async function serve() {
   let currentSince = 0;
   let lastEnded = Date.now();
   mkdirSync(EVIDENCE, { recursive: true });
-  const annals = chronicle(owner, deployment.network, join(STATE, "chronicle.json"));
   const handedOut: { ip: string; at: number }[] = [];
   let wake: (() => void) | null = null;
   const rest = (ms: number) => Promise.race([Bun.sleep(ms), new Promise<void>((resolve) => (wake = resolve))]).finally(() => (wake = null));
   const site = flag("static");
   const ledger = new Ledger({ dir: STATE, network: deployment.network, contractId: deployment.contractId, rpcUrl: deployment.rpcUrl });
+  const annals = chronicle(owner, ledger);
 
   const emit = (event: Event) => {
     for (const watch of watchers) watch(event);
