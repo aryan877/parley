@@ -1,9 +1,10 @@
 import type { Coin } from "@parley/sdk/src/types.ts";
 import { Link } from "react-router-dom";
-import { type Records, chainAgo, useRecords } from "../lib/chronicle.ts";
+import { type Records, useRecords } from "../lib/chronicle.ts";
 import { useLiveArena } from "../lib/live.ts";
 import { fmtNear, plainNear } from "../lib/model.ts";
 import { useOpenAt } from "../lib/reveal.ts";
+import { chainAgo } from "../lib/time.ts";
 import { clip } from "../lib/words.ts";
 import { Mascot } from "./Mascot.tsx";
 import "./Bench.css";

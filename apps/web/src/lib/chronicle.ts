@@ -2,7 +2,6 @@ import { type Records, type RulesHistory, arenaRecords } from "@parley/sdk/src/c
 import type { Coin } from "@parley/sdk/src/types.ts";
 import { useEffect, useMemo, useState } from "react";
 import { askArena, useLiveArena } from "./live.ts";
-import { msOf } from "./time.ts";
 
 export type { DiffPart, Records, RulesHistory, RulesVersion } from "@parley/sdk/src/chronicle.ts";
 export { wordDiff } from "@parley/sdk/src/chronicle.ts";
@@ -53,21 +52,6 @@ export function useRecords(): RecordsView | null {
     if (!all) return { ...now, scope: "recent" };
     return { ...all, richest: now.richest ?? all.richest, improved: now.improved ?? all.improved, scope: "all" };
   }, [all, coins, parleys]);
-}
-
-/** A chain time in nanoseconds as a short local date, such as "Nov 12, 3:41 PM". */
-export const chainDate = (ns: string) => new Date(msOf(ns)).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-
-/** How long ago a chain time in nanoseconds was, in rough plain words. */
-export function chainAgo(ns: string, now = Date.now()): string {
-  const s = Math.max(0, Math.round((now - msOf(ns)) / 1000));
-  if (s < 90) return "just now";
-  const m = Math.round(s / 60);
-  if (m < 90) return `${m} minutes ago`;
-  const h = Math.round(m / 60);
-  if (h < 36) return `${h} ${h === 1 ? "hour" : "hours"} ago`;
-  const d = Math.round(h / 24);
-  return `${d} ${d === 1 ? "day" : "days"} ago`;
 }
 
 const histories = new Map<string, RulesHistory>();

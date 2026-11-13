@@ -143,11 +143,3 @@ export function headline(e: LedgerEntry): string {
   if (BigInt(e.shares) > 0n) return `${sh(e.shares)} shares`;
   return "";
 }
-
-export function when(ms: number, now = Date.now()): string {
-  const s = Math.max(0, Math.round((now - ms) / 1000));
-  if (s < 60) return "just now";
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 86_400) return `${Math.floor(s / 3600)} h ago`;
-  return new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-}

@@ -1,8 +1,9 @@
 import type { Coin } from "@parley/sdk/src/types.ts";
 import { Fragment, useState } from "react";
-import { type RulesVersion, chainDate, useRulesHistory, wordDiff } from "../lib/chronicle.ts";
+import { type RulesVersion, useRulesHistory, wordDiff } from "../lib/chronicle.ts";
 import { txLink, useArenaInfo } from "../lib/live.ts";
 import { fmtNear } from "../lib/model.ts";
+import { chainDate } from "../lib/time.ts";
 import { shortAccount, useWallet } from "../lib/wallet.tsx";
 import "./RulesHistory.css";
 
