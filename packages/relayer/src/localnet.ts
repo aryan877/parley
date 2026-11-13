@@ -1,5 +1,6 @@
-import { Account, JsonRpcProvider, KeyPair, type KeyPairString, actions } from "near-api-js";
+import { Account, JsonRpcProvider, KeyPair, type KeyPairString, actions, baseEncode } from "near-api-js";
 import { type Config, MINUTE_NS, type ModelInput, NETWORKS, near } from "@parley/sdk";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -7,7 +8,7 @@ export const ROOT = join(import.meta.dir, "../../..");
 const HOME = join(ROOT, ".localnet");
 const DEPLOYMENT = join(HOME, "deployment.json");
 const BUILT_WASM = join(ROOT, "target/near/parley_arena/parley_arena.wasm");
-const KEPT_WASM = join(ROOT, "contracts/arena/res/parley_arena.wasm");
+export const KEPT_WASM = join(ROOT, "contracts/arena/res/parley_arena.wasm");
 
 export interface Deployment {
   network: "local" | "testnet";
@@ -31,17 +32,27 @@ export interface PublicDeployment {
 export const TESTNET_FILE = join(ROOT, "deployments", "testnet.json");
 const CREDENTIALS = join(process.env.HOME ?? "", ".near-credentials", "testnet");
 
-/** A testnet key from the environment (`PARLEY_<ROLE>_KEY`) or from the near CLI's legacy keychain. */
+export const publicTestnet = () => JSON.parse(readFileSync(TESTNET_FILE, "utf8")) as PublicDeployment;
+
+/** NEAR's code hash for a wasm: the base58 of its sha256. */
+export const committedCodeHash = () => baseEncode(createHash("sha256").update(readFileSync(KEPT_WASM)).digest());
+
+/** A testnet key from the environment (`PARLEY_<ROLE>_KEY`), a key file it names (`PARLEY_<ROLE>_KEY_FILE`), or the near CLI's legacy keychain. */
 export function testnetKey(accountId: string, role: string): string | null {
   const env = process.env[`PARLEY_${role.toUpperCase()}_KEY`];
   if (env) return env;
+  const named = process.env[`PARLEY_${role.toUpperCase()}_KEY_FILE`];
+  if (named) {
+    const text = readFileSync(named, "utf8").trim();
+    return text.startsWith("{") ? (JSON.parse(text) as { private_key: string }).private_key : text;
+  }
   const file = join(CREDENTIALS, `${accountId}.json`);
   return existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as { private_key: string }).private_key : null;
 }
 
 function loadTestnet(): Deployment {
   if (!existsSync(TESTNET_FILE)) throw new Error("no testnet deployment; run `bun scripts/deploy-testnet.ts` first");
-  const pub = JSON.parse(readFileSync(TESTNET_FILE, "utf8")) as PublicDeployment;
+  const pub = publicTestnet();
   const accounts: Deployment["accounts"] = {};
   for (const [role, accountId] of [["arena", pub.owner], ["faucet", pub.faucet]] as const) {
     const privateKey = testnetKey(accountId, role === "arena" ? "owner" : role);

@@ -149,5 +149,5 @@ function LiveMatch({ id }: { id: number }) {
 
 export function MatchView({ season = false }: { season?: boolean }) {
   const id = Number(useParams().id);
-  return season ? <SeasonMatch id={id} /> : <LiveMatch id={id} />;
+  return season ? <SeasonMatch key={id} id={id} /> : <LiveMatch key={id} id={id} />;
 }

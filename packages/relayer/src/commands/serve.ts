@@ -1,11 +1,13 @@
 import { Arena, type Coin, type Config, type Model, type Parley, type SignedReply } from "@parley/sdk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
+import { Ledger } from "../ledger.ts";
 import { ROOT, fundPlayer, loadDeployment } from "../localnet.ts";
 import { RoutingMind } from "../minds/routing.ts";
 import { playParley } from "../runner.ts";
 import { attackLab } from "../attacks.ts";
 import { originOf, sharePages } from "../share.ts";
+import { chronicle } from "./chronicle.ts";
 import { flag } from "./shared.ts";
 
 interface Evidence {
@@ -131,10 +133,12 @@ export async function serve() {
   let currentSince = 0;
   let lastEnded = Date.now();
   mkdirSync(EVIDENCE, { recursive: true });
+  const annals = chronicle(owner, deployment.network, join(STATE, "chronicle.json"));
   const handedOut: { ip: string; at: number }[] = [];
   let wake: (() => void) | null = null;
   const rest = (ms: number) => Promise.race([Bun.sleep(ms), new Promise<void>((resolve) => (wake = resolve))]).finally(() => (wake = null));
   const site = flag("static");
+  const ledger = new Ledger({ dir: STATE, network: deployment.network, contractId: deployment.contractId, rpcUrl: deployment.rpcUrl });
 
   const emit = (event: Event) => {
     for (const watch of watchers) watch(event);
@@ -280,9 +284,15 @@ export async function serve() {
       while (handedOut[0] && now - handedOut[0].at > DAY_MS) handedOut.shift();
       if (handedOut.length >= FAUCET_PER_DAY) return json({ error: "Today's free play wallets are all handed out. Try again tomorrow." }, 429);
       if (handedOut.filter((h) => h.ip === ip).length >= FAUCET_PER_IP) return json({ error: "You already have play wallets from today. Reuse the one in this browser." }, 429);
-      handedOut.push({ ip, at: now });
     }
-    const accountId = await fundPlayer(deployment, body.publicKey);
+    let accountId: string;
+    try {
+      accountId = await fundPlayer(deployment, body.publicKey);
+    } catch (error) {
+      console.error("faucet failed:", error instanceof Error ? error.message : error);
+      return json({ error: "Couldn't make a play wallet right now. Try again in a minute." }, 503);
+    }
+    if (deployment.network !== "local") handedOut.push({ ip, at: Date.now() });
     players.push(accountId);
     writeFileSync(PLAYERS, JSON.stringify(players));
     return json({ accountId });
@@ -307,6 +317,8 @@ export async function serve() {
         }
         const shared = req.method === "GET" && url.pathname.match(/^\/m\/(s?\d{1,9})\/?$/);
         if (shared) return await share(shared[1]!, originOf(req));
+        const money = ledger.respond(url);
+        if (money) return json(...money);
         if (url.pathname === "/api/schedule") {
           if (schedule && Date.now() - schedule.at < SCHEDULE_TTL) return json({ ...(schedule.body as object), now: Date.now() });
           const [coins, config, models] = await Promise.all([owner.coins(), owner.config(), owner.models()]);
@@ -337,7 +349,9 @@ export async function serve() {
           saveWatched();
           return json({ watching: true });
         }
-        if (url.pathname === "/api/faucet" && req.method === "POST") return faucet(req, req.headers.get("cf-connecting-ip") ?? server.requestIP(req)?.address ?? "?");
+        if (url.pathname === "/api/faucet" && req.method === "POST") return await faucet(req, req.headers.get("cf-connecting-ip") ?? server.requestIP(req)?.address ?? "?");
+        const told = await annals(url.pathname);
+        if (told) return json(told.body, told.status);
         const match = url.pathname.match(/^\/api\/match\/(\d+)$/);
         if (match) {
           const file = evidenceFile(Number(match[1]));
@@ -345,11 +359,13 @@ export async function serve() {
         }
         if (site && req.method === "GET" && !url.pathname.startsWith("/api/")) return page(site, url.pathname);
       } catch (error) {
+        console.error(`${req.method} ${url.pathname} failed:`, error instanceof Error ? error.message : error);
         return json({ error: error instanceof Error ? error.message : String(error) }, 500);
       }
       return json({ error: "not found" }, 404);
     },
   });
   console.log(`live arena for ${deployment.contractId} on http://localhost:${port}${autoplay ? ", playing matches nonstop" : ""}`);
+  ledger.start();
   void work();
 }

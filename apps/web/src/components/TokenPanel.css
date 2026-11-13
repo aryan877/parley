@@ -1,0 +1,116 @@
+.token-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 24px;
+}
+
+.token-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.token-head h3 {
+  font: 750 21px var(--display);
+  margin: 0;
+}
+
+.token-std {
+  font: 600 12px var(--mono);
+  color: var(--faint);
+}
+
+.token-lead,
+.token-cost {
+  margin: 0;
+  max-width: 640px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.token-cost {
+  color: var(--faint);
+}
+
+.token-row {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.token-panel > .btn {
+  justify-self: start;
+}
+
+.token-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.token-facts div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.token-facts dt {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.token-facts dd {
+  margin: 0;
+  font: 700 17px var(--mono);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.token-facts .token-account {
+  font: 500 13.5px var(--mono);
+  color: var(--text);
+}
+
+.token-facts a.token-account:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.token-actions {
+  display: grid;
+  gap: 12px;
+  max-width: 420px;
+}
+
+.token-actions .tabs {
+  margin-top: 0;
+}
+
+.token-actions .btn {
+  width: 100%;
+}
+
+.token-panel .notice {
+  margin-top: 0;
+  max-width: 640px;
+}
+
+@media (max-width: 760px) {
+  .token-panel {
+    padding: 20px;
+  }
+  .token-facts {
+    grid-template-columns: 1fr 1fr;
+  }
+  .token-facts div:first-child {
+    grid-column: 1 / -1;
+  }
+  .token-actions {
+    max-width: none;
+  }
+}

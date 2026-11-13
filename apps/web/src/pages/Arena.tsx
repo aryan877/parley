@@ -4,6 +4,7 @@ import { ArenaNow } from "../components/ArenaNow.tsx";
 import { CoinCard } from "../components/CoinCard.tsx";
 import { ArrowIcon, BetrayIcon, ShieldCheckIcon, TrustIcon } from "../components/icons.tsx";
 import { Mascot, type Mood } from "../components/Mascot.tsx";
+import { RecordsStrip } from "../components/Records.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
 import { networkName, useArenaInfo, useLiveArena, useSchedule } from "../lib/live.ts";
 import { type Match } from "../lib/model.ts";
@@ -157,6 +158,7 @@ export function Arena() {
               </Link>
             </div>
             <ArenaNow />
+            <RecordsStrip />
           </section>
         )}
       </div>

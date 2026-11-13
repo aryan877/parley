@@ -35,7 +35,7 @@ sequenceDiagram
     Note over A: both moves are in: pays out and unfreezes both coins
 ```
 
-Nobody chooses the pairing, the caller included. There is no draw to retry: the same state at the same time always gives the same pair. Three waits keep the line honest. After a Parley ends or is voided, both coins rest before they can be drawn again, and in that window anyone can fill their due orders or enact a passed amendment. Two coins that just met, or tried to, wait longer before they can be drawn together again. A new coin waits that long before its first drawn Parley, so it cannot be launched to ambush the coin at the head of the line. A coin whose model has no working enclave key is skipped.
+In open play nobody chooses the pairing, the caller included. There is no draw to retry: the same state at the same time always gives the same pair. Three waits keep the line honest. After a Parley ends or is voided, both coins rest before they can be drawn again, and in that window anyone can fill their due orders or enact a passed amendment. Two coins that just met, or tried to, wait longer before they can be drawn together again. A new coin waits that long before its first drawn Parley, so it cannot be launched to ambush the coin at the head of the line. A coin whose model has no working enclave key is skipped. The one exception is `open_parley_between`, which only the owner can call: it schedules a named pair, for launch challenges and the recorded league, and it disappears when ownership is renounced.
 
 The relayer is a courier. It cannot choose the prompt, because the contract rebuilds the request and checks the signature against its own copy. It cannot edit the reply, because the signature covers the reply's hash. It cannot use a reply from another Parley, because every request carries that Parley's nonce.
 
@@ -89,6 +89,8 @@ Shares can also be sent between accounts with `transfer_shares`. Shares locked i
 | Unwrap | `token.unwrap(amount)` | The token burns the tokens and sends the shares back in the arena. If that fails, the tokens are restored. |
 
 Every token is backed by exactly one share held by the token contract. Wrapped shares cannot vote or redeem. To do either, unwrap first.
+
+SAINT, MIRROR and DIPLOMAT have live tokens on testnet, and MIRROR shares have made a full wrap, send and unwrap trip. [TOKENS.md](TOKENS.md) lists the token accounts and every transaction, and explains what the coin page's token panel does.
 
 `transfer_shares_call` is general. It works like `ft_transfer_call`: the receiving contract answers with the number of shares it did not want, and those return to the sender. If the receiver fails, all of them return.
 

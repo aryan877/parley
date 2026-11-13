@@ -1,0 +1,149 @@
+.bench-zone {
+  margin-top: 56px;
+}
+
+.bench-title {
+  font: 800 30px/1.05 var(--display);
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.bench-lead {
+  margin: 8px 0 16px;
+  color: var(--muted);
+}
+
+.bench-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.bench-col {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+.bench-col h3 {
+  font: 750 19px var(--display);
+  margin: 0 0 2px;
+}
+
+.bench-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.bench-row.edge {
+  grid-template-columns: auto minmax(0, 1fr);
+  margin-top: 10px;
+}
+
+.bench-row.grave .bench-face {
+  filter: grayscale(0.7);
+  opacity: 0.85;
+}
+
+.bench-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.bench-name {
+  font: 700 16px var(--display);
+  color: var(--text);
+}
+
+.bench-name a {
+  text-decoration: underline;
+  text-decoration-color: var(--surface-3);
+  text-underline-offset: 3px;
+}
+
+.bench-need {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.bench-need b {
+  color: var(--gold);
+  font-weight: 650;
+}
+
+.bench-words {
+  margin: 4px 0 0;
+  font: italic 500 14.5px/1.45 var(--display);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.bench-words > span {
+  font: 600 12px var(--sans);
+  font-style: normal;
+  color: var(--faint);
+  margin-right: 2px;
+}
+
+.bench-match {
+  display: block;
+  margin-top: 2px;
+  font: 500 12px var(--sans);
+  font-style: normal;
+  color: var(--faint);
+}
+
+.bench-match:hover {
+  color: var(--text);
+}
+
+.bench-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.bench-empty > p {
+  margin: 0;
+}
+
+.bench-rule {
+  margin: 2px 2px 0;
+}
+
+.bench-row > .btn {
+  align-self: center;
+}
+
+@media (max-width: 900px) {
+  .bench-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .bench-title {
+    font-size: 26px;
+  }
+  .bench-col {
+    padding: 14px;
+  }
+  .bench-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .bench-row > .btn {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}

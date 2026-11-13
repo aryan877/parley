@@ -1,0 +1,144 @@
+.rh {
+  margin-top: 40px;
+}
+
+.rh-title {
+  font: 800 30px/1.05 var(--display);
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.rh-lead,
+.rh-still {
+  margin: 8px 0 16px;
+  color: var(--muted);
+  max-width: 640px;
+}
+
+.rh-still {
+  margin-bottom: 0;
+}
+
+.rh-list {
+  display: grid;
+  gap: 10px;
+}
+
+.rh-version {
+  padding: 18px 20px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+.rh-version.now {
+  background: color-mix(in srgb, var(--mind) 6%, var(--surface));
+}
+
+.rh-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rh-top b {
+  font: 750 18px var(--display);
+}
+
+.rh-now {
+  font: 700 11px/1 var(--sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: #d9ccff;
+  background: rgba(167, 139, 250, 0.16);
+}
+
+.rh-meta {
+  margin: 6px 0 0;
+  font-size: 13.5px;
+  color: var(--faint);
+}
+
+.rh-text {
+  margin: 12px 0 0;
+  font: 500 16.5px/1.6 var(--display);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.rh ins,
+.rh del {
+  text-decoration: none;
+  border-radius: 5px;
+  padding: 1px 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.rh ins {
+  color: #c2f4de;
+  background: rgba(52, 211, 153, 0.16);
+}
+
+.rh del {
+  color: #ffc6cd;
+  background: rgba(255, 84, 104, 0.12);
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 84, 104, 0.7);
+}
+
+.rh-fold {
+  padding: 0 7px;
+  border-radius: 6px;
+  color: var(--muted);
+  background: var(--surface-2);
+  font: inherit;
+  line-height: 1.2;
+}
+
+.rh-fold:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+.rh-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-top: 12px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.rh-link {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--faint);
+  text-decoration: underline;
+  text-decoration-color: var(--surface-3);
+  text-underline-offset: 3px;
+}
+
+.rh-link:hover {
+  color: var(--text);
+}
+
+.rh-wait {
+  margin: 4px 4px 0;
+}
+
+@media (max-width: 600px) {
+  .rh-version {
+    padding: 16px;
+  }
+  .rh-title {
+    font-size: 26px;
+  }
+  .rh-text {
+    font-size: 15.5px;
+  }
+}

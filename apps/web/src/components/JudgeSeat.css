@@ -1,0 +1,286 @@
+.judge {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.judge-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.judge-step {
+  padding: 18px 20px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+.judge-step.now {
+  background: color-mix(in srgb, var(--gold) 5%, var(--surface));
+}
+
+.judge-step.later {
+  background: transparent;
+  box-shadow: none;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.judge-step-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.judge-step h2 {
+  margin: 0;
+  font: 750 19px/1.25 var(--display);
+}
+
+.judge-step.later h2 {
+  color: var(--muted);
+}
+
+.judge-step.done h2 {
+  color: var(--muted);
+}
+
+.judge-done {
+  flex: none;
+  font: 700 13px var(--sans);
+  color: var(--trust);
+}
+
+.judge-teaser {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--faint);
+}
+
+.judge-body {
+  margin-top: 8px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.judge-body p {
+  margin: 0 0 10px;
+}
+
+.judge-body p:last-child {
+  margin-bottom: 0;
+}
+
+.judge-body b {
+  color: var(--text);
+}
+
+.judge-note {
+  font-size: 14px;
+  color: var(--faint);
+}
+
+.judge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.judge-actions .btn > svg {
+  flex: none;
+}
+
+.judge-body .notice {
+  margin-top: 10px;
+}
+
+.judge-body .your-line {
+  margin: 4px 0 14px;
+  box-shadow: none;
+  background: var(--surface-2);
+}
+
+.judge-body .your-match {
+  background: var(--surface-3);
+}
+
+.judge-coin {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.judge-coin > svg {
+  flex: none;
+}
+
+.judge-link {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--surface-3);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.judge-clock {
+  margin: 4px 0 14px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.judge-clock-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.judge-clock-top b {
+  font: 750 26px/1 var(--mono);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.judge-bar {
+  position: relative;
+  height: 8px;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.judge-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--mind), var(--trust));
+  transition: width 1s linear;
+}
+
+.judge-bar span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--bg);
+}
+
+.judge-bar-labels {
+  display: flex;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.judge-bar-labels span:first-child {
+  flex: none;
+}
+
+.judge-end {
+  margin-top: 18px;
+  padding: 20px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--trust) 7%, var(--surface));
+}
+
+.judge-end h2 {
+  margin: 0;
+  font: 800 24px/1.15 var(--display);
+}
+
+.judge-end p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.judge-leave {
+  display: block;
+  margin: 22px auto 0;
+}
+
+.judge-dock {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, calc(100vw - 40px));
+  padding: 8px 8px 8px 14px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--gold) 7%, var(--surface-2));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.judge-dock-main {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+
+.judge-dock-main small {
+  font: 700 11px/1.3 var(--sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.judge-dock-main b {
+  font-size: 14px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.judge-dock .btn {
+  flex: none;
+  padding: 8px 12px;
+}
+
+.judge-dock-x {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--faint);
+}
+
+.judge-dock-x:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+@media (max-width: 600px) {
+  .judge-step {
+    padding: 16px;
+  }
+  .judge-actions .btn {
+    flex: 1 1 100%;
+  }
+  .judge-actions.rivals .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .judge-dock {
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(74px + env(safe-area-inset-bottom));
+    max-width: none;
+  }
+  body.judge-docked .shell {
+    padding-bottom: calc(160px + env(safe-area-inset-bottom));
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "network": "testnet",
+  "arena": "parley-live.testnet",
+  "payer": "parley-owner.testnet",
+  "tokens": {
+    "saint": "saint.parley-live.testnet",
+    "mirror": "mirror.parley-live.testnet",
+    "diplomat": "diplomat.parley-live.testnet"
+  },
+  "roundTrip": {
+    "coin": "mirror",
+    "wrap": "1",
+    "send": "0.25",
+    "to": "parley-relay.testnet",
+    "unwrap": "0.5",
+    "token": "mirror.parley-live.testnet",
+    "holder": "parley-owner.testnet"
+  },
+  "transactions": {
+    "create saint token": "4srExv2uCEkoXz6ihXZQwdtn3QzBLDdk8rbhZKkGbejP",
+    "create mirror token": "CZ62ZnTsVYPAx77G5zBH7nDTfhQYzFt52wvCGXncKM4q",
+    "create diplomat token": "57jSDN8Ysy7m1RGeSrcUiqzuVanhkUVuCYJzwAqGZYh8",
+    "wrap 1 MIRROR": "9gUe5UXjtyGPqRvAmBac51mAtEndHiMV5EzJhfu76kwf",
+    "register parley-relay.testnet": "7wXLCuCJxh1DxSX6zxqwkF32zUurze8Ycpo2PdMMx8kX",
+    "send 0.25 MIRROR to parley-relay.testnet": "DkrrcxV2YXTgBd9hEwK972MGZMX3BF9pCrmWpRPvcdXM",
+    "unwrap 0.5 MIRROR": "9CcKAGBhQ96GRZxcZwF8Qi6LaGryPP7THkDJBcALzqZe"
+  }
+}

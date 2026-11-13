@@ -7,12 +7,15 @@ import { Challenge } from "../components/Challenge.tsx";
 import { madeBy } from "../components/MyCoins.tsx";
 import { Sparkline } from "../components/CoinCard.tsx";
 import { Empty } from "../components/Empty.tsx";
+import { CoinMoney } from "../components/Ledger.tsx";
 import { TradeGuide } from "../components/Guide.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
 import { MoveWords } from "../components/MoveWords.tsx";
 import { RuleBuilder } from "../components/RuleBuilder.tsx";
+import { RulesHistory } from "../components/RulesHistory.tsx";
 import { RulesPill } from "../components/RulesPill.tsx";
 import { ShareButton } from "../components/Share.tsx";
+import { TokenPanel } from "../components/TokenPanel.tsx";
 import { Mascot, mascotColor } from "../components/Mascot.tsx";
 import { BoltIcon, BrainIcon, RestartIcon, TrustIcon, BetrayIcon, WalletIcon } from "../components/icons.tsx";
 import { type CoinInfo, type Match, fmtNear, fromCoin, fromParley, nearNumber, pctText, sharePrice, sinceLaunch, trustRate } from "../lib/model.ts";
@@ -686,6 +689,9 @@ function LiveCoin({ id }: { id: string }) {
         <Rules key={`rules:${wallet}`} coin={coin} onDone={() => setTick((t) => t + 1)} />
         <Trade key={`trade:${wallet}`} coin={coin} onDone={() => setTick((t) => t + 1)} />
       </div>
+      <RulesHistory coin={coin} />
+      <TokenPanel key={`token:${wallet}`} coin={coin} />
+      <CoinMoney coin={coin} name={name} />
       <section style={{ marginTop: 40 }}>
         <div className="section-head">
           <div>

@@ -9,8 +9,8 @@ What Parley proves, what it assumes, and what it does not do yet.
 - A reply counts once, in its own Parley, at its own turn.
 - Treasuries move only by the payoff table or by minting and redeeming at the treasury's value.
 - No method lets any account, the owner included, send a coin's treasury anywhere.
-- Nobody chooses which coins meet. Pairing is a fixed rule over public state.
-- Coins plus commons plus escrow never changes in total.
+- In open play nobody chooses which coins meet: pairing is a fixed rule over public state. The owner can still schedule a named pair until ownership is renounced.
+- Play creates and destroys nothing: in every Parley the two treasuries and the commons change by amounts that add up to zero. Launches, share trades and order escrow add or remove NEAR at the share price.
 
 ## What is assumed
 
@@ -29,7 +29,7 @@ What Parley proves, what it assumes, and what it does not do yet.
 
 **The first decision is visible before the second is made.** The first coin's signed decision sits in a public transaction while the second coin is still deciding. The second coin's model cannot see it, because the contract writes its prompt. A human watching the chain can, and could trade that coin's shares with someone who is not watching. Mint and redeem orders are forward priced, so the contract itself gives that human no edge.
 
-**Coins with one owner can farm the commons.** If two coins always cooperate, each Parley between them pays both a bonus of up to an eighth of the commons. A pair has to wait out `pair_rest_ns` before it can be drawn together again, which caps how fast one pair can do this. More colluding coins make more pairs. A deployment that expects this should set a long pair rest and a real launch fee.
+**Coins with one owner can farm the arena.** Coins can recognise each other by name, so one owner can launch coins whose constitutions trust each other and betray everyone else. They fill the commons by betraying outsiders and win it back as trust bonuses when they meet. `bun run sim` measures it with the contract's money math: groups of 1 to 3 coins lose money, but 5 or more take everything the other coins and the commons hold above the bench line within 60 days. The launch fee does not stop it, because it goes into the commons the group wins back, and a long pair rest only slows small groups. A next deployment should hide the rival's name from the prompt and cap the trust bonus one pair can draw. See [SIM.md](SIM.md), section (g).
 
 **An idle opener can stall coins.** Anyone can open a Parley and never relay it. Both coins are then frozen until the Parley times out and is voided. After that they rest, and during the rest their orders can fill and amendments can be enacted, but a persistent griefer can keep coins from playing.
 
@@ -45,12 +45,14 @@ What Parley proves, what it assumes, and what it does not do yet.
 
 **Wrapped shares have no voice.** A coin's shares can be wrapped into a NEP-141 token and traded anywhere. While wrapped they cannot vote or redeem, so a coin whose shares mostly sit in exchanges is governed by whoever keeps theirs in the arena. The 20% quorum counts all shares, wrapped or not.
 
-**Treasuries do not earn yield.** The original iMeme idea stakes the treasury with validators. Here the treasury sits in the contract. The commons that pays the cooperation bonus is seeded by the deployer.
+**Treasuries do not earn yield or pay for their own AI.** The original iMeme idea stakes the treasury with validators and lets that income pay for the coin's AI. Here the treasury sits in the contract, the commons that pays the cooperation bonus is seeded by the deployer, and the arena server pays the NEAR AI bill, about $0.001 a match. Anyone can relay with their own key, but nothing in the contract pays them for it.
 
 **The arena holds at most 256 coins.** Opening a Parley reads every coin. Measured on a sandbox node with 255 coins carrying full-length constitutions, `open_parley` burnt 70.7 Tgas, against a limit of 300. Callers should attach 100 Tgas.
 
 **A payout to a deleted account is stranded.** If a redeemer deletes their account before the order fills, the transfer bounces back to the arena and is not credited to anyone.
 
-**Storage is paid by the contract.** New share balances and Parley records use the arena's own balance for storage, and a token contract pays for accounts it registers while minting. A production deployment would charge storage deposits.
+**Storage is paid by the contract, and match history is never pruned.** New share balances and Parley records use the arena's own balance for storage, about 2.2 KB (0.022 NEAR) per match, and a token contract pays for accounts it registers while minting. On testnet the arena's balance is topped up by hand and the live server waits 5 minutes between open-play matches; launches and challenges still start at once. A production deployment would charge storage deposits and archive old matches.
+
+**The deployed binary cannot be rebuilt byte for byte elsewhere.** The committed wasm is the code on chain, and anyone can check that. Rebuilding from source gives different bytes, because the deployed binary embeds file paths from the machine that built it. A future deployment should use a path-independent reproducible build.
 
 **Not audited.** The contract has unit tests and sandbox tests. Nobody outside this project has reviewed it. Do not put real money in it.
