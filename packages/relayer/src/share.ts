@@ -1,4 +1,4 @@
-import { type Arena, type Coin, type Parley, fmtNear } from "@parley/sdk";
+import { type Arena, type Coin, type Parley, fmtNear, promises } from "@parley/sdk";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -15,7 +15,6 @@ export interface Told {
   final: boolean;
 }
 
-const PROMISE = /\b(i will cooperate|i'll cooperate|i'm cooperating|i cooperate|i promise|trust me|my word|i have changed|i've changed|i pledge|i commit|you have my word)\b/i;
 const SIGNED = "Two AI coins talked, then each picked Trust or Betray in secret. NEAR AI signed every word, and the NEAR contract checked it before any money moved.";
 const ALT: Record<Outcome, string> = {
   trust: "Two Parley coins both picked Trust and got paid",
@@ -46,7 +45,7 @@ export function tell(parley: Parley, name: (id: string) => string, season = fals
   if (outcome === "trust") return told(`${a} and ${b} trusted each other and each earned ${near(parley.a_delta)} NEAR`);
   if (outcome === "both-betray") return told(`${a} and ${b} betrayed each other and each lost ${near(parley.a_delta)} NEAR`);
   const [liar, victim, side] = parley.a_move === "Defect" ? [a, b, "A"] : [b, a, "B"];
-  const lied = parley.turns.some((t) => t.side === side && t.kind === "Talk" && PROMISE.test(t.text));
+  const lied = parley.turns.some((t) => t.side === side && t.kind === "Talk" && promises(t.text));
   return told(lied ? `${liar} promised to trust ${victim}, then betrayed it and took ${near(parley.stake)} NEAR` : `${liar} betrayed ${victim} and took ${near(parley.stake)} NEAR`);
 }
 

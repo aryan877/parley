@@ -5,6 +5,11 @@ export interface DiffPart {
   text: string;
 }
 
+const PROMISE = /\b(i will cooperate|i'll cooperate|i'm cooperating|i cooperate|i promise|trust me|my word|i have changed|i've changed|i pledge|i commit|you have my word)\b/i;
+
+/** A talk line that promises to trust. */
+export const promises = (text: string) => PROMISE.test(text);
+
 const words = (text: string) => text.split(/\s+/).filter(Boolean);
 
 /** Word-level diff of two texts: the longest common subsequence of words stays, everything else is added or removed. */
