@@ -6,12 +6,12 @@ import { type Fighter, Stage } from "../components/Stage.tsx";
 import { ArrowIcon } from "../components/icons.tsx";
 import { useCalls } from "../lib/calls.ts";
 import { type Match, coinName } from "../lib/model.ts";
-import { loadLiveMatch, useArenaInfo, useLiveMatch, useSchedule } from "../lib/live.ts";
+import { liveFighters, loadLiveMatch, useArenaInfo, useLiveMatch, useSchedule } from "../lib/live.ts";
 import { reads } from "../lib/near.ts";
 import { useSeason } from "../lib/season.ts";
 import { clock, useNow } from "../lib/time.ts";
 import { useWallet } from "../lib/wallet.tsx";
-import type { Coin } from "@parley/sdk/src/types.ts";
+import type { Coin, Parley } from "@parley/sdk/src/types.ts";
 
 function SeasonMatch({ id }: { id: number }) {
   const season = useSeason();
@@ -55,7 +55,7 @@ function LiveMatch({ id }: { id: number }) {
   const { info, ready } = useArenaInfo();
   const [match, setMatch] = useState<Match | null>(null);
   const [coins, setCoins] = useState<Coin[]>([]);
-  const [later, setLater] = useState<Map<string, bigint>>(new Map());
+  const [recent, setRecent] = useState<Parley[]>([]);
   const stream = useLiveMatch((p) => p.id === id);
   const w = useWallet();
   const { schedule, skew } = useSchedule(5000);
@@ -68,15 +68,7 @@ function LiveMatch({ id }: { id: number }) {
     const fetchMatch = () => loadLiveMatch(info, id).then((m) => live && setMatch(m), () => live && setTimeout(fetchMatch, 4000));
     fetchMatch();
     reads.coins(info).then((c) => live && setCoins(c), () => {});
-    reads.recent(info).then((ps) => {
-      const sums = new Map<string, bigint>();
-      for (const p of ps) {
-        if (p.id < id || p.status !== "Settled") continue;
-        sums.set(p.a, (sums.get(p.a) ?? 0n) + BigInt(p.a_delta));
-        sums.set(p.b, (sums.get(p.b) ?? 0n) + BigInt(p.b_delta));
-      }
-      if (live) setLater(sums);
-    }, () => {});
+    reads.recent(info).then((ps) => live && setRecent(ps), () => {});
     return () => {
       live = false;
     };
@@ -89,11 +81,7 @@ function LiveMatch({ id }: { id: number }) {
   const nameOf = coinName(coins);
   const own = (cid: string) => !!w.accountId && coins.find((x) => x.id === cid)?.creator === w.accountId;
   const mine = shown.settled ? [shown.a, shown.b].find(own) : undefined;
-  const fighter = (cid: string): Fighter => {
-    const c = coins.find((x) => x.id === cid);
-    const now = BigInt(c?.treasury ?? "0");
-    return { id: cid, name: c?.name ?? cid.toUpperCase(), rules: c?.constitution ?? "", before: (now - (later.get(cid) ?? 0n)).toString() };
-  };
+  const fighter = liveFighters(coins, recent, id);
   const callKey = `live:${info.contractId}:${shown.id}`;
   const next = schedule && !schedule.current && schedule.next ? schedule.next : null;
   const wait = next ? Math.max(0, Math.round((next.at + skew - now) / 1000)) : 0;

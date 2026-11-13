@@ -11,6 +11,7 @@ import { shortAccount, useWallet } from "../lib/wallet.tsx";
 import { headline } from "../lib/words.ts";
 import { YourMatches } from "./ArenaNow.tsx";
 import { Mascot } from "./Mascot.tsx";
+import { SaintStory } from "./SaintStory.tsx";
 import { ArrowIcon, WalletIcon } from "./icons.tsx";
 import "./JudgeSeat.css";
 
@@ -180,6 +181,7 @@ function Steps({ j }: { j: Judge }) {
   const now = useNow(!!j.amendment);
   const { info, coin, amendment, match, version } = j;
   const name = coinName(j.coins);
+  const saint = j.coins?.find((c) => c.id === "saint");
   const voteMs = info ? msOf(info.config.vote_period_ns) : 120_000;
   const waitMs = info ? msOf(info.config.timelock_ns) : 240_000;
   const vote = minutes(info?.config.vote_period_ns, 2);
@@ -277,6 +279,7 @@ function Steps({ j }: { j: Judge }) {
                 </button>
               </div>
             )}
+            {info && saint && <SaintStory info={info} saint={saint} coins={j.coins ?? []} />}
           </>
         ) : coin ? (
           <>

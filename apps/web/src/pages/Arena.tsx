@@ -4,6 +4,8 @@ import { ArenaNow } from "../components/ArenaNow.tsx";
 import { CoinCard } from "../components/CoinCard.tsx";
 import { ArrowIcon, BetrayIcon, ShieldCheckIcon, TrustIcon } from "../components/icons.tsx";
 import { Mascot, type Mood } from "../components/Mascot.tsx";
+import { NowStage } from "../components/NowStage.tsx";
+import { PlayerCoins } from "../components/PlayerCoins.tsx";
 import { RecordsStrip } from "../components/Records.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
 import { networkName, useArenaInfo, useLiveArena, useSchedule } from "../lib/live.ts";
@@ -157,8 +159,10 @@ export function Arena() {
                 All matches <ArrowIcon size={16} />
               </Link>
             </div>
+            <NowStage />
             <ArenaNow />
             <RecordsStrip />
+            <PlayerCoins />
           </section>
         )}
       </div>
