@@ -11,6 +11,7 @@ import { TradeGuide } from "../components/Guide.tsx";
 import { MatchRow } from "../components/MatchRow.tsx";
 import { MoveWords } from "../components/MoveWords.tsx";
 import { RuleBuilder } from "../components/RuleBuilder.tsx";
+import { RulesHistory } from "../components/RulesHistory.tsx";
 import { RulesPill } from "../components/RulesPill.tsx";
 import { ShareButton } from "../components/Share.tsx";
 import { Mascot, mascotColor } from "../components/Mascot.tsx";
@@ -686,6 +687,7 @@ function LiveCoin({ id }: { id: string }) {
         <Rules key={`rules:${wallet}`} coin={coin} onDone={() => setTick((t) => t + 1)} />
         <Trade key={`trade:${wallet}`} coin={coin} onDone={() => setTick((t) => t + 1)} />
       </div>
+      <RulesHistory coin={coin} />
       <section style={{ marginTop: 40 }}>
         <div className="section-head">
           <div>

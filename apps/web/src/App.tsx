@@ -2,6 +2,7 @@ import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom"
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Alerts } from "./components/Alerts.tsx";
+import { JudgeDock, JudgeSeat } from "./components/JudgeSeat.tsx";
 import { Mark } from "./components/Mark.tsx";
 import { TabBar } from "./components/TabBar.tsx";
 import { WalletButton } from "./components/WalletButton.tsx";
@@ -83,6 +84,7 @@ export function App() {
           <Route path="/season/coin/:id" element={<CoinView season />} />
           <Route path="/launch" element={<Launch />} />
           <Route path="/proof" element={<ProofPage />} />
+          <Route path="/judge" element={<JudgeSeat />} />
           <Route path="/play" element={<Navigate to="/launch" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -100,6 +102,7 @@ export function App() {
       </main>
       <TabBar />
       <Alerts />
+      <JudgeDock />
     </>
   );
 }
