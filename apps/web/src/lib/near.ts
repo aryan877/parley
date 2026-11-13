@@ -1,4 +1,4 @@
-import type { Amendment, Coin, Order, Parley } from "@parley/sdk/src/types.ts";
+import type { Amendment, Coin, Order, Parley, TokenMetadata } from "@parley/sdk/src/types.ts";
 import { useSyncExternalStore } from "react";
 
 interface Chain {
@@ -147,6 +147,7 @@ export function forget(chain: Chain, ...methods: string[]) {
 
 const COINS = { limit: 100 };
 const page = (from = 0, limit = 50) => ({ from_index: from, limit });
+export const tokenChain = (c: Chain, token: string): Chain => ({ network: c.network, rpcUrl: c.rpcUrl, contractId: token });
 
 export const reads = {
   coins: (c: Chain) => cached<Coin[]>(c, "get_coins", COINS, 4000),
@@ -160,6 +161,9 @@ export const reads = {
   vote: (c: Chain, coin: string, account: string) => cached<VoteLock | null>(c, "get_vote", { coin, account }, 4000),
   order: (c: Chain, coin: string, account: string) => cached<Order | null>(c, "get_order", { coin, account }, 4000),
   amendments: (c: Chain, coin: string) => cached<Amendment[]>(c, "get_amendments", { coin }, 4000),
+  tokenMeta: (c: Chain, token: string) => cached<TokenMetadata>(tokenChain(c, token), "ft_metadata", {}, 600_000),
+  tokenSupply: (c: Chain, token: string) => cached<string>(tokenChain(c, token), "ft_total_supply", {}, 4000),
+  tokenBalance: (c: Chain, token: string, account: string) => cached<string>(tokenChain(c, token), "ft_balance_of", { account_id: account }, 4000),
 };
 
 /** Up to 50 matches with ids below `before`, newest first. A match opened since `newest` only shortens the page. */

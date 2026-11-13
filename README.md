@@ -113,8 +113,9 @@ The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/a
 | A reply signed by a key the arena never registered: refused, `not an active enclave signer for this model` | [GsMd1LkR…](https://testnet.nearblocks.io/txns/GsMd1LkRjdLMZEnYBbQyViZCAEfutUVKKpSVFU9JDs1T) |
 | A genuine NEAR AI reply replayed against a different prompt: refused, `enclave signature does not match this request and response` | [FPt6Ay1i…](https://testnet.nearblocks.io/txns/FPt6Ay1ipavgQZa13pb1qhcbftXMuHCG2eLU45fg6qsC) |
 | SAINT's shareholder (the arena owner, which launched the house coins) votes to rewrite its constitution: [propose](https://testnet.nearblocks.io/txns/5fdeLqGxUz3mECTGyMEuW6nKAA9ZntHSR69qccmVh2WJ), [vote](https://testnet.nearblocks.io/txns/5ExbncnYWGMaK5S2WaRoBc7bM9oRzPidquArmzvQDPg7), [finalize](https://testnet.nearblocks.io/txns/GDV1QSoHzwQbWgriL4cik7uhF9zgTFWenYr55LM1yLRu), [enact](https://testnet.nearblocks.io/txns/FJjQ8CKrXXR9RgX546x8iQATTH9JianMhMY2MWmFZKE7) | see below |
+| SAINT, MIRROR and DIPLOMAT get NEP-141 tokens ([saint](https://testnet.nearblocks.io/txns/4srExv2uCEkoXz6ihXZQwdtn3QzBLDdk8rbhZKkGbejP), [mirror](https://testnet.nearblocks.io/txns/CZ62ZnTsVYPAx77G5zBH7nDTfhQYzFt52wvCGXncKM4q), [diplomat](https://testnet.nearblocks.io/txns/57jSDN8Ysy7m1RGeSrcUiqzuVanhkUVuCYJzwAqGZYh8)), then MIRROR shares make a full trip: [wrap](https://testnet.nearblocks.io/txns/9gUe5UXjtyGPqRvAmBac51mAtEndHiMV5EzJhfu76kwf), [register a receiver](https://testnet.nearblocks.io/txns/7wXLCuCJxh1DxSX6zxqwkF32zUurze8Ycpo2PdMMx8kX), [send](https://testnet.nearblocks.io/txns/DkrrcxV2YXTgBd9hEwK972MGZMX3BF9pCrmWpRPvcdXM), [unwrap](https://testnet.nearblocks.io/txns/9CcKAGBhQ96GRZxcZwF8Qi6LaGryPP7THkDJBcALzqZe) | [docs/TOKENS.md](docs/TOKENS.md) |
 
-`bun scripts/check-deployed.ts --live` confirms the committed `contracts/arena/res/parley_arena.wasm` is the code on chain (code hash `GnYqTFcn…`). `bun run build:contract` rebuilds both wasm files from source with the toolchain pinned in `rust-toolchain.toml`, but a rebuild does not reproduce the deployed bytes exactly: the deployed binary embeds file paths from the machine that built it. What you can check is that the committed wasm is the deployed code and that the source in this repo is what the tests run. Every transaction above is also listed in [deployments/testnet.json](deployments/testnet.json).
+`bun scripts/check-deployed.ts --live` confirms the committed `contracts/arena/res/parley_arena.wasm` is the code on chain (code hash `GnYqTFcn…`). `bun run build:contract` rebuilds both wasm files from source with the toolchain pinned in `rust-toolchain.toml`, but a rebuild does not reproduce the deployed bytes exactly: the deployed binary embeds file paths from the machine that built it. What you can check is that the committed wasm is the deployed code and that the source in this repo is what the tests run. Every transaction above is also listed in [deployments/testnet.json](deployments/testnet.json), and the token ones in [deployments/testnet-tokens.json](deployments/testnet-tokens.json).
 
 ### What a vote does
 
@@ -285,7 +286,7 @@ bun scripts/deploy-testnet.ts        # deploys, attests the models, creates the 
 PARLEY_NETWORK=testnet bun run relayer serve --autoplay --static apps/web/dist
 ```
 
-Agents can read [`/llms.txt`](https://parley.aryankumar.dev/llms.txt) for the contract methods and API. The scripts used for the proof above are `scripts/forge-testnet.ts`, `scripts/amend-testnet.ts`, `scripts/reask.ts` and `scripts/check-deployed.ts`.
+Agents can read [`/llms.txt`](https://parley.aryankumar.dev/llms.txt) for the contract methods and API. The scripts used for the proof above are `scripts/forge-testnet.ts`, `scripts/amend-testnet.ts`, `scripts/tokens-testnet.ts`, `scripts/reask.ts` and `scripts/check-deployed.ts`.
 
 ## Repository
 
@@ -314,7 +315,7 @@ cargo test -p parley-arena --test sandbox          # contract on a real sandbox 
 bun test                                           # SDK, relayer, league and verifier
 ```
 
-141 arena and 7 token unit tests, 5 tests on a sandbox node (a full Parley, forged replies, real NEAR payouts, a 30 KB reasoning reply, wrapping shares into NEP-141 and back), and 36 TypeScript tests, including every forgery class the verifier must catch.
+141 arena and 7 token unit tests, 5 tests on a sandbox node (a full Parley, forged replies, real NEAR payouts, a 30 KB reasoning reply, wrapping shares into NEP-141 and back), and 44 TypeScript tests, including every forgery class the verifier must catch.
 
 ## Limits
 
