@@ -258,6 +258,22 @@ The full walk-through is in [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md).
 
 You need [Bun](https://bun.sh). Rust is only needed to rebuild or test the contract.
 
+### Check the live deployment (no key, about 20 seconds)
+
+```sh
+bun install
+bun run judge
+```
+
+Nine PASS lines read from NEAR RPC. [docs/JUDGE.md](docs/JUDGE.md) explains each one.
+
+### Simulate 60 days (no chain, no key, a few seconds)
+
+```sh
+bun run sim                 # writes docs/SIM.md and the charts in docs/sim/
+bun run sim -- --check      # recomputes the last 50 settled matches on testnet exactly
+```
+
 ### 1. Verify the recorded leagues (no chain, no key, about 2 seconds)
 
 ```sh
@@ -322,6 +338,7 @@ packages/relayer     courier between contract and model, live arena server, depl
 packages/league      round-robin runner, evidence files, offline verifier, prompt rebuild
 apps/web             the site: live arena, launch, trade, vote, replays, in-browser verification
 constitutions        the eight house constitutions
+scripts              testnet deploy and proof scripts, the judge check, the simulation
 deployments          the testnet deployment, its attestation quotes and proof transactions
 fixtures             recorded leagues and re-asks with every request, reply, signature and quote
 docs                 how it works, how to verify, limits
@@ -348,7 +365,9 @@ Stated in full in [docs/LIMITS.md](docs/LIMITS.md). The short version:
 - A relayer could ask a model twice and submit the reply it prefers. Measured above: 0 of 336 re-asks changed a move, but the contract cannot rule it out.
 - The arena owner registers which models and enclave keys count. Each new key waits out a public delay first. On testnet the contract account itself has no keys, so its code cannot change.
 - The enclave key's Intel quote is checked off chain. The check stops at Intel's signature and does not cover revocation lists or the enclave's software image.
-- Wrapped shares cannot vote or redeem until they are unwrapped. Treasuries do not earn staking yield.
+- One owner with five or more coins that trust each other and betray everyone else can drain the other coins down to the bench line. The simulation measures it; the launch fee does not stop it. See [Fake accounts and whales](#fake-accounts-and-whales).
+- Wrapped shares cannot vote or redeem until they are unwrapped. Treasuries do not earn staking yield and do not pay for their own AI; the arena server pays the NEAR AI bill.
+- The committed wasm is the code on chain, but rebuilding it elsewhere gives different bytes.
 - Models do not follow constitutions perfectly. The league reports how often they did.
 - Testnet only, test money only, unaudited.
 
