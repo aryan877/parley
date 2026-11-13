@@ -1,4 +1,4 @@
-import { Arena, type CallResult, LocalEnclave, type Model, type Parley, type SignedReply, lacksBalance, panicMessage } from "@parley/sdk";
+import { Arena, type CallResult, LocalEnclave, type Model, type Parley, type SignedReply, lacksBalance, panicMessage, signerActive } from "@parley/sdk";
 import { randomBytes } from "node:crypto";
 import { type Deployment, testnetKey } from "./localnet.ts";
 import type { Mind } from "./minds/mind.ts";
@@ -53,7 +53,7 @@ const nowNs = () => BigInt(Date.now()) * NS;
 const completion = (content: string) => JSON.stringify({ choices: [{ index: 0, message: { role: "assistant", content } }] });
 
 const active = (models: Model[], model: string, key: string, now = nowNs()) =>
-  models.some((m) => m.id === model && m.signers.some((s) => s.public_key === key && BigInt(s.active_from) <= now && (!s.retired_from || now < BigInt(s.retired_from))));
+  models.some((m) => m.id === model && m.signers.some((s) => s.public_key === key && signerActive(s, now)));
 
 function message(response: string): string {
   try {

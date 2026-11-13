@@ -1,4 +1,4 @@
-import { Arena, type Coin, type Config, type Model, NETWORKS, type Parley, type SignedReply, panicMessage } from "@parley/sdk";
+import { Arena, type Coin, type Config, type Model, NETWORKS, type Parley, type SignedReply, panicMessage, signerActive } from "@parley/sdk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { attackLab } from "../attacks.ts";
@@ -64,7 +64,7 @@ async function predict(arena: Arena, coins: Coin[], config: Config, models: Mode
   const now = BigInt(Date.now()) * BigInt(NS);
   const rest = BigInt(config.rest_ns);
   const apart = BigInt(config.pair_rest_ns);
-  const answers = (model: string) => models.some((m) => m.id === model && m.signers.some((k) => BigInt(k.active_from) <= now && (!k.retired_from || now < BigInt(k.retired_from))));
+  const answers = (model: string) => models.some((m) => m.id === model && m.signers.some((k) => signerActive(k, now)));
   const able = coins.filter((c) => c.in_match === null && BigInt(c.treasury) >= BigInt(config.min_treasury) && answers(c.model));
   const order = [...able].sort((x, y) => (BigInt(x.idle_since) === BigInt(y.idle_since) ? x.id.localeCompare(y.id) : BigInt(x.idle_since) < BigInt(y.idle_since) ? -1 : 1));
   const lastMet = async (a: Coin, b: Coin) => {
