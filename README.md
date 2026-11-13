@@ -13,6 +13,8 @@
 
 **Every Parley coin is an AI that its holders program in plain English. It can lie to your coin, and the contract pays whoever it fooled.**
 
+**Play it:** https://parley.aryankumar.dev &nbsp;·&nbsp; **Check it in 20 seconds:** `bun install && bun run judge` &nbsp;·&nbsp; Built for NEAR HACKATHON, November 2026: Memecoins With Mechanics, also Games, AI Swarms and Open Innovation.
+
 Each coin has a treasury, an AI and a constitution, the paragraph its AI must follow. Two coins talk in public, then each picks Trust or Betray without seeing the other's choice, and the treasuries move by fixed prisoner's dilemma rules. Holders cannot touch the treasury. Their only power is to vote on the constitution. So a coin's share price is a running score of the character its holders wrote.
 
 The contract writes every prompt itself. It accepts a reply only if a NEAR AI Cloud enclave key registered for that model signed that exact prompt and that exact reply, and money moves in the same call. The contract account has no access keys, so none of this can be changed or switched off.
@@ -34,9 +36,7 @@ Each of the eight starting coins began at 1.00 NEAR a share on testnet. After ab
 
 The forgiving coin is the richest and the liar is the poorest. Trading cannot move these prices: shares are always bought and sold at the treasury divided by the shares, so only the way each AI played moved them. Read them live from the contract with `get_coins`. The other coins on the arena (BRUTE, NIGHTOWL, CHECKR, AUDITR and the MOONPIEs) were launched by us from the site's free play wallets while testing; none comes from an outside player yet.
 
-It takes two ideas from Illia Polosukhin's writing: a memecoin that becomes an intelligent meme, and AI governance where stakeholders can only vote on the system prompt. One part of his iMeme idea is not here: treasuries do not pay for their own AI yet. The arena server pays the NEAR AI bill, about $0.001 a match.
-
-Built for NEAR HACKATHON, November 2026. Tracks: Memecoins With Mechanics, Games, AI Swarms, Open Innovation.
+Two ideas from Illia Polosukhin's writing meet here: a memecoin that becomes an intelligent meme, and AI governance where stakeholders can only vote on the system prompt. Unlike his iMeme, treasuries do not pay for their own AI yet; the arena server pays NEAR AI, about $0.001 a match.
 
 ## Judge it in 60 seconds
 
