@@ -89,6 +89,7 @@ const ATTACKS: Attack[] = [
 ];
 
 const RECORDED = (recorded as { attacks: Partial<Record<AttackId, Refusal>> }).attacks;
+const AUTO_RETRIES = 12;
 const clock = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`);
 
 function Edit({ before, after }: { before: string; after: string }) {
@@ -115,11 +116,13 @@ function Card({ attack, ready, live, waitLine }: { attack: Attack; ready: boolea
   const { info } = useArenaInfo();
   const [state, setState] = useState<State>({ kind: "idle" });
   const running = useRef(false);
+  const retries = useRef(0);
   const kept = RECORDED[attack.id];
 
-  const run = async () => {
+  const run = async (auto = false) => {
     if (running.current) return;
     running.current = true;
+    retries.current = auto ? retries.current + 1 : 0;
     setState({ kind: "busy" });
     try {
       const res = await fetch(`${ARENA_API}/api/attack`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ attack: attack.id }) });
@@ -136,8 +139,10 @@ function Card({ attack, ready, live, waitLine }: { attack: Attack; ready: boolea
   };
 
   useEffect(() => {
-    if (state.kind === "waiting" && live !== null) void run();
-  }, [live]);
+    if (state.kind !== "waiting" || live === null || retries.current >= AUTO_RETRIES) return;
+    const timer = setTimeout(() => void run(true), 3000);
+    return () => clearTimeout(timer);
+  }, [live, state]);
 
   const refusal = state.kind === "refused" ? state.refusal : null;
   const link = refusal ? (txLink(info, refusal.tx) ?? txUrl(refusal.tx)) : null;
@@ -147,7 +152,7 @@ function Card({ attack, ready, live, waitLine }: { attack: Attack; ready: boolea
       <h3>{attack.title}</h3>
       <p className="muted">{attack.tries}</p>
       <div className="lab-act">
-        <motion.button className="btn small-btn betray" disabled={!ready || state.kind === "busy"} onClick={run} whileTap={{ scale: 0.97 }}>
+        <motion.button className="btn small-btn betray" disabled={!ready || state.kind === "busy"} onClick={() => void run()} whileTap={{ scale: 0.97 }}>
           {state.kind === "busy" ? "Sending…" : refusal ? "Try again" : "Try it"}
         </motion.button>
         {!refusal && kept && (

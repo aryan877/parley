@@ -225,14 +225,16 @@ export class AttackLab {
     if (!(await this.openTurn())) return NO_MATCH;
     const limited = this.allow(ip);
     if (limited) return limited;
+    const slot = this.sent.at(-1);
     return new Promise((resolve) => {
       const done = (attempt: Attempt) => {
         clearTimeout(timer);
+        if ("status" in attempt && attempt.status === 409) this.sent = this.sent.filter((s) => s !== slot);
         resolve(attempt);
       };
       const timer = setTimeout(() => {
         this.waiting = this.waiting.filter((w) => w !== done);
-        resolve({ status: 409, wait: true, error: "No new reply came in time." });
+        done({ status: 409, wait: true, error: "No new reply came in time." });
       }, REPLY_WAIT_MS);
       this.waiting.push(done);
     });

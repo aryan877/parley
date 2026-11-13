@@ -72,6 +72,30 @@ test("an accepted attack is reported, never dressed up as a refusal", async () =
   expect(await new AttackLab(relay, async () => null).run("house-coin", "1.1.1.1")).toMatchObject({ status: 500 });
 });
 
+test("the server's own next reply goes out first with one letter changed, and a missed turn costs no try", async () => {
+  const { relay, calls } = fakeRelay("enclave signature does not match this request and response");
+  const open = { id: 9, status: "Open", turns: [{}, {}], a_model: "m", b_model: "m" };
+  Object.assign(relay, { parleys: async () => [open], turnRequest: async () => "request" });
+  const lab = new AttackLab(relay, async () => null);
+  const genuine = new LocalEnclave().sign("m", "request", body("Trust me."));
+  const mind = lab.watch({ name: "test", reply: async (_model, request) => (request === "request" ? genuine : { ...genuine, response: body("Stale.") }) });
+
+  const missed = lab.run("one-letter", "1.1.1.1");
+  await Bun.sleep(5);
+  await mind.reply("m", "an older request");
+  expect(await missed).toMatchObject({ status: 409, wait: true });
+  expect(calls.length).toBe(0);
+
+  const caught = lab.run("one-letter", "1.1.1.1");
+  await Bun.sleep(5);
+  expect(await mind.reply("m", "request")).toBe(genuine);
+  expect(await caught).toMatchObject({ refusal: { attack: "one-letter", parley: 9, turn: 2, edit: { before: "Trust me.", after: "trust me." } } });
+  expect(calls[0]!.args).toMatchObject({ id: 9, response: body("trust me."), signature: genuine.signature });
+
+  for (let i = 0; i < 5; i++) expect(await lab.run("house-coin", "1.1.1.1")).toHaveProperty("refusal");
+  expect(await lab.run("house-coin", "1.1.1.1")).toMatchObject({ status: 429 });
+});
+
 test("without a key the lab stays off", async () => {
   const lab = new AttackLab(null, async () => null);
   expect((await lab.handle(post("drain"), "1.1.1.1")).status).toBe(503);
