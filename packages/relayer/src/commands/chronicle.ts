@@ -5,14 +5,14 @@ const PARLEY_PAGE = 50;
 const RECORDS_TTL = 20_000;
 const COINS_TTL = 5000;
 
-export type Told = { body: unknown; status?: number } | null;
+type Answer = { status: number; body: unknown } | null;
 
 /**
  * Arena history the contract does not keep in its state: records over every finished match, and every version
  * of a coin's constitution. Matches come from the contract's views; closed amendments only live in transactions,
  * so their text, proposer, tally and enactment come from the transactions the money log reads.
  */
-export function chronicle(owner: Arena, ledger: Pick<Ledger, "governance">): (path: string) => Promise<Told> {
+export function chronicle(owner: Arena, ledger: Pick<Ledger, "governance">): (path: string) => Promise<Answer> {
   const parleys = new Map<number, Parley>();
   let complete = 0;
   let records: { at: number; body: Records & { scope: "all" } } | null = null;
@@ -50,10 +50,10 @@ export function chronicle(owner: Arena, ledger: Pick<Ledger, "governance">): (pa
     return warming;
   };
 
-  async function history(id: string): Promise<Told> {
+  async function history(id: string): Promise<Answer> {
     const coin = (await allCoins()).find((c) => c.id === id) ?? (await owner.coin(id));
-    if (!coin) return { body: { error: "No such coin." }, status: 404 };
-    return { body: rulesHistory(coin, ledger.governance(id)) };
+    if (!coin) return { status: 404, body: { error: "No such coin." } };
+    return { status: 200, body: rulesHistory(coin, ledger.governance(id)) };
   }
 
   void refreshRecords();
@@ -61,7 +61,7 @@ export function chronicle(owner: Arena, ledger: Pick<Ledger, "governance">): (pa
   return async (path) => {
     if (path === "/api/records") {
       if (!records || Date.now() - records.at > RECORDS_TTL) void refreshRecords();
-      return records ? { body: records.body } : { body: { error: "The arena's records are still loading." }, status: 503 };
+      return records ? { status: 200, body: records.body } : { status: 503, body: { error: "The arena's records are still loading." } };
     }
     const rules = path.match(/^\/api\/history\/([a-z0-9]{2,20})$/);
     if (rules) return history(rules[1]!);

@@ -746,9 +746,9 @@ export class Ledger {
     return { status: this.status(), totals: this.cached.flows.totals, coins: this.cached.flows.coins, books: this.cursor.books };
   }
 
-  respond(url: URL): [unknown, number] | null {
+  respond(url: URL): { status: number; body: unknown } | null {
     if (url.pathname !== "/api/ledger" && url.pathname !== "/api/ledger/summary") return null;
-    if (!this.api) return [{ error: "The money log reads NEAR testnet or mainnet. This arena runs on a local chain." }, 503];
-    return url.pathname === "/api/ledger" ? [this.page(url.searchParams), 200] : [this.summary(), 200];
+    if (!this.api) return { status: 503, body: { error: "The money log reads NEAR testnet or mainnet. This arena runs on a local chain." } };
+    return { status: 200, body: url.pathname === "/api/ledger" ? this.page(url.searchParams) : this.summary() };
   }
 }

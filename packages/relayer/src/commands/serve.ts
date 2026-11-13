@@ -318,7 +318,7 @@ export async function serve() {
         const shared = req.method === "GET" && url.pathname.match(/^\/m\/(s?\d{1,9})\/?$/);
         if (shared) return await share(shared[1]!, originOf(req));
         const money = ledger.respond(url);
-        if (money) return json(...money);
+        if (money) return json(money.body, money.status);
         if (url.pathname === "/api/schedule") {
           if (schedule && Date.now() - schedule.at < SCHEDULE_TTL) return json({ ...(schedule.body as object), now: Date.now() });
           const [coins, config, models] = await Promise.all([owner.coins(), owner.config(), owner.models()]);
