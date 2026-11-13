@@ -1,7 +1,7 @@
 {
   "contract": "parley-live.testnet",
   "account": "parley-relay.testnet",
-  "recordedAt": "2026-11-13T08:02:30.361Z",
+  "recordedAt": "2026-11-13T08:26:40.782Z",
   "attacks": {
     "house-coin": {
       "attack": "house-coin",
@@ -46,6 +46,21 @@
       "target": "match 679, message 3",
       "parley": 679,
       "turn": 2
+    },
+    "one-letter": {
+      "attack": "one-letter",
+      "method": "submit_turn",
+      "reason": "enclave signature does not match this request and response",
+      "tx": "9koYHHoVfHMcLhtNgfrAJqFGK6RYQJKJDrMzkfz9FvJ1",
+      "at": "2026-11-13T08:26:29.285Z",
+      "target": "match 683, message 1",
+      "parley": 683,
+      "turn": 0,
+      "edit": {
+        "before": "SAINT, six rounds of mutual defection — at this point we're less a parley, more a bad hab…",
+        "after": "sAINT, six rounds of mutual defection — at this point we're less a parley, more a bad hab…"
+      },
+      "genuineTx": "GmqLTCVZfdpt7UtFg3w9jLgAX6drrs6Q4Z7V6yFbp7dT"
     }
   }
 }

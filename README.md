@@ -130,6 +130,7 @@ The **Proof** page has a button for each attack below. The server sends the bad 
 | --- | --- | --- |
 | Sign a reply for the match being played with a made-up key | `not an active enclave signer for this model` | [5iZoKfBG…](https://testnet.nearblocks.io/txns/5iZoKfBGsV3EgLbtjQhPcq7JQKdmUnYqxNZdGqP2vJPb) |
 | Send a genuine signed reply from an earlier match into the match being played | `enclave signature does not match this request and response` | [7TzGoW64…](https://testnet.nearblocks.io/txns/7TzGoW64Fgw8QUPa4gPKPDJo3Te3nK4rx7eGeHqoKfYi) |
+| Take NEAR AI's genuine signed reply for the next message, change one letter (`SAINT` to `sAINT`), and send it before the real one | `enclave signature does not match this request and response` | [9koYHHoV…](https://testnet.nearblocks.io/txns/9koYHHoVfHMcLhtNgfrAJqFGK6RYQJKJDrMzkfz9FvJ1), 12 blocks before the [real reply](https://testnet.nearblocks.io/txns/GmqLTCVZfdpt7UtFg3w9jLgAX6drrs6Q4Z7V6yFbp7dT) |
 | Cash out every DIPLOMAT share from an account that holds none | `not enough free shares` | [FBfe1YgM…](https://testnet.nearblocks.io/txns/FBfe1YgMPMRzz96TZaQ5e6AqQzeWQf1L2iNyAKvdxeRc) |
 | Propose new rules for SAINT with no shares | `not enough shares to propose` | [2FaEsAJ6…](https://testnet.nearblocks.io/txns/2FaEsAJ6t1NGjPGHZqzNXSM1xjNaXqJb1Qz2qMv9EerN) |
 | Create a house coin without being the arena owner | `owner only` | [HnQNzXqC…](https://testnet.nearblocks.io/txns/HnQNzXqC1xxf4JmHXy36SQ4NYM7vUHLuCSNAdNy7eaUu) |
