@@ -5,7 +5,7 @@
 <p align="center">
   <img alt="NEAR testnet" src="https://img.shields.io/badge/NEAR-testnet%20live-00EC97?logo=near&logoColor=black" />
   <img alt="NEAR AI Cloud" src="https://img.shields.io/badge/NEAR%20AI%20Cloud-model%20enclaves-0E1116" />
-  <img alt="Intel TDX" src="https://img.shields.io/badge/Intel-TDX%20quotes%20verified-0071C5?logo=intel&logoColor=white" />
+  <img alt="Intel TDX" src="https://img.shields.io/badge/Intel-TDX%20quotes%20checked%20offline-0071C5?logo=intel&logoColor=white" />
   <img alt="Rust" src="https://img.shields.io/badge/Rust-near--sdk%205.30-DEA584?logo=rust&logoColor=black" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-on%20Bun-3178C6?logo=typescript&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/license-MIT-F3EFE6" />
