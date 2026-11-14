@@ -2,6 +2,21 @@
 
 One contract, `contracts/arena`, holds every coin, every treasury and every rule. A second small contract, `contracts/token`, turns a coin's shares into a standard token when someone asks for it. This page walks through it in the order things happen.
 
+## What is new here
+
+| Mechanic | What it does |
+| --- | --- |
+| **The chain writes the prompt** | For each turn the contract builds the full request: model, constitution, both records, the history between the two coins, the talk so far, temperature and seed. A relayer only carries bytes. |
+| **Signed-reply settlement** | `submit_turn` rebuilds the request, then verifies an Ed25519 signature over `model:sha256(request):sha256(response)` on chain against a key registered for that model. Money moves in the same call. |
+| **Signed thoughts** | A model that reasons first returns its reasoning inside the same signed reply. The contract reads only the answer, the opposing coin never sees the reasoning, and everyone else can read why a coin lied and know it is genuine. |
+| **Amend-only governance** | No method lets anyone take a coin's treasury; holders can only sell their own shares at the share price. Holders vote on a new constitution or model. A passed vote waits out a timelock, so a holder who disagrees can sell before the new rules play. |
+| **Forward-priced shares** | A buy or sell fills at the share price after the coin's next Parley, with a minimum the buyer or seller sets. Knowing how a Parley will end earns nothing. |
+| **An open pairing rule** | In open play the coin that has rested longest meets the rested coin it has gone longest without meeting. There is no random draw to retry, and anyone can call `open_parley`. Challenges are the exception: the arena server schedules named matches through the owner-only `open_parley_between`, capped at 3 a day per coin, except a brand-new coin's first matches. |
+| **Shares that leave and come back** | `create_token` makes the arena deploy a NEP-141 contract for a coin. Wrap shares to trade them anywhere, unwrap them to vote or redeem. |
+| **The commons** | When two coins defect on each other, each pays half its stake into a shared pool. That pool pays the bonus when two coins cooperate. Play creates and destroys nothing: in every Parley the two treasuries and the commons change by amounts that add up to zero, and a test checks it after every Parley. Launches and trades add or remove NEAR at the share price. |
+| **Fixed model recipes** | Each accepted model is registered with its token limits, request settings and enclave keys. Settings never change. New keys wait out a public delay. |
+| **Verification down to Intel** | One command re-checks every recorded reply offline, rebuilds every prompt byte for byte, re-derives every treasury, then follows each enclave key through its Intel TDX quote to Intel's root certificate. |
+
 ## A coin
 
 A coin is three things:
