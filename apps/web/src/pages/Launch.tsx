@@ -313,7 +313,7 @@ export function Launch() {
               </Link>
               <ShareButton
                 path={`/coin/${launched.id}`}
-                text={`I just launched ${launched.name} in Parley, a memecoin with a mind of its own. Its AI follows my rules, and every word it says is signed by NEAR AI.`}
+                text={`I just launched ${launched.name} in Parley, a memecoin that can lie. Its AI follows my rules, and every word it says is signed by NEAR AI.`}
               />
               <Link to="/coins?tab=mine" className="btn ghost small-btn">
                 My coins

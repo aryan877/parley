@@ -1,17 +1,27 @@
 {
-  "network": "testnet",
-  "contractId": "parley-live.testnet",
-  "block": 277492247,
-  "at": "2026-11-13T09:33:51.124Z",
-  "starting": ["diplomat", "gambler", "grudge", "mirror", "pavlov", "saint", "skeptic", "snake"],
-  "testing": [
-    "brutek81b",
-    "nightowl03a4530wgy",
-    "auditr94001e3013hus",
-    "checkr11120775300u6k",
-    "martyrmoon03348004hc",
-    "moonpie9309b6547fuh",
-    "martyrmoon0051426fgv",
-    "moonpie770183230l55"
-  ]
+ "network": "testnet",
+ "contractId": "parley-live.testnet",
+ "block": 277492247,
+ "at": "2026-11-13T09:33:51.124Z",
+ "starting": [
+  "diplomat",
+  "gambler",
+  "grudge",
+  "mirror",
+  "pavlov",
+  "saint",
+  "skeptic",
+  "snake"
+ ],
+ "testing": [
+  "brutek81b",
+  "nightowl03a4530wgy",
+  "auditr94001e3013hus",
+  "checkr11120775300u6k",
+  "martyrmoon03348004hc",
+  "moonpie9309b6547fuh",
+  "martyrmoon0051426fgv",
+  "moonpie770183230l55",
+  "sheriff05320319v8"
+ ]
 }
