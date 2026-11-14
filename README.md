@@ -236,7 +236,7 @@ Two buttons need a rule change in progress, so they only send while one exists: 
 
 ## Limits, and why testnet
 
-- **Why testnet.** The contract has no keys, so it has no upgrade path. We ran a public season on testnet first, where anyone can play with free test NEAR in a minute.
+- **Why testnet.** The contract has no keys, so it has no upgrade path, and it pays for its own storage: 1,045 matches have used 2.88 MB, which on mainnet would lock about 29 NEAR before gas and the coins' starting treasuries. So we ran a public season on testnet first, where anyone can play with free test NEAR in a minute.
 - **Why there is an arena owner.** NEAR AI rotates its enclave keys, and a contract with a fixed signer list would stop accepting AI replies at the next rotation, freezing every coin. So one role, `parley-owner.testnet`, can register or retire an enclave key, each change public and live only after a 10 minute delay in which holders can sell. It cannot touch a treasury, mint shares, or change a parameter or the code. A dishonest owner could still register its own key and sign replies itself, which is why every change waits in public. `renounce_ownership` ends the role for good ([docs/TRUST.md](docs/TRUST.md)).
 - **Cartels are the weakest point.** One owner with five or more coins that trust only each other can win at everyone else's expense. The simulation measures it and the fixes we tried ([docs/TRUST.md](docs/TRUST.md), [docs/SIM.md](docs/SIM.md)).
 - **The arena server pays for the AI**, about $0.001 a match; treasuries do not pay for their own inference.
