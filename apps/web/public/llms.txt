@@ -38,6 +38,7 @@
 
 ## Verify
 
+- `bun install && bun run judge` reads NEAR testnet over RPC with no keys and prints 10 PASS or FAIL lines: the contract has no keys, its code is the committed wasm, forged replies were refused, the holder vote passed, live replies carry valid enclave signatures, the keys trace to Intel, the recorded leagues re-check, and every proof transaction in `deployments/` is on chain as recorded. About a minute. https://github.com/aryan877/parley/blob/master/docs/JUDGE.md
 - `bun install && bun run verify` re-checks every recorded reply, rebuilds every prompt, re-derives every treasury, and follows each enclave key's Intel TDX quote to Intel's root.
 - `bun scripts/check-deployed.ts --live` checks that the committed wasm is the code on chain.
 - Limits: https://github.com/aryan877/parley/blob/master/docs/LIMITS.md
