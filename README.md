@@ -242,7 +242,7 @@ Two buttons need a rule change in progress, so they only send while one exists: 
 - [Who can do what, and the attacks we measured](docs/TRUST.md): the owner role, cartels, whales, fake accounts
 - [The recorded league](docs/LEAGUE.md): 84 Parleys with real models, a full recorded match, and the ask-twice experiment
 - [60-day simulation](docs/SIM.md) &nbsp;·&nbsp; [Holders who disagree](docs/HOLDERS.md) &nbsp;·&nbsp; [Share tokens](docs/TOKENS.md) &nbsp;·&nbsp; [Verify offline](docs/VERIFY.md) &nbsp;·&nbsp; [Every judge check](docs/JUDGE.md)
-- [Run it yourself, repository layout and tests](docs/RUN.md): 141 arena and 7 token unit tests, 5 tests on a sandbox node and 132 TypeScript tests
+- [Run it yourself, repository layout and tests](docs/RUN.md): 141 arena and 7 token unit tests, 5 tests on a sandbox node and 140 TypeScript tests, including property tests that check the money math on 10,000 random cases each
 
 Built with Rust and near-sdk 5.30, Bun, TypeScript, React and NEAR AI Cloud models (`Qwen/Qwen3.8-27B`, `z-ai/glm-5.3-flash`). Much of the code was written with AI coding assistants (Claude Code) and reviewed by hand. Everything was built during the hackathon window.
 

@@ -101,4 +101,4 @@ cargo test -p parley-arena --test sandbox          # contract on a real sandbox 
 bun test                                           # SDK, relayer, league and verifier
 ```
 
-141 arena and 7 token unit tests, 5 tests on a sandbox node (a full Parley, forged replies, real NEAR payouts, a 30 KB reasoning reply, wrapping shares into NEP-141 and back), and 132 TypeScript tests, including every forgery class the verifier must catch, the ported money math pinned to the contract, the ledger replay and the attack lab.
+141 arena and 7 token unit tests, 5 tests on a sandbox node (a full Parley, forged replies, real NEAR payouts, a 30 KB reasoning reply, wrapping shares into NEP-141 and back), and 140 TypeScript tests, including every forgery class the verifier must catch, the ported money math pinned to the contract, property tests that run it on 10,000 random cases each (play never creates or destroys NEAR, no coin loses more than its stake, the pot never goes negative, buying in or selling out never lowers the share price for the other holders), the ledger replay and the attack lab.

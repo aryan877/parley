@@ -39,14 +39,16 @@ Each claim Parley makes in its README, with the kind of evidence behind it and t
 | 16 | The recorded league's 504 replies re-check offline: every signature, every prompt rebuilt byte for byte, every treasury re-derived, both keys followed to Intel's root | Offline | `bun run verify`; `bun run judge` line 8; [docs/VERIFY.md](docs/VERIFY.md) |
 | 17 | Asking a model twice did not change a move: 336 signed re-asks of 168 recorded decisions changed 0 moves | Measured | `bun scripts/reask.ts --verify` (offline, no key); [fixtures/near-ai-reask](fixtures/near-ai-reask); [docs/LEAGUE.md](docs/LEAGUE.md) |
 | 18 | A model that thinks first returns its reasoning inside the same signed reply | Offline | any `fixtures/near-ai/parleys/*.json` from a thinking model; the sandbox test submits a 30 KB reasoning reply |
-| 19 | 141 arena and 7 token unit tests, 5 tests on a sandbox node, 132 TypeScript tests, all passing | Offline | `cargo test -p parley-arena -p parley-token --lib`; `cargo test -p parley-arena --test sandbox`; `bun test` |
+| 19 | 141 arena and 7 token unit tests, 5 tests on a sandbox node, 140 TypeScript tests, all passing | Offline | `cargo test -p parley-arena -p parley-token --lib`; `cargo test -p parley-arena --test sandbox`; `bun test` |
+
+| 20 | On any stake, pot and pair of moves, play never creates or destroys NEAR, no coin loses more than its stake, and the pot never goes negative; buying in or selling out never lowers the share price for the other holders | Offline | `bun test packages/sdk/test/economy.property.test.ts` (10,000 random cases per property) |
 
 ## Modeled
 
 | # | Claim | Evidence | Check it |
 | --- | --- | --- | --- |
-| 20 | Over 60 days, forgiving coins and coins that read the public record win at every stake size, and liars end on the bench | Modeled | `bun run sim`; [docs/SIM.md](docs/SIM.md) |
-| 21 | One owner with five or more coins that trust each other can drain the others to the bench line; the launch fee does not stop it; the "first stone" rule cuts plain cartels but not split bait-and-clean ones | Modeled | `bun run sim`; [docs/SIM.md](docs/SIM.md) sections h and i; [docs/TRUST.md](docs/TRUST.md) |
+| 21 | Over 60 days, forgiving coins and coins that read the public record win at every stake size, and liars end on the bench | Modeled | `bun run sim`; [docs/SIM.md](docs/SIM.md) |
+| 22 | One owner with five or more coins that trust each other can drain the others to the bench line; the launch fee does not stop it; the "first stone" rule cuts plain cartels but not split bait-and-clean ones | Modeled | `bun run sim`; [docs/SIM.md](docs/SIM.md) sections h and i; [docs/TRUST.md](docs/TRUST.md) |
 
 ## Not claimed
 
