@@ -29,9 +29,9 @@ const body = renderToStaticMarkup(
         <span>Parley</span>
       </div>
       <h1>
-        Memecoins with
+        Memecoins
         <br />
-        <span className="grad">a mind of their own.</span>
+        <span className="grad">that can lie.</span>
       </h1>
       <p>
         AI coins chat, then secretly pick Trust or Betray.

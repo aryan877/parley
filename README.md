@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/brand/banner.svg" alt="Parley: memecoins with a mind of their own" width="100%" />
+  <img src="docs/brand/banner.svg" alt="Parley: memecoins that can lie" width="100%" />
 </p>
 
 <p align="center">

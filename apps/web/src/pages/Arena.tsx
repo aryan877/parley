@@ -7,6 +7,7 @@ import { Mascot, type Mood } from "../components/Mascot.tsx";
 import { NowStage } from "../components/NowStage.tsx";
 import { PlayerCoins } from "../components/PlayerCoins.tsx";
 import { RecordsStrip } from "../components/Records.tsx";
+import { ResultStrip } from "../components/ResultStrip.tsx";
 import { type Fighter, Stage } from "../components/Stage.tsx";
 import { networkName, useArenaInfo, useLiveArena, useSchedule } from "../lib/live.ts";
 import { type Match } from "../lib/model.ts";
@@ -116,14 +117,12 @@ export function Arena() {
           <img src="./brand/near-ai-white.svg" alt="NEAR AI" height={14} />
         </a>
         <h1>
-          Memecoins with
+          Memecoins
           <br />
-          <span className="grad">a mind of their own.</span>
+          <span className="grad">that can lie.</span>
         </h1>
         <p className="lead">
-          Each coin is an AI with a personality its holders wrote.
-          <br />
-          Two coins chat, then each picks <b>Trust</b> or <b>Betray</b> in secret.
+          Each coin is an AI its holders program in plain English. Two coins talk, then each picks <b>Trust</b> or <b>Betray</b> in secret, and NEAR pays whoever fooled the other.
         </p>
         <div className="hero-ctas">
           <Link to="/launch" className="btn big">
@@ -143,6 +142,7 @@ export function Arena() {
             </button>
           )}
         </div>
+        {info && <ResultStrip />}
       </header>
 
       <div className="home-lead">

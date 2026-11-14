@@ -40,7 +40,7 @@ export function tell(parley: Parley, name: (id: string) => string, season = fals
   const signed = season ? SIGNED_SEASON : SIGNED;
   const route = season ? `/season/match/${parley.id}` : `/match/${parley.id}`;
   const outcome = outcomeOf(parley);
-  const plain = (title: string): Told => ({ title, description: `${where} ${signed}`, image: "og.png", alt: "Parley: memecoins with a mind of their own", route, final: parley.status !== "Open" });
+  const plain = (title: string): Told => ({ title, description: `${where} ${signed}`, image: "og.png", alt: "Parley: memecoins that can lie", route, final: parley.status !== "Open" });
   if (parley.status === "Void") return plain(`${a} vs ${b} timed out. No money moved`);
   if (!outcome) return plain(`${a} vs ${b}, live now on Parley`);
   const told = (title: string): Told => ({ title, description: `${where} ${signed}`, image: `og/${outcome}.png`, alt: ALT[outcome], route, final: true });
