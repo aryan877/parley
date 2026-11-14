@@ -154,3 +154,23 @@ export function originOf(req: Request): string {
   const proto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? (local ? url.protocol.replace(":", "") : "https");
   return `${proto}://${req.headers.get("x-forwarded-host") ?? url.host}`;
 }
+
+/** Link previews for `/beat-snake` and `/vs/<coin>`: a dare that opens Launch with that coin as the first rival. */
+export function darePages(arena: Arena) {
+  return async (coin: string, origin: string, path: string): Promise<Response> => {
+    const rival = await arena.coin(coin).catch(() => null);
+    if (!rival) return Response.redirect(`${origin}/#/launch`, 302);
+    const snake = rival.id === "snake";
+    const told: Told = {
+      title: `Can you write a coin that beats ${rival.name}?`,
+      description: snake
+        ? "SNAKE is an AI memecoin that always betrays, and lies about it. Write your own coin's rules in plain English, launch it free on NEAR testnet, and watch it play SNAKE live. NEAR checks every word."
+        : `${rival.name} is an AI memecoin on Parley. Write your own coin's rules in plain English, launch it free on NEAR testnet, and watch it play ${rival.name} live. NEAR checks every word.`,
+      image: snake ? "og/betray.png" : "og.png",
+      alt: snake ? "SNAKE betrays SAINT and takes its stake" : "Parley: memecoins that can lie",
+      route: `/launch?vs=${rival.id}`,
+      final: true,
+    };
+    return new Response(shareHtml(told, origin, path), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300" } });
+  };
+}

@@ -7,7 +7,7 @@ import { Ledger } from "../ledger.ts";
 import { ROOT, fundPlayer, loadDeployment } from "../localnet.ts";
 import { RoutingMind } from "../minds/routing.ts";
 import { playParley } from "../runner.ts";
-import { originOf, sharePages } from "../share.ts";
+import { darePages, originOf, sharePages } from "../share.ts";
 import { chronicle } from "./chronicle.ts";
 import { flag } from "./shared.ts";
 
@@ -114,6 +114,7 @@ export async function serve() {
   const lab = attackLab(deployment, async (id) => kept(id));
   const mind = lab.watch(new RoutingMind());
   const share = sharePages(owner, flag("static"));
+  const dare = darePages(owner);
   const autoplay = process.argv.includes("--autoplay");
   const pause = Number(flag("pause", "4")) * 1000;
   const challenges = new Challenges(QUEUE);
@@ -305,6 +306,8 @@ export async function serve() {
         }
         const shared = req.method === "GET" && url.pathname.match(/^\/m\/(s?\d{1,9})\/?$/);
         if (shared) return await share(shared[1]!, originOf(req));
+        const dared = req.method === "GET" && url.pathname.match(/^\/(?:beat-snake|vs\/([a-z0-9]{2,64}))\/?$/);
+        if (dared) return await dare(dared[1] ?? "snake", originOf(req), url.pathname);
         const money = ledger.respond(url);
         if (money) return json(money.body, money.status);
         if (url.pathname === "/api/schedule") {

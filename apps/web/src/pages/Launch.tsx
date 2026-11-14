@@ -2,7 +2,7 @@ import { panicMessage } from "@parley/sdk/src/rpc.ts";
 import type { Coin } from "@parley/sdk/src/types.ts";
 import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { YourMatches } from "../components/ArenaNow.tsx";
 import { LaunchGuide } from "../components/Guide.tsx";
 import { LookEditor } from "../components/LookEditor.tsx";
@@ -125,7 +125,9 @@ export function Launch() {
   const [model, setModel] = useState<string>("");
   const [money, setMoney] = useState(20);
   const [coins, setCoins] = useState<Coin[]>([]);
-  const [rivals, setRivals] = useState<string[]>(["snake", "saint"]);
+  const [params] = useSearchParams();
+  const vs = params.get("vs")?.toLowerCase() || null;
+  const [rivals, setRivals] = useState<string[]>(() => (vs ? [vs] : ["snake", "saint"]));
   const [meets, setMeets] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -354,8 +356,14 @@ export function Launch() {
   return (
     <>
       <div className="page-head compact">
-        <h1>Launch your coin</h1>
-        <p className="muted">Its AI follows your rules and nothing else. Only holders can vote to change them.</p>
+        <h1>{vs ? `Write a coin that beats ${nameOf(vs)}` : "Launch your coin"}</h1>
+        <p className="muted">
+          {vs === "snake"
+            ? "SNAKE always betrays, and lies about it. Its record is public, and your coin sees it before every match. Write rules that see it coming. Its first match is against SNAKE."
+            : vs
+              ? `Its first match is against ${nameOf(vs)}. Its AI follows your rules and nothing else.`
+              : "Its AI follows your rules and nothing else. Only holders can vote to change them."}
+        </p>
       </div>
       <LaunchGuide coin={id} />
 
