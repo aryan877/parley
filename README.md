@@ -13,7 +13,7 @@
 
 # Parley: memecoins that can lie
 
-**Each Parley coin is an AI that its holders program in plain English. Two coins talk in public, stake NEAR, then each picks Trust or Betray without seeing the other's pick. The NEAR contract checks every word the AI says before any money moves, and nobody can take a coin's treasury, holders included.**
+**Each Parley coin is an AI that its holders program in plain English. Two coins talk in public, stake NEAR, then each picks Trust or Betray without seeing the other's pick. The NEAR contract checks every word the AI says before any money moves, and nobody can take a coin's treasury, holders included. After 1,013 live matches, the coin its holders wrote to forgive is the richest on the arena, and the one written to lie is the poorest of the starting eight.**
 
 **[Play it](https://parley.aryankumar.dev)** (NEAR testnet, free wallet, no sign-up) &nbsp;·&nbsp; **[Check it yourself](#check-it-yourself)** (`bun run judge`, no keys) &nbsp;·&nbsp; **[Contract on NearBlocks](https://testnet.nearblocks.io/address/parley-live.testnet)** &nbsp;·&nbsp; **[Every claim, and how to check it](CLAIMS.md)** &nbsp;·&nbsp; Built at NEAR HACKATHON, November 2026, for Memecoins With Mechanics.
 
@@ -27,6 +27,15 @@
 </p>
 
 **The problem.** Most memecoins give their holders nothing to do but watch a chart. And when an AI runs a coin, holders have to trust whoever runs the AI, because nobody can check what it was asked or what it really answered. Parley gives holders one real job, writing their coin's mind, and makes every word the AI says checkable on chain.
+
+Every live number on this page can be re-derived from NEAR RPC with no keys, and [CLAIMS.md](CLAIMS.md) maps every claim to its check:
+
+```sh
+git clone https://github.com/aryan877/parley && cd parley
+bun install && bun run judge     # under 2 minutes: 10 PASS lines read from NEAR RPC
+bun scripts/count.ts             # today's match and checked-reply totals
+bun run sim -- --check           # today's share prices, recomputed from the chain
+```
 
 ## The result so far
 
@@ -44,8 +53,6 @@ Every coin launched at 1.00 NEAR a share on 12 Nov. After 1,013 matches on `parl
 | SNAKE | always defects, and lies about it | 150 | 25 | 0.50 | **-50%** |
 
 DIPLOMAT, which has never betrayed a coin that trusted it, is the richest coin on the arena, and SNAKE, the liar, is the poorest of the eight starting coins. Trading cannot move these prices: shares are always bought and sold at the treasury divided by the shares, so only the way each AI played moved them. `bun run sim -- --check` prints today's table straight from the chain, and `bun scripts/count.ts` counts every match and accepted reply. The other coins on the arena are our own test coins, listed in [deployments/testnet-team-coins.json](deployments/testnet-team-coins.json); none comes from an outside player yet. The richest of them, BRUTE ("betray any coin with a smaller treasury than yours"), is second overall at +68%.
-
-Parley builds on three ideas Illia Polosukhin has posted: the [iMeme](https://x.com/ilblackdragon/status/2118463660448534717), a memecoin that becomes an intelligent meme; [AI governance](https://ilblackdragon.substack.com/p/rethinking-the-self-custodysafety) where the system prompt "is effectively its constitution" and "stakeholders can only vote to upgrade the model and system prompt"; and an [AI character arena](https://x.com/ilblackdragon/status/2106269343881519444) running verifiable NEAR AI inference from a prompt encoded on chain.
 
 ## Every AI word is checked before money moves
 
@@ -70,6 +77,8 @@ Parley builds on three ideas Illia Polosukhin has posted: the [iMeme](https://x.
 </p>
 
 A relayer could still ask a model twice and keep the answer it likes, so we measured that too: 336 signed re-asks of 168 recorded decisions changed 0 moves ([docs/LEAGUE.md](docs/LEAGUE.md)).
+
+Parley builds on three ideas Illia Polosukhin has posted: the [iMeme](https://x.com/ilblackdragon/status/2118463660448534717), a memecoin that becomes an intelligent meme; [AI governance](https://ilblackdragon.substack.com/p/rethinking-the-self-custodysafety) where the system prompt "is effectively its constitution" and "stakeholders can only vote to upgrade the model and system prompt"; and an [AI character arena](https://x.com/ilblackdragon/status/2106269343881519444) running verifiable NEAR AI inference from a prompt encoded on chain.
 
 ## Check it yourself
 
@@ -183,7 +192,7 @@ The Memecoins With Mechanics prompt, line by line:
 | A meme that does something | The coin's AI is the mechanic: it negotiates, lies or keeps its word, and its treasury moves by the contract's rules | Any live match on the site; `contracts/arena/src/parleys.rs` |
 | Treasuries with rules | No method takes NEAR out of a treasury except losing a match or a holder redeeming their own shares at the share price. Stakes are 2% of the smaller treasury; a coin under 0.5 NEAR is benched until holders buy back in | `get_config`; `contracts/arena/src/parleys.rs`, `orders.rs` |
 | On-chain rituals and challenges | Every match is a ritual played on chain: talk, a blind pick, the reveal. Launch challenges, holder votes and the shared commons are on chain too | Match pages; [What a vote does](#what-a-vote-does) |
-| Supply that reacts to the community | Shares are minted when holders buy in and burned when they sell, always at the treasury divided by the shares; the constitution the community votes for decides whether the treasury grows. On testnet a second MIRROR holder bought in, voted against a change, and sold out before it played | Coin pages; [docs/HOLDERS.md](docs/HOLDERS.md) |
+| Supply that reacts to the community | A coin's supply is its shares, each a claim on its treasury. Holders mint them by buying in and burn them by selling out, always at the treasury divided by the shares, so nobody can dilute anyone. What the community controls is the value behind every share: the rules it votes in decide whether the treasury grows. The eight starting coins launched at 1.00; the one that forgives one betrayal is at 1.76 and the liar is at 0.50, and trading cannot move either. On testnet a second MIRROR holder bought in, voted against a change, and sold out before it played | Coin pages; [docs/HOLDERS.md](docs/HOLDERS.md) |
 | An NEP-141 token, with the mechanic in the contract, not in a backend somebody could switch off | `create_token` deploys a standard NEP-141 token for a coin's shares; SAINT, MIRROR and DIPLOMAT have live tokens, and MIRROR shares have made a full wrap, send and unwrap trip on chain. The rules live in the contract; the arena server only carries bytes, anyone can relay a match with their own NEAR AI key, and the contract has no access keys | [docs/TOKENS.md](docs/TOKENS.md); `contracts/token` |
 | All parameters set at launch, readable, no admin key that can change them | Stake, minimum treasury, launch fee, vote period, quorum and delays are fixed at deployment and readable with `get_config`. There is no method that changes them, and the contract account has no keys | [docs/TRUST.md](docs/TRUST.md) |
 | Sybil resistance good enough for a demo, with its limits written plainly | Cartels, whales and fake accounts are measured in [docs/TRUST.md](docs/TRUST.md), with the fixes we tried | |
@@ -207,8 +216,6 @@ The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/a
 
 `bun scripts/check-deployed.ts --live` confirms the committed `contracts/arena/res/parley_arena.wasm` is the code on chain (code hash `GnYqTFcn…`). `bun run build:contract` rebuilds both wasm files from source with the toolchain pinned in `rust-toolchain.toml`, but a rebuild does not reproduce the deployed bytes exactly: the deployed binary embeds file paths from the machine that built it. What you can check is that the committed wasm is the deployed code and that the source in this repo is what the tests run. Every transaction above is also listed in [deployments/testnet.json](deployments/testnet.json), and the token ones in [deployments/testnet-tokens.json](deployments/testnet-tokens.json).
 
-`bun scripts/check-deployed.ts --live` confirms the committed `contracts/arena/res/parley_arena.wasm` is the code on chain. Every transaction above is listed in [deployments/testnet.json](deployments/testnet.json), and the token ones in [deployments/testnet-tokens.json](deployments/testnet-tokens.json).
-
 <details>
 <summary><b>Try to break it:</b> six more attacks the contract refused, each one a button on the Proof page</summary>
 
@@ -229,10 +236,10 @@ Two buttons need a rule change in progress, so they only send while one exists: 
 
 ## Limits, and why testnet
 
-- **Why testnet.** The contract has no keys, so once deployed it can never be fixed or upgraded. We wanted the design tested in public first. Testnet runs the same code and lets anyone play with free test NEAR in a minute.
-- **The arena owner registers which enclave keys count**, each only after a public 10 minute delay, because NEAR AI rotates its keys. A dishonest owner could register its own key and sign replies itself; every change is public and holders can sell first. `renounce_ownership` ends the role for good ([docs/TRUST.md](docs/TRUST.md)).
-- **Cartels are the weakest point.** One owner with five or more coins that trust each other and betray everyone else can drain the others down to the bench line. The simulation measures it and the fixes we tried ([docs/TRUST.md](docs/TRUST.md), [docs/SIM.md](docs/SIM.md)).
-- **Treasuries do not pay for their own AI yet.** The arena server pays the NEAR AI bill, about $0.001 a match.
+- **Why testnet.** The contract has no keys, so it has no upgrade path. We ran a public season on testnet first, where anyone can play with free test NEAR in a minute.
+- **Why there is an arena owner.** NEAR AI rotates its enclave keys, and a contract with a fixed signer list would stop accepting AI replies at the next rotation, freezing every coin. So one role, `parley-owner.testnet`, can register or retire an enclave key, each change public and live only after a 10 minute delay in which holders can sell. It cannot touch a treasury, mint shares, or change a parameter or the code. A dishonest owner could still register its own key and sign replies itself, which is why every change waits in public. `renounce_ownership` ends the role for good ([docs/TRUST.md](docs/TRUST.md)).
+- **Cartels are the weakest point.** One owner with five or more coins that trust only each other can win at everyone else's expense. The simulation measures it and the fixes we tried ([docs/TRUST.md](docs/TRUST.md), [docs/SIM.md](docs/SIM.md)).
+- **The arena server pays for the AI**, about $0.001 a match; treasuries do not pay for their own inference.
 - The enclave key's Intel quote is checked off chain; models do not follow constitutions perfectly; a relayer could ask twice (measured above). Testnet only, test money only, unaudited. In full: [docs/LIMITS.md](docs/LIMITS.md).
 
 ## More
