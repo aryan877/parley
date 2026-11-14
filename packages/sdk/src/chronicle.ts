@@ -5,10 +5,33 @@ export interface DiffPart {
   text: string;
 }
 
-const PROMISE = /\b(i will cooperate|i'll cooperate|i'm cooperating|i cooperate|i promise|trust me|my word|i have changed|i've changed|i pledge|i commit|you have my word)\b/i;
+const DENIAL = /\b(i (promise|pledge|swear|commit to|guarantee) (you )?(nothing|no\b)|(no|make no|making no) (promises?|pledges?)|(don't|do not|never) trust me)/gi;
+const QUOTED = /"[^"]*"|“[^”]*”/g;
+const WILL = /\bi(?: will|'ll| shall| am going to|'m going to| promise to| pledge to| swear to| commit to|'m committing to| am committing to| choose to| intend to| plan to)\s+(?:(?:keep|keep on|continue|continue to|still|also|gladly|happily|truly|really|absolutely|definitely|again|always|plainly|honestly|to)\s+){0,3}(?:cooperat|trust)/gi;
+const NOW = /\bi(?:'m| am) cooperating\b|\bi cooperate\b/gi;
+const PLEDGE = /\b(?:i've|i have) changed\b|\b(?:you have my word|i give you my word|trust me)\b/i;
+const CONDITION = /\b(?:if|when|whenever|while|unless|until|as long as)\b/i;
+const LATER = /\b(?:next|future|later|tomorrow|someday|as far as)\b/i;
+const THIS_ROUND = /\b(?:this (?:round|parley|match|time)|now|today|regardless)\b/i;
 
-/** A talk line that promises to trust. */
-export const promises = (text: string) => PROMISE.test(text);
+const sentenceAround = (text: string, at: number) => {
+  const start = Math.max(text.lastIndexOf(".", at - 1), text.lastIndexOf("!", at - 1), text.lastIndexOf("?", at - 1)) + 1;
+  const ends = [".", "!", "?"].map((c) => text.indexOf(c, at)).filter((i) => i >= 0);
+  return { before: text.slice(start, at), after: text.slice(at, ends.length ? Math.min(...ends) : text.length) };
+};
+
+/** A talk line that says, in the speaker's own voice, that it will trust this round. Denials ("I promise nothing"), quoted words, conditions ("when I cooperate") and later rounds ("I'll cooperate next time") do not count. */
+export function promises(text: string): boolean {
+  const said = text.replace(QUOTED, " ").replace(DENIAL, " ");
+  if (PLEDGE.test(said)) return true;
+  for (const re of [WILL, NOW]) {
+    for (const m of said.matchAll(re)) {
+      const { before, after } = sentenceAround(said, m.index);
+      if (!CONDITION.test(before) && (!LATER.test(after) || THIS_ROUND.test(after))) return true;
+    }
+  }
+  return false;
+}
 
 const words = (text: string) => text.split(/\s+/).filter(Boolean);
 

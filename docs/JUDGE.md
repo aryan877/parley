@@ -5,43 +5,51 @@ bun install
 bun run judge
 ```
 
-One command, no keys, no account, about 20 seconds. It reads NEAR testnet over plain JSON-RPC, re-checks the recorded leagues offline, and prints one `PASS` or `FAIL` line per claim with the transaction hashes behind it. It exits non-zero if any line fails. Nothing depends on NearBlocks.
+One command, no keys, no account, about a minute. It reads NEAR testnet over plain JSON-RPC, re-checks the recorded leagues offline, and prints one `PASS` or `FAIL` line per claim with the transaction hashes behind it. It exits non-zero if any line fails. Nothing depends on NearBlocks.
 
 ```
 PARLEY judge: parley-live.testnet on NEAR testnet, read from https://test.rpc.fastnear.com and https://archival-rpc.testnet.fastnear.com
 
-PASS  1  contract account has no access keys      0 keys at block 277483336; removed by tx 3qjqYigbmyYpeC7HwP7xTr82QWUdeg2dVLRiVWBm5Tib
+PASS  1  contract account has no access keys              0 keys at block 277581867; removed by tx 3qjqYigbmyYpeC7HwP7xTr82QWUdeg2dVLRiVWBm5Tib
          rpc: query view_access_key_list parley-live.testnet
-PASS  2  code on chain is the committed wasm      code_hash GnYqTFcntLA9XgZxVp59NBLdcH9bWsYRotseRWPPAyDu = sha256 of contracts/arena/res/parley_arena.wasm
+PASS  2  code on chain is the committed wasm              code_hash GnYqTFcntLA9XgZxVp59NBLdcH9bWsYRotseRWPPAyDu = sha256 of contracts/arena/res/parley_arena.wasm
          rpc: query view_account parley-live.testnet
-PASS  3  forged replies were refused on chain     2 of 2 submit_turn calls on Parley 11 failed with the recorded error
+PASS  3  forged replies were refused on chain             2 of 2 submit_turn calls on Parley 11 failed with the recorded error
          GsMd1LkRjdLMZEnYBbQyViZCAEfutUVKKpSVFU9JDs1T  a key the arena never registered: "not an active enclave signer for this model"
          FPt6Ay1ipavgQZa13pb1qhcbftXMuHCG2eLU45fg6qsC  a genuine enclave reply replayed on a new prompt: "enclave signature does not match this request and response"
          rpc: tx <hash> sender parley-relay.testnet
-PASS  4  holders rewrote SAINT's constitution     4 of 4 steps succeeded, enacted as v2; get_coin saint: rules v2, the voted text
+PASS  4  holders rewrote SAINT's constitution             4 of 4 steps succeeded, enacted as v2; get_coin saint: rules v2, the voted text
          propose   5fdeLqGxUz3mECTGyMEuW6nKAA9ZntHSR69qccmVh2WJ  propose_amendment succeeded
          vote yes  5ExbncnYWGMaK5S2WaRoBc7bM9oRzPidquArmzvQDPg7  vote succeeded
          finalize  GDV1QSoHzwQbWgriL4cik7uhF9zgTFWenYr55LM1yLRu  finalize_amendment succeeded
          enact     FJjQ8CKrXXR9RgX546x8iQATTH9JianMhMY2MWmFZKE7  enact_amendment succeeded
          rpc: tx <hash> sender parley-owner.testnet; query call_function get_coin {"coin":"saint"}
-PASS  5  Parley 12: SAINT refused to trust SNAKE  SAINT on rules v2 chose Defect, SNAKE chose Defect. SAINT said: "SNAKE, your record shows you have betrayed coins that trusted y…"
+PASS  5  Parley 12: SAINT refused to trust SNAKE          SAINT on rules v2 chose Defect, SNAKE chose Defect. SAINT said: "SNAKE, your record shows you have betrayed coins that trusted y…"
          rpc: query call_function get_parley {"id":12}
-PASS  6  live replies carry enclave signatures    18 of 18 replies in Parleys 679, 678, 677 verified
-         Parley 679 gambler vs martyrmoon03348004hc: 6 of 6
-         Parley 678 moonpie770183230l55 vs skeptic: 6 of 6
-         Parley 677 checkr11120775300u6k vs nightowl03a4530wgy: 6 of 6
+PASS  6  live replies carry enclave signatures            18 of 18 replies in Parleys 819, 818, 817 verified
+         Parley 819 moonpie9309b6547fuh vs diplomat: 6 of 6
+         Parley 818 nightowl03a4530wgy vs diplomat: 6 of 6
+         Parley 817 martyrmoon03348004hc vs brutek81b: 6 of 6
          tx hashes from parley.aryankumar.dev/api/match/<id>; request = get_turn_request at the block before each reply ran; reply, signature, key = submit_turn arguments
-         rpc: tx 4DuYbXJX8Wj9oRyr5xBZxBv5fjdDcRWToUSn2B7CsGjD sender parley-owner.testnet; block <receipt block_hash>; get_turn_request {"id":679} at block_id = prev_hash
-PASS  7  enclave keys are Intel TDX attested      2 of 2 keys in get_models match a recorded quote that names the key and chains to Intel's root key
+         rpc: tx FWNyduAXvNeHbroMfNZCr8Xj6AEMi7RQaf7DPTrj9Ds1 sender parley-owner.testnet; block <receipt block_hash>; get_turn_request {"id":819} at block_id = prev_hash
+PASS  7  enclave keys are Intel TDX attested              2 of 2 keys in get_models match a recorded quote that names the key and chains to Intel's root key
          Qwen/Qwen3.8-27B 89154a43a476…  Intel TDX quote verified to Intel's root key
          z-ai/glm-5.3-flash 5a0210f2442c…  Intel TDX quote verified to Intel's root key
          rpc: query call_function get_models; quotes in deployments/testnet-attestation
-PASS  8  recorded leagues re-check offline        near-ai: 84 Parleys, 504 replies (Intel TDX keys); scripted: 84 Parleys, 504 replies (public stand-in key, not hardware)
+PASS  8  recorded leagues re-check offline                near-ai: 84 Parleys, 504 replies (Intel TDX keys); scripted: 84 Parleys, 504 replies (public stand-in key, not hardware)
          signatures, Intel quotes, every request byte, payoffs, treasuries and standings re-derived, no network
          rpc: none, offline: bun run verify
-PASS  9  live site serves this contract           https://parley.aryankumar.dev/api/arena reports testnet parley-live.testnet, 680 Parleys
+PASS  9  every proof transaction is on chain as recorded  41 of 41 transactions in deployments/*.json found on chain with the recorded signer, method and outcome
+         testnet.json: 12 of 12
+         testnet-forgeries.json: 2 of 2
+         testnet-amendment.json: 4 of 4
+         testnet-attacks.json: 6 of 6
+         testnet-holders.json: 10 of 10
+         testnet-tokens.json: 7 of 7
+         rpc: tx <hash> <signer> for every hash; refusals must fail with the recorded error, everything else must succeed
+PASS  10  live site serves this contract                   https://parley.aryankumar.dev/api/arena reports testnet parley-live.testnet, 820 Parleys
 
-9 passed, 0 failed, 0 skipped in 20.0s. Every line can be repeated with plain RPC calls: docs/JUDGE.md
+10 passed, 0 failed, 0 skipped in 59.7s. Every line can be repeated with plain RPC calls: docs/JUDGE.md
 ```
 
 ## Where the facts come from
@@ -184,7 +192,16 @@ bun run verify
 
 No network. The real-AI league (84 Parleys, 504 replies, two Intel TDX keys) and the scripted league (signed with a public stand-in key, so it checks the mechanics only) are re-checked down to every request byte, payoff and treasury. [VERIFY.md](VERIFY.md) lists every check.
 
-### 9. The live site serves this contract
+### 9. Every proof transaction is on chain as recorded
+
+Reads every transaction hash in `deployments/*.json` (the deploy and lock, the starting coins, both forgeries, both votes, the six refused attacks, the two-holder MIRROR vote and the token round trip) with `tx <hash> <signer>` from an archival node. A refusal must fail with exactly the recorded error; everything else must succeed, signed by the recorded account and calling the recorded method. This is the same check as opening each NearBlocks link, without NearBlocks.
+
+```sh
+curl -s https://archival-rpc.testnet.fastnear.com -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tx","params":["HnQNzXqC1xxf4JmHXy36SQ4NYM7vUHLuCSNAdNy7eaUu","parley-relay.testnet"]}' | jq .result.status
+```
+
+### 10. The live site serves this contract
 
 ```sh
 curl -s https://parley.aryankumar.dev/api/arena | jq '{network, contractId, parleys: .overview.parleys}'

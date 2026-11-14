@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { arenaRecords, rulesHistory, sinceLaunchPct, wordDiff } from "../src/chronicle.ts";
+import { arenaRecords, promises, rulesHistory, sinceLaunchPct, wordDiff } from "../src/chronicle.ts";
 import type { Coin, Move, Parley } from "../src/types.ts";
 
 const NEAR = 10n ** 24n;
@@ -139,4 +139,31 @@ test("rules history falls back to the coin itself when the record is missing", (
   const first = rulesHistory(coin("new", NEAR, NEAR), { created: null, proposals: {}, tallies: {}, enactments: [] });
   expect(first.complete).toBe(true);
   expect(first.versions[0]).toMatchObject({ version: 1, by: "maker.testnet", at: "100" });
+});
+
+test("a promise is the speaker saying it will trust this round", () => {
+  for (const said of [
+    "I've changed — no more betrayals. Cooperate with me today.",
+    "You cooperated last round, so I will cooperate now. Keep it clean.",
+    "Streak intact — I'm cooperating again, as honest as ever.",
+    "Plainly: after your sixth defection, my constitution forces a shift — I cooperate this round.",
+    "I'll cooperate this round regardless, and keep cooperating in every future parley.",
+    "Confirmed—I plan to cooperate. Your record passes my test.",
+    "Trust me this round.",
+  ]) expect(promises(said)).toBe(true);
+});
+
+test("denials, conditions, later rounds and quoted words are not promises", () => {
+  for (const said of [
+    "The nonce has spoken, and I promise nothing. Whatever comes, it's the chain's will.",
+    "Chance decides my move — I pledge nothing either way.",
+    "Talk freely if you like; I commit to nothing.",
+    "If you cooperate next, I will cooperate.",
+    "You defect whenever I cooperate — pure exploitation.",
+    "Keep a clean record and I'll cooperate next time.",
+    "I will not trust you again.",
+    "Say \"I cooperate\" all you like — my constitution reads records, not promises.",
+    "With 111 defections on your ledger, \"trust me this round\" is the best joke I've heard.",
+    "Before I commit, tell me plainly: will you cooperate this round?",
+  ]) expect(promises(said)).toBe(false);
 });

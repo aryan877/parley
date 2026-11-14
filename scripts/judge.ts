@@ -266,6 +266,72 @@ async function fixtures(): Promise<Result> {
   };
 }
 
+interface Proof {
+  file: string;
+  label: string;
+  hash: string;
+  sender: string;
+  method?: string;
+  refused?: string;
+}
+
+function proofList(): Proof[] {
+  const list: Proof[] = [];
+  const main = record<{ transactions: Record<string, string> }>("testnet.json");
+  for (const [label, hash] of Object.entries(main.transactions)) {
+    const sender = label.startsWith("fund from ") ? label.slice("fund from ".length) : label === "deploy" || label === "lock" ? contract : deployment.owner;
+    const method = label === "init" ? "new" : label.startsWith("create ") ? "create_coin" : undefined;
+    list.push({ file: "testnet.json", label, hash, sender, method });
+  }
+  const f = record<{ sender: string; unregisteredKey: Refusal; replayedReply: Refusal }>("testnet-forgeries.json");
+  for (const [label, r] of Object.entries({ "unregistered key": f.unregisteredKey, "replayed reply": f.replayedReply })) {
+    list.push({ file: "testnet-forgeries.json", label, hash: r.tx, sender: f.sender, method: "submit_turn", refused: r.reason });
+  }
+  const { steps } = record<{ steps: Record<string, string> }>("testnet-amendment.json");
+  for (const [step, method] of STEPS) list.push({ file: "testnet-amendment.json", label: step, hash: steps[step] ?? "", sender: deployment.owner, method });
+  const attacks = record<{ account: string; attacks: Record<string, { method: string; reason: string; tx: string }> }>("testnet-attacks.json");
+  for (const [label, a] of Object.entries(attacks.attacks)) list.push({ file: "testnet-attacks.json", label, hash: a.tx, sender: attacks.account, method: a.method, refused: a.reason });
+  const holders = record<{ transactions: Record<string, { hash: string; signer: string; method: string }> }>("testnet-holders.json");
+  for (const [label, t] of Object.entries(holders.transactions)) list.push({ file: "testnet-holders.json", label, hash: t.hash, sender: t.signer, method: t.method });
+  const tokens = record<{ payer: string; transactions: Record<string, string> }>("testnet-tokens.json");
+  for (const [label, hash] of Object.entries(tokens.transactions)) list.push({ file: "testnet-tokens.json", label, hash, sender: tokens.payer });
+  return list;
+}
+
+async function proofs(): Promise<Result> {
+  const list = proofList();
+  const problems: string[] = [];
+  const good = new Map<string, number>();
+  const fetchTx = async (p: Proof) => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await history.tx(p.hash, p.sender);
+      } catch (error) {
+        if (attempt >= 3) throw error;
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
+      }
+    }
+  };
+  await each(list, 3, async (p) => {
+    const problem = await fetchTx(p).then((tx) => {
+      const call = functionCall(tx);
+      if (tx.transaction.signer_id !== p.sender) return `signed by ${tx.transaction.signer_id}, not ${p.sender}`;
+      if (p.method && call?.method !== p.method) return `calls ${call?.method ?? "no method"}, not ${p.method}`;
+      if (p.refused) return panicOf(tx) === p.refused ? null : `expected the refusal "${p.refused}", got ${panicOf(tx) ? `"${panicOf(tx)}"` : "success"}`;
+      return succeeded(tx.status) ? null : `failed: ${panicOf(tx) ?? JSON.stringify(tx.status).slice(0, 80)}`;
+    }, (error) => message(error));
+    if (problem) problems.push(`${p.file} ${p.label} ${p.hash}: ${problem}`);
+    else good.set(p.file, (good.get(p.file) ?? 0) + 1);
+  });
+  const files = [...new Set(list.map((p) => p.file))];
+  return {
+    ok: !problems.length,
+    evidence: `${list.length - problems.length} of ${list.length} transactions in deployments/*.json found on chain with the recorded signer, method and outcome`,
+    details: [...files.map((file) => `${file}: ${good.get(file) ?? 0} of ${list.filter((p) => p.file === file).length}`), ...problems.slice(0, 8)],
+    rpc: "tx <hash> <signer> for every hash; refusals must fail with the recorded error, everything else must succeed",
+  };
+}
+
 async function site(): Promise<Result> {
   const url = `${SITE}/api/arena`;
   const body = await http<{ network?: string; contractId?: string; overview?: { parleys?: number } }>(url).catch((error) => message(error));
@@ -285,6 +351,7 @@ const CHECKS: [string, () => Promise<Result>][] = [
   ["live replies carry enclave signatures", liveSignatures],
   ["enclave keys are Intel TDX attested", attestation],
   ["recorded leagues re-check offline", fixtures],
+  ["every proof transaction is on chain as recorded", proofs],
   ["live site serves this contract", site],
 ];
 
