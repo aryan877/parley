@@ -12,6 +12,18 @@
   color: var(--faint);
 }
 
+.result-strip p.result-proof {
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+  max-width: 620px;
+}
+
+.result-strip p.result-proof b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 .result-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;

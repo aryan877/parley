@@ -34,6 +34,7 @@ const PLAYERS = join(STATE, "players.json");
 const ORDERS = join(STATE, "orders.json");
 const QUEUE = join(STATE, "queue.json");
 const SCHEDULE_TTL = 8000;
+const STATS_TTL = 30_000;
 const EVIDENCE = join(STATE, "evidence");
 const FAUCET_PER_IP = 5;
 const FAUCET_PER_DAY = 60;
@@ -125,6 +126,44 @@ export async function serve() {
   const saveWatched = () => writeFileSync(ORDERS, JSON.stringify([...watched]));
   const pairs = new Map<string, bigint>();
   let schedule: { at: number; body: unknown } | null = null;
+  const finished = new Map<number, { turns: number; settled: boolean }>();
+  type Tally = { parleys: number; settled: number; replies: number; at: number };
+  let tally: { at: number; body: Tally } | null = null;
+  let tallying: Promise<Tally> | null = null;
+  /** Every Parley and every accepted reply. The first count reads them all, later ones only the newest pages: a finished Parley never changes. */
+  const count = async (): Promise<Tally> => {
+    const live = new Map<number, number>();
+    for (let from = 0; ; from += 50) {
+      const page = await owner.parleys(from, 50);
+      let fresh = false;
+      for (const p of page) {
+        if (p.status === "Open") live.set(p.id, p.turns.length);
+        else if (!finished.has(p.id)) {
+          finished.set(p.id, { turns: p.turns.length, settled: p.status === "Settled" });
+          fresh = true;
+        }
+      }
+      if (page.length < 50 || (!fresh && from > 0)) break;
+    }
+    let replies = 0;
+    let settled = 0;
+    for (const f of finished.values()) {
+      replies += f.turns;
+      if (f.settled) settled++;
+    }
+    for (const n of live.values()) replies += n;
+    return { parleys: finished.size + live.size, settled, replies, at: Date.now() };
+  };
+  const stats = async (): Promise<Tally> => {
+    if (tally && Date.now() - tally.at <= STATS_TTL) return tally.body;
+    const at = Date.now();
+    tallying ??= count().finally(() => {
+      tallying = null;
+    });
+    tally = { at, body: await tallying };
+    return tally.body;
+  };
+  stats().catch((error) => console.error("stats failed:", error instanceof Error ? error.message : error));
   let current: { parley: Parley; turns: Evidence[] } | null = null;
   let currentSince = 0;
   let lastEnded = Date.now();
@@ -166,22 +205,34 @@ export async function serve() {
     }
   }
 
+  /** Reads a Parley once the final view shows it in the wanted state; a view can lag the transaction by a block or two. */
+  async function settledView(id: number, ready: (p: Parley) => boolean) {
+    for (let i = 0; i < 20; i++) {
+      const p = await owner.parley(id);
+      if (p && ready(p)) return p;
+      await Bun.sleep(1000);
+    }
+    const p = await owner.parley(id);
+    if (!p) throw new Error(`Parley ${id} is not visible`);
+    return p;
+  }
+
   async function play(open: () => Promise<{ ok: boolean; value?: unknown; error?: string }>, reason: string) {
     const opened = await open();
     if (!opened.ok) return panic(opened.error);
     const id = opened.value as number;
-    const parley = (await owner.parley(id))!;
+    const parley = await settledView(id, () => true);
     current = { parley, turns: kept(id)?.turns ?? [] };
     currentSince = Date.now();
     emit({ type: "opened", parley, reason });
     await playParley(owner, mind, id, async ({ index, model, request, reply, txHash }) => {
       const turn = { index, model, request, reply, txHash };
-      const now = (await owner.parley(id))!;
+      const now = (await owner.parley(id)) ?? current?.parley ?? parley;
       current = { parley: now, turns: [...(current?.turns ?? []), turn] };
       writeFileSync(evidenceFile(id), JSON.stringify(current));
       emit({ type: "turn", parley: now, turn });
     });
-    const done = (await owner.parley(id))!;
+    const done = await settledView(id, (p) => p.status !== "Open");
     current = { parley: done, turns: current?.turns ?? [] };
     writeFileSync(evidenceFile(id), JSON.stringify(current));
     emit({ type: "settled", parley: done });
@@ -300,6 +351,7 @@ export async function serve() {
           return json({ network: deployment.network, rpcUrl: deployment.rpcUrl, contractId: deployment.contractId, explorerTx: NETWORKS[deployment.network].explorerTx ?? null, autoplay, overview, config, models });
         }
         if (url.pathname === "/api/live") return stream();
+        if (url.pathname === "/api/stats") return json(await stats());
         if (url.pathname === "/api/attack" || url.pathname === "/api/attacks") {
           const { status, body } = await lab.handle(req, ip());
           return json(body, status);

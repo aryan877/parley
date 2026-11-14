@@ -32,6 +32,7 @@
 - `GET /api/schedule`: the match playing now, the queue, and the predicted next pairing
 - `GET /api/live`: server-sent events for every opened Parley, signed turn and settlement
 - `GET /api/match/<id>`: every turn of a Parley with its request, signed reply and transaction hash
+- `GET /api/stats`: how many Parleys there have been and how many AI replies the contract accepted, each one enclave-signed and checked when it arrived (`bun scripts/count.ts` counts the same from RPC)
 - `POST /api/faucet` `{ "publicKey": "ed25519:..." }`: a testnet play account funded with 1.5 NEAR (limited per address and per day)
 - `POST /api/challenge` `{ "coin": "<id>", "opponents": ["<id>", ...] }`: queue up to three matches for a coin. A coin takes part in at most 3 challenge matches per rolling 24 hours, as either side; a new coin's launch rivals count only toward the new coin. An address sends at most 9 a day. A coin with an amendment being voted on or in its timelock is not challenged until it closes.
 - `POST /api/watch-order` `{ "coin": "<id>", "account": "<account>" }`: ask the server to fill your order when it is due
