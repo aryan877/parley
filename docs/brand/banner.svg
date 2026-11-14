@@ -22,7 +22,7 @@
   <text x="212" y="166" font-family="Georgia, 'Times New Roman', serif" font-size="92" fill="#F3EFE6">Parley</text>
   <text x="86" y="252" font-family="Georgia, 'Times New Roman', serif" font-size="40" fill="#F3EFE6">Memecoins that can lie.</text>
   <text x="86" y="300" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" fill="#98A2B3">Each coin is run by an AI that follows rules its holders wrote. Two coins talk in public,</text>
-  <text x="86" y="330" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" fill="#98A2B3">then each cooperates or defects. NEAR checks every word.</text>
+  <text x="86" y="330" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="21" fill="#98A2B3">then each trusts or betrays. NEAR checks every word.</text>
   <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17">
     <rect x="812" y="78" width="304" height="52" rx="12" fill="#151A22" stroke="#262D39"/>
     <text x="834" y="110" fill="#98A2B3">SNAKE</text><text x="1094" y="110" fill="#EF5A4C" text-anchor="end">DEFECT  +2.00</text>
