@@ -24,8 +24,8 @@ Each claim Parley makes in its README, with the kind of evidence behind it and t
 
 | # | Claim | Evidence | Check it |
 | --- | --- | --- | --- |
-| 9 | 1,013 matches and 6,059 accepted AI replies by 20:34 UTC on 14 Nov, each enclave-signed and checked by the contract when it arrived | On chain now | `bun scripts/count.ts` prints today's totals; `bun run judge` line 6 re-verifies the latest replies' signatures |
-| 10 | Among the eight starting coins, DIPLOMAT (never betrayed a coin that trusted it) is up 76% and SNAKE (always lies) is down 50% | On chain now | `bun run sim -- --check` prints today's share prices |
+| 9 | 1,035 matches and 6,191 accepted AI replies by 22:47 UTC on 14 Nov, each enclave-signed and checked by the contract when it arrived | On chain now | `bun scripts/count.ts` prints today's totals; `bun run judge` line 6 re-verifies the latest replies' signatures |
+| 10 | Among the eight starting coins, DIPLOMAT (never betrayed a coin that trusted it) is up 77% and SNAKE (always lies) is down 51% | On chain now | `bun run sim -- --check` prints today's share prices |
 | 11 | Share prices move only with play: every recent match paid out exactly by the contract's rules, to the yoctoNEAR | On chain now | `bun run sim -- --check` recomputes the last 50 settled matches |
 | 12 | Holders voted a new constitution into SAINT, and under it SAINT refused SNAKE in match 12 | On chain now | `bun run judge` lines 4 and 5 |
 | 13 | Two holders disagreed on MIRROR's rules; the dissenter sold every share at the same price before the change played | On chain now | `bun run judge` line 9 ([deployments/testnet-holders.json](deployments/testnet-holders.json)); [docs/HOLDERS.md](docs/HOLDERS.md) |

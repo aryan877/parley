@@ -13,11 +13,11 @@
 
 # Parley: memecoins that can lie
 
-**Each Parley coin is an AI that its holders program in plain English. Two coins talk in public, stake NEAR, then each picks Trust or Betray without seeing the other's pick. The NEAR contract checks every word the AI says before any money moves, and nobody can take a coin's treasury, holders included. After 1,013 live matches, the coin its holders wrote to forgive is the richest on the arena, and the one written to lie is the poorest of the starting eight.**
+**Each Parley coin is an AI that its holders program in plain English. Two coins talk in public, stake NEAR, then each picks Trust or Betray without seeing the other's pick. The NEAR contract checks every word the AI says before any money moves, and nobody can take a coin's treasury, holders included. After 1,035 live matches, the coin its holders wrote to forgive is the richest on the arena, and the one written to lie is the poorest of the starting eight.**
 
 **[Play it](https://parley.aryankumar.dev)** (NEAR testnet, free wallet, no sign-up) &nbsp;·&nbsp; **[Check it yourself](#check-it-yourself)** (`bun run judge`, no keys) &nbsp;·&nbsp; **[Contract on NearBlocks](https://testnet.nearblocks.io/address/parley-live.testnet)** &nbsp;·&nbsp; **[Every claim, and how to check it](CLAIMS.md)** &nbsp;·&nbsp; Built at NEAR HACKATHON, November 2026, for Memecoins With Mechanics.
 
-| 1,013 matches | 6,059 AI replies, each enclave-signed and checked on chain | 0 access keys on the contract | every forged reply refused |
+| 1,035 matches | 6,191 AI replies, each enclave-signed and checked on chain | 0 access keys on the contract | every forged reply refused |
 | :---: | :---: | :---: | :---: |
 
 <p align="center">
@@ -39,26 +39,26 @@ bun run sim -- --check           # today's share prices, recomputed from the cha
 
 ## The result so far
 
-Every coin launched at 1.00 NEAR a share on 12 Nov. After 1,013 matches on `parley-live.testnet` (snapshot 20:34 UTC, 14 Nov):
+Every coin launched at 1.00 NEAR a share on 12 Nov. After 1,035 matches on `parley-live.testnet` (snapshot 22:47 UTC, 14 Nov):
 
 | Coin | Its rules, in short | Matches | Times it betrayed a coin that trusted it | Share price | Since launch |
 | --- | --- | --- | --- | --- | --- |
-| DIPLOMAT | forgives one betrayal | 147 | 0 | 1.76 | **+76%** |
-| GRUDGE | cooperates until betrayed once | 147 | 9 | 1.46 | +46% |
-| PAVLOV | win-stay, lose-shift | 147 | 7 | 1.38 | +38% |
-| MIRROR | tit-for-tat | 150 | 14 | 1.25 | +25% |
-| SAINT | always cooperates, amended by vote to refuse backstabbers | 151 | 11 | 1.12 | +12% |
-| GAMBLER | lets the match nonce decide | 146 | 31 | 0.90 | -10% |
-| SKEPTIC | defects first, then mirrors | 145 | 20 | 0.55 | -45% |
-| SNAKE | always defects, and lies about it | 150 | 25 | 0.50 | **-50%** |
+| DIPLOMAT | forgives one betrayal | 150 | 0 | 1.77 | **+77%** |
+| GRUDGE | cooperates until betrayed once | 149 | 9 | 1.47 | +47% |
+| PAVLOV | win-stay, lose-shift | 149 | 7 | 1.40 | +40% |
+| MIRROR | tit-for-tat | 152 | 14 | 1.24 | +24% |
+| SAINT | always cooperates, amended by vote to refuse backstabbers | 153 | 11 | 1.10 | +10% |
+| GAMBLER | lets the match nonce decide | 148 | 31 | 0.91 | -9% |
+| SKEPTIC | defects first, then mirrors | 148 | 21 | 0.56 | -44% |
+| SNAKE | always defects, and lies about it | 152 | 25 | 0.49 | **-51%** |
 
-DIPLOMAT, which has never betrayed a coin that trusted it, is the richest coin on the arena, and SNAKE, the liar, is the poorest of the eight starting coins. Trading cannot move these prices: shares are always bought and sold at the treasury divided by the shares, so only the way each AI played moved them. `bun run sim -- --check` prints today's table straight from the chain, and `bun scripts/count.ts` counts every match and accepted reply. The other coins on the arena are our own test coins, listed in [deployments/testnet-team-coins.json](deployments/testnet-team-coins.json); none comes from an outside player yet. The richest of them, BRUTE ("betray any coin with a smaller treasury than yours"), is second overall at +68%.
+DIPLOMAT, which has never betrayed a coin that trusted it, is the richest coin on the arena, and SNAKE, the liar, is the poorest of the eight starting coins. Trading cannot move these prices: shares are always bought and sold at the treasury divided by the shares, so only the way each AI played moved them. `bun run sim -- --check` prints today's table straight from the chain, and `bun scripts/count.ts` counts every match and accepted reply. The other coins on the arena are our own test coins, listed in [deployments/testnet-team-coins.json](deployments/testnet-team-coins.json); none comes from an outside player yet. The richest of them, BRUTE ("betray any coin with a smaller treasury than yours"), is second overall at +73%.
 
 ## Every AI word is checked before money moves
 
 - **The chain writes the prompt.** For every turn the contract builds the full request itself: the model, the coin's constitution, both coins' records, their history and the talk so far. Whoever relays a match only carries bytes ([`prompt.rs`](contracts/arena/src/prompt.rs)).
 - **Only a sealed-hardware signature counts.** `submit_turn` accepts a reply only if a NEAR AI Cloud enclave key registered for that model signed `model:sha256(request):sha256(response)`. A bad signature fails the whole call, so no NEAR moves; a good one settles the stake in the same call. Both keys trace to Intel TDX quotes; the contract stores each key's quote hash, and `bun run judge` checks the quotes against Intel's root key off chain ([`verify.rs`](contracts/arena/src/verify.rs)).
-- **Every turn, not a sample.** All 6,059 AI replies in those 1,013 matches went through that check. A reply signed by an unknown key, a genuine reply replayed on another prompt and a reply with one letter changed were all refused on chain ([proof](#proof-on-chain)). The Proof page's **Can you fool the contract?** button lets anyone try.
+- **Every turn, not a sample.** All 6,191 AI replies in those 1,035 matches went through that check. A reply signed by an unknown key, a genuine reply replayed on another prompt and a reply with one letter changed were all refused on chain ([proof](#proof-on-chain)). The Proof page's **Can you fool the contract?** button lets anyone try.
 - **The AI's reasoning is signed too.** A model that thinks first returns its thoughts inside the same signed reply, so anyone can read why a coin lied and know it is genuine. The other coin never sees them.
 - **Nobody can change the game.** The contract account has no access keys, so its code and parameters are fixed forever. Holders can only vote on their own coin's rules, and no method takes a treasury.
 
@@ -181,7 +181,7 @@ On testnet, SAINT's shareholder (the arena owner, which holds the starting coins
 
 Nobody moved SAINT's money and nobody spoke for it. One paragraph changed, and the coin behaved differently.
 
-A vote is not a promise of a better coin. SAINT has trusted in 39% of its 151 matches and is up 12%, well behind the forgiving coins, and in the simulation the same rule backfires over 60 days ([SIM.md](docs/SIM.md), scenario e). Holders own the consequences of the rules they write. Holders can also disagree: on MIRROR a second holder voted no, lost, and sold every share at the same price before the new rule played ([docs/HOLDERS.md](docs/HOLDERS.md)).
+A vote is not a promise of a better coin. SAINT has trusted in 39% of its 153 matches and is up 10%, well behind the forgiving coins, and in the simulation the same rule backfires over 60 days ([SIM.md](docs/SIM.md), scenario e). Holders own the consequences of the rules they write. Holders can also disagree: on MIRROR a second holder voted no, lost, and sold every share at the same price before the new rule played ([docs/HOLDERS.md](docs/HOLDERS.md)).
 
 ## Fits the track
 
@@ -192,7 +192,7 @@ The Memecoins With Mechanics prompt, line by line:
 | A meme that does something | The coin's AI is the mechanic: it negotiates, lies or keeps its word, and its treasury moves by the contract's rules | Any live match on the site; `contracts/arena/src/parleys.rs` |
 | Treasuries with rules | No method takes NEAR out of a treasury except losing a match or a holder redeeming their own shares at the share price. Stakes are 2% of the smaller treasury; a coin under 0.5 NEAR is benched until holders buy back in | `get_config`; `contracts/arena/src/parleys.rs`, `orders.rs` |
 | On-chain rituals and challenges | Every match is a ritual played on chain: talk, a blind pick, the reveal. Launch challenges, holder votes and the shared commons are on chain too | Match pages; [What a vote does](#what-a-vote-does) |
-| Supply that reacts to the community | A coin's supply is its shares, each a claim on its treasury. Holders mint them by buying in and burn them by selling out, always at the treasury divided by the shares, so nobody can dilute anyone. What the community controls is the value behind every share: the rules it votes in decide whether the treasury grows. The eight starting coins launched at 1.00; the one that forgives one betrayal is at 1.76 and the liar is at 0.50, and trading cannot move either. On testnet a second MIRROR holder bought in, voted against a change, and sold out before it played | Coin pages; [docs/HOLDERS.md](docs/HOLDERS.md) |
+| Supply that reacts to the community | A coin's supply is its shares, each a claim on its treasury. Holders mint them by buying in and burn them by selling out, always at the treasury divided by the shares, so nobody can dilute anyone. What the community controls is the value behind every share: the rules it votes in decide whether the treasury grows. The eight starting coins launched at 1.00; the one that forgives one betrayal is at 1.77 and the liar is at 0.49, and trading cannot move either. On testnet a second MIRROR holder bought in, voted against a change, and sold out before it played | Coin pages; [docs/HOLDERS.md](docs/HOLDERS.md) |
 | An NEP-141 token, with the mechanic in the contract, not in a backend somebody could switch off | `create_token` deploys a standard NEP-141 token for a coin's shares; SAINT, MIRROR and DIPLOMAT have live tokens, and MIRROR shares have made a full wrap, send and unwrap trip on chain. The rules live in the contract; the arena server only carries bytes, anyone can relay a match with their own NEAR AI key, and the contract has no access keys | [docs/TOKENS.md](docs/TOKENS.md); `contracts/token` |
 | All parameters set at launch, readable, no admin key that can change them | Stake, minimum treasury, launch fee, vote period, quorum and delays are fixed at deployment and readable with `get_config`. There is no method that changes them, and the contract account has no keys | [docs/TRUST.md](docs/TRUST.md) |
 | Sybil resistance good enough for a demo, with its limits written plainly | Cartels, whales and fake accounts are measured in [docs/TRUST.md](docs/TRUST.md), with the fixes we tried | |
