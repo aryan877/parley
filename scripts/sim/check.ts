@@ -1,6 +1,8 @@
 
 import { type Coin, type Config, NETWORKS, NearRpc, type Overview, type Parley, formatNear, payoff, sharePrice, signed, stakeFor } from "@parley/sdk";
-import { publicTestnet } from "@parley/relayer";
+import { ROOT, publicTestnet } from "@parley/relayer";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { houseConstitutions } from "./scenarios.ts";
 import { LIVE_COMMONS, LIVE_GOVERNANCE, LIVE_RULES, MATCH_SECONDS, PAUSE_SECONDS } from "./season.ts";
 
@@ -128,6 +130,7 @@ export async function check(): Promise<boolean> {
   const house = new Set(houseConstitutions().map((c) => c.id));
   const priceOf = (c: Coin) => sharePrice({ treasury: BigInt(c.treasury), shares: BigInt(c.total_shares) });
   const isHouse = (c: Coin) => house.has(c.id) && c.creator === deployment.owner;
+  const team = new Set((JSON.parse(readFileSync(join(ROOT, "deployments", "testnet-team-coins.json"), "utf8")) as { testing: string[] }).testing);
   const listed = [...coins].sort((x, y) => Number(isHouse(y)) - Number(isHouse(x)) || priceOf(y) - priceOf(x));
   console.log("");
   console.log("Live share prices (treasury divided by shares; every coin launched at 1.000):");
@@ -137,9 +140,9 @@ export async function check(): Promise<boolean> {
     const p = priceOf(c);
     const since = Number.isFinite(p) ? `${p >= 1 ? "+" : ""}${((p - 1) * 100).toFixed(1)}%` : "no shares";
     const trusted = c.stats.matches ? `${Math.round((100 * c.stats.cooperated) / c.stats.matches)}%` : "-";
-    const label = `${c.name}${isHouse(c) ? "" : " *"}`;
+    const label = `${c.name}${isHouse(c) ? "" : team.has(c.id) ? " t" : " *"}`;
     console.log(`${pad(label, 18)}${lpad(`v${c.constitution_version}`, 6)}${lpad(near(t, 3), 11)}${lpad(Number.isFinite(p) ? p.toFixed(3) : "-", 8)}${lpad(since, 14)}${lpad(String(c.stats.matches), 9)}${lpad(trusted, 9)}`);
   }
-  console.log("* launched by a player");
+  console.log("t launched by the team from the site's free play wallets while testing; * launched by a player");
   return fail === 0 && checked.length > 0;
 }

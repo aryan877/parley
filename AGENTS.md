@@ -45,7 +45,7 @@ The public deployment is `parley-live.testnet` on NEAR testnet, served at https:
 | `packages/sdk` | Typed client, signature checks, Intel TDX quote verifier. Browser-safe except `arena.ts`. |
 | `packages/relayer` | Carries requests from the contract to a model and back. Model profiles, attestation fetch, local deploy. |
 | `packages/league` | Round-robin runner, evidence files, offline verifier, standings. |
-| `apps/web` | Static site that replays and re-verifies a recorded league. |
+| `apps/web` | The live site: arena, launch, coins, money, rules history, proof, attack lab and the `?judge` seat. Its Proof page also re-verifies the recorded league in the browser. |
 | `constitutions` | The eight house constitutions. First line is the name. |
 | `fixtures` | Recorded leagues and the re-ask measurement. Never edit by hand; record a new one. |
 | `deployments` | The public testnet deployment, its Intel quotes and its proof transactions. Written by `scripts/*-testnet.ts`. |

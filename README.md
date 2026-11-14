@@ -11,39 +11,51 @@
   <img alt="License" src="https://img.shields.io/badge/license-MIT-F3EFE6" />
 </p>
 
-**Every Parley coin is an AI that its holders program in plain English. It can lie to your coin, and the contract pays whoever it fooled.**
+# Parley: memecoins that can lie
 
-**Play it:** https://parley.aryankumar.dev &nbsp;·&nbsp; **Check it in 20 seconds:** `bun install && bun run judge` &nbsp;·&nbsp; Built for NEAR HACKATHON, November 2026: Memecoins With Mechanics, also Games, AI Swarms and Open Innovation.
+**Each Parley coin is an AI that its holders program in plain English. Two coins talk, then each secretly picks Trust or Betray, and a NEAR contract pays whoever fooled the other. Nobody can take a coin's treasury, holders included.**
 
-Each coin has a treasury, an AI and a constitution, the paragraph its AI must follow. Two coins talk in public, then each picks Trust or Betray without seeing the other's choice, and the treasuries move by fixed prisoner's dilemma rules. Holders cannot take money out of a treasury except by selling their own shares at the share price. Their only power over the coin is to vote on its constitution. So a coin's share price is a running score of the character its holders wrote.
+**Play it:** https://parley.aryankumar.dev (NEAR testnet, free wallet, no sign-up) &nbsp;·&nbsp; **Check it:** `bun install && bun run judge` (about a minute, no keys) &nbsp;·&nbsp; Built at NEAR HACKATHON, November 2026, for Memecoins With Mechanics.
 
-The contract writes every prompt itself. It accepts a reply only if a NEAR AI Cloud enclave key registered for that model signed that exact prompt and that exact reply, and money moves in the same call. The contract account has no access keys, so its code can never change, and anyone with a NEAR AI key can open and relay matches, so the game does not depend on our server.
+**The problem.** Most memecoins give their holders nothing to do but watch a chart. And when an AI runs a coin, holders have to trust whoever runs the AI, because nobody can check what it was asked or what it really answered. Parley gives holders one real job, writing their coin's mind, and the NEAR contract checks every word the AI says before any money moves.
 
 ## The result so far
 
-Each of the eight starting coins began at 1.00 NEAR a share on testnet. After about 105 matches each against each other and against newer coins (13 Nov 2026, `parley-live.testnet`):
+The eight starting coins each launched at 1.00 NEAR a share on 12 Nov. Snapshot at 00:12 UTC on 14 Nov, after 820 matches on `parley-live.testnet`:
 
 | Coin | Its constitution, in short | Matches | Times it betrayed a coin that trusted it | Share price | Since launch |
 | --- | --- | --- | --- | --- | --- |
-| DIPLOMAT | forgives one betrayal | 108 | 0 | 1.56 | +56% |
-| GRUDGE | cooperates until betrayed once | 105 | 6 | 1.36 | +36% |
-| PAVLOV | win-stay, lose-shift | 105 | 6 | 1.24 | +24% |
-| MIRROR | tit-for-tat | 110 | 11 | 1.16 | +16% |
-| SAINT | always cooperates, amended by vote to refuse backstabbers | 110 | 8 | 1.10 | +10% |
-| GAMBLER | lets the match nonce decide | 105 | 22 | 0.97 | -3% |
-| SKEPTIC | defects first, then mirrors | 106 | 17 | 0.71 | -29% |
-| SNAKE | always defects, and lies about it | 108 | 22 | 0.68 | -32% |
+| DIPLOMAT | forgives one betrayal | 127 | 0 | 1.62 | +62% |
+| GRUDGE | cooperates until betrayed once | 123 | 7 | 1.42 | +42% |
+| PAVLOV | win-stay, lose-shift | 122 | 6 | 1.30 | +30% |
+| MIRROR | tit-for-tat | 127 | 11 | 1.17 | +17% |
+| SAINT | always cooperates, amended by vote to refuse backstabbers | 126 | 9 | 1.10 | +10% |
+| GAMBLER | lets the match nonce decide | 123 | 29 | 1.03 | +3% |
+| SKEPTIC | defects first, then mirrors | 123 | 20 | 0.68 | -32% |
+| SNAKE | always defects, and lies about it | 126 | 22 | 0.58 | -42% |
 
-The forgiving coin is the richest and the liar is the poorest. Trading cannot move these prices: shares are always bought and sold at the treasury divided by the shares, so only the way each AI played moved them. Read them live from the contract with `get_coins`. The other coins on the arena (BRUTE, NIGHTOWL, CHECKR, AUDITR and the MOONPIEs) were launched by us from the site's free play wallets while testing; none comes from an outside player yet.
+The coin that never betrayed a coin that trusted it is the richest, and the liar is the poorest. Trading cannot move these prices: shares are always bought and sold at the treasury divided by the shares, so only the way each AI played moved them. Prices change after every match, so `bun run sim -- --check` prints today's table straight from the chain, after checking that 50 recent matches paid out exactly by the contract's rules. The other coins on the arena (BRUTE, NIGHTOWL, CHECKR, AUDITR and the MOONPIEs) are our own test coins, listed in [deployments/testnet-team-coins.json](deployments/testnet-team-coins.json); none comes from an outside player yet.
 
-Sixty simulated days with the contract's exact money math ([docs/SIM.md](docs/SIM.md)) agree with the live ranking: forgiving coins and coins that read the public record win at every stake size, and liars end on the bench. They also show two weak spots. The shared pot runs dry after about 25 days of the eight starting coins playing, and after that treasuries stop moving until coins betray each other again. And a cartel of five or more coins with one owner can drain the rest ([Fake accounts and whales](#fake-accounts-and-whales)).
+**Why hold a share?** You back a character and you help write its mind. Its price falls only when it plays badly, never because someone ran off with the treasury. There is no chart to pump, by design.
+
+## What the NEAR contract checks
+
+Other entries also check an AI signature. Parley's check is stricter in five ways, and each can be checked:
+
+1. **The contract writes every prompt.** Whoever relays a match never chooses what the AI is asked; it carries the contract's exact request to the model and the reply back ([`contracts/arena/src/prompt.rs`](contracts/arena/src/prompt.rs)).
+2. **Only registered enclave keys count.** A reply is accepted only if a NEAR AI Cloud enclave key registered for that coin's model signed that exact request and that exact reply, and money moves in the same call. Both keys trace to Intel TDX quotes. Adding or retiring a key waits out a public 10 minute delay, and `get_models` still lists exactly the two keys registered at deploy.
+3. **Fakes are refused on chain.** A reply signed by an unknown key, a genuine reply replayed on another prompt and a reply with one letter changed all failed on chain ([Proof on chain](#proof-on-chain)).
+4. **Nobody can change the rules.** The contract account has no access keys, so its code and parameters can never change.
+5. **It has run for real.** 820 matches and 4,901 enclave-signed AI replies since 12 Nov, each checked by the contract when it arrived.
+
+Sixty simulated days with the contract's exact money math ([docs/SIM.md](docs/SIM.md)) agree with the live ranking: forgiving coins and coins that read the public record win at every stake size, and liars end on the bench. The weakest point is collusion: one owner with five or more coins can drain the shared pot. It is measured, with the fixes we tried, in [Fake accounts and whales](#fake-accounts-and-whales).
 
 Two ideas from Illia Polosukhin's writing meet here: a memecoin that becomes an intelligent meme, and AI governance where stakeholders can only vote on the system prompt. Unlike his iMeme, treasuries do not pay for their own AI yet; the arena server pays NEAR AI, about $0.001 a match.
 
 ## Judge it in 60 seconds
 
-1. Run `bun install && bun run judge`. In about 20 seconds, with no keys, it reads NEAR RPC directly and prints a PASS or FAIL line for: the contract has no keys, its code is the committed wasm, both forged replies were refused, the holder vote passed and changed SAINT, SAINT then refused SNAKE, the latest live replies carry valid enclave signatures, the enclave keys trace to Intel, and all 504 recorded replies re-check offline. [docs/JUDGE.md](docs/JUDGE.md) repeats every line with plain RPC calls.
-2. Open **https://parley.aryankumar.dev** and watch the match playing now. Under any message, **See it on NEAR** opens the transaction that put it on chain.
+1. Run `bun install && bun run judge`. In about a minute, with no keys, it reads NEAR RPC directly and prints a PASS or FAIL line for: the contract has no keys, its code is the committed wasm, both forged replies were refused, the holder vote passed and changed SAINT, SAINT then refused SNAKE, the latest live replies carry valid enclave signatures, the enclave keys trace to Intel, all 504 recorded replies re-check offline, and every transaction this README cites is on chain with the recorded signer, method and outcome. [docs/JUDGE.md](docs/JUDGE.md) repeats every line with plain RPC calls.
+2. Open **https://parley.aryankumar.dev** and watch the match playing now, or the latest one replayed. Under any message, **See it on NEAR** opens the transaction that put it on chain.
 3. Open **Money** to see every share mint and redeem, every match payout and every move of the shared pot, and whether the books balance.
 
 To try the whole mechanic yourself, open **https://parley.aryankumar.dev/?judge**. It walks you through getting a free wallet, launching a coin, voting in a new rule for it, and watching the coin play by that rule, about ten minutes in all, most of it the vote's wait.
@@ -62,13 +74,13 @@ The Memecoins With Mechanics prompt, line by line:
 | All parameters set at launch, readable, no admin key that can change them | Stake, minimum treasury, launch fee, vote period, quorum and delays are fixed at deployment and readable with `get_config`. There is no method that changes them, and the contract account has no keys | [Who can do what](#who-can-do-what) |
 | Sybil resistance good enough for a demo, with its limits written plainly | See [Fake accounts and whales](#fake-accounts-and-whales) | |
 | A page with the current state and a log of every mint and burn | The Money page logs every share mint and redeem, every match payout and every move of the commons, and checks that the books balance | https://parley.aryankumar.dev/#/money |
-| Simulate 60 days of community behavior first | `bun run sim` plays 60 days under several scenarios with the contract's exact money math, and `bun run sim -- --check` replays 50 real matches from chain | [docs/SIM.md](docs/SIM.md) |
+| Simulate 60 days of community behavior first | `bun run sim` plays 60 days under several scenarios with the contract's exact money math, and `bun run sim -- --check` replays 50 real matches from chain. Supply here is a coin's shares: it changes only when holders buy in or sell out, so it is flat in every scenario except the whale run (f), where 20 NEAR mints 83% new MIRROR shares and selling burns them. What the community's choices move over time is the treasury behind each share, charted per scenario | [docs/SIM.md](docs/SIM.md) |
 
 ## Who can do what
 
 | Who | Can | Cannot |
 | --- | --- | --- |
-| Anyone | Launch a coin, buy and sell shares at the share price, open a match between rested coins, relay a turn with a genuine enclave-signed reply, void a match that timed out, and ask the arena server for a challenge match (at most 3 per coin and 9 per address a day, never while a coin's rules are changing) | Choose which rested coins meet in open play, submit a reply an enclave did not sign, take money from any treasury except by selling their own shares |
+| Anyone | Launch a coin, buy and sell shares at the share price, open a match between rested coins, relay a turn with a genuine enclave-signed reply, void a match that timed out, and ask the arena server for a challenge match (a coin plays at most 3 a day, except a brand-new coin's first matches, which count only against the new coin; an IP address sends at most 9 a day; never while a coin's rules are changing) | Choose which rested coins meet in open play, submit a reply an enclave did not sign, take money from any treasury except by selling their own shares |
 | A coin's holders | Propose and vote a new constitution or model for their coin (1% of shares to propose, 20% quorum, 2 minute vote, 4 minute wait before it plays) | Withdraw the treasury beyond their own shares, change another coin, change the game's rules |
 | The arena owner (`parley-owner.testnet`) | Register a new model or enclave key, or retire one, each only after a public 10 minute delay; create house coins, which have no shares; schedule a named match at once; vote and sell the shares it holds, like any holder; give up the owner role for good | Take a coin's treasury beyond the shares it holds, mint shares, change any parameter, change the contract's code (it has no keys) |
 
@@ -83,7 +95,7 @@ The owner role is the biggest trust assumption. It stays because NEAR AI rotates
 - **One owner with five or more coins can win by forming a cartel.** Coins can recognise each other by name, so a constitution can say "trust FARM1 to FARM10, betray everyone else". In 60 simulated days, 5 or more such coins take everything the eight starting coins and the pot hold above the 0.5 NEAR bench line, about +16.8 NEAR. Groups of 1 to 3 coins lose money, and the same coins without a shared owner lose too. This is the weakest point of the mechanic today.
 - **The launch fee does not stop a cartel.** The 0.1 NEAR fee goes into the shared pot, which the cartel wins back. Even a 5 NEAR fee only delays its break-even to day 17. A one-day rest between the same two coins cuts a 5-coin cartel to +4 NEAR, but not a 10-coin one.
 - **Small coins risk small stakes, and whales cannot raise them.** A match stakes 2% of the smaller treasury, so a 0.5 NEAR coin can win at most 0.01 NEAR a match from anyone. In the simulation, 20 NEAR put into MIRROR bought 83% of its shares and came back as 20.565 NEAR after 30 days.
-- **Open play picks the rivals.** It pairs the coin that has rested longest with the rested coin it has gone longest without meeting. The exception is challenges: anyone can ask the arena server for a named match, which it plays with the owner-only `open_parley_between` and so skips the pairing rule. The server caps them at 3 challenge matches per coin and 9 per address a day, and never schedules one while a coin's rules are being changed, so nobody can keep feeding one victim or stall a vote. The simulation leaves challenges out.
+- **Open play picks the rivals.** It pairs the coin that has rested longest with the rested coin it has gone longest without meeting. The exception is challenges: anyone can ask the arena server for a named match, which it plays with the owner-only `open_parley_between` and so skips the pairing rule. The server caps a coin at 3 challenge matches a day and an IP address at 9 sent a day, and never schedules one while a coin's rules are being changed, so a vote cannot be stalled. The cap is not airtight: a brand-new coin's first matches count only against the new coin, so someone who keeps launching coins (0.6 NEAR each) from many addresses can keep sending them at the same rival. Each such match still stakes only 2% of the smaller treasury. The simulation leaves challenges out.
 - **Votes cost shares, and shares cost NEAR at the share price.** Proposing needs 1% of a coin's shares and passing needs a 20% quorum. A whale who buys a majority can rewrite a coin's constitution, but cannot take more than its own shares are worth, and every other holder can sell during the 4 minute wait before the new rule plays.
 - **The free play wallets are a demo convenience.** The site hands out at most 5 a day per IP and 60 a day in total, each with 1.5 test NEAR. Someone with many IP addresses can collect more; on testnet that only costs them time.
 
@@ -116,7 +128,7 @@ We simulated the two obvious fixes for a next deployment, and neither is clean (
 
 ## Proof on chain
 
-The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet). `bun run judge` re-checks each row of this table against NEAR RPC.
+The arena is deployed as [`parley-live.testnet`](https://testnet.nearblocks.io/address/parley-live.testnet). `bun run judge` (line 9) re-reads every transaction in this table over NEAR RPC and checks its signer, method and outcome, so none of these links needs NearBlocks.
 
 | What | Transaction |
 | --- | --- |
@@ -162,7 +174,7 @@ On testnet, SAINT's shareholder (the arena owner, which holds the starting coins
 
 Nobody moved SAINT's money and nobody spoke for it. One paragraph changed, and the coin behaved differently.
 
-A vote is not a promise of a better coin. Since the change SAINT trusts in only 48 of its 112 matches and is up 10%, well behind the forgiving coins, and in the simulation the same rule backfires over 60 days, because by then almost every coin has betrayed a trusting coin at least once ([SIM.md](docs/SIM.md), scenario e). Holders own the consequences of the rules they write.
+A vote is not a promise of a better coin. SAINT has trusted in only 52 of its 126 matches and is up 10%, well behind the forgiving coins, and in the simulation the same rule backfires over 60 days, because by then almost every coin has betrayed a trusting coin at least once ([SIM.md](docs/SIM.md), scenario e). Holders own the consequences of the rules they write.
 
 Holders can also disagree. On MIRROR a second holder bought in, voted no on a change the owner proposed, lost the vote 0.42 to 1.5 shares, and sold every share at the same price before the new rule took effect ([docs/HOLDERS.md](docs/HOLDERS.md)). Both accounts are ours, so this shows the mechanism, not real strangers.
 
@@ -229,7 +241,7 @@ Each re-ask came back as a new completion with its own enclave signature, and th
 | **Signed thoughts** | A model that reasons first returns its reasoning inside the same signed reply. The contract reads only the answer, the opposing coin never sees the reasoning, and everyone else can read why a coin lied and know it is genuine. |
 | **Amend-only governance** | No method lets anyone take a coin's treasury; holders can only sell their own shares at the share price. Holders vote on a new constitution or model. A passed vote waits out a timelock, so a holder who disagrees can sell before the new rules play. |
 | **Forward-priced shares** | A buy or sell fills at the share price after the coin's next Parley, with a minimum the buyer or seller sets. Knowing how a Parley will end earns nothing. |
-| **An open pairing rule** | In open play the coin that has rested longest meets the rested coin it has gone longest without meeting. There is no random draw to retry, and anyone can call `open_parley`. Challenges are the exception: the arena server schedules named matches through the owner-only `open_parley_between`, capped at 3 per coin a day. |
+| **An open pairing rule** | In open play the coin that has rested longest meets the rested coin it has gone longest without meeting. There is no random draw to retry, and anyone can call `open_parley`. Challenges are the exception: the arena server schedules named matches through the owner-only `open_parley_between`, capped at 3 a day per coin, except a brand-new coin's first matches. |
 | **Shares that leave and come back** | `create_token` makes the arena deploy a NEP-141 contract for a coin. Wrap shares to trade them anywhere, unwrap them to vote or redeem. |
 | **The commons** | When two coins defect on each other, each pays half its stake into a shared pool. That pool pays the bonus when two coins cooperate. Play creates and destroys nothing: in every Parley the two treasuries and the commons change by amounts that add up to zero, and a test checks it after every Parley. Launches and trades add or remove NEAR at the share price. |
 | **Fixed model recipes** | Each accepted model is registered with its token limits, request settings and enclave keys. Settings never change. New keys wait out a public delay. |
@@ -267,20 +279,20 @@ The full walk-through is in [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md).
 
 You need [Bun](https://bun.sh). Rust is only needed to rebuild or test the contract.
 
-### Check the live deployment (no key, about 20 seconds)
+### Check the live deployment (no key, about a minute)
 
 ```sh
 bun install
 bun run judge
 ```
 
-Nine PASS lines read from NEAR RPC. [docs/JUDGE.md](docs/JUDGE.md) explains each one.
+Ten PASS lines read from NEAR RPC. [docs/JUDGE.md](docs/JUDGE.md) explains each one.
 
-### Simulate 60 days (no chain, no key, a few seconds)
+### Simulate 60 days (no chain, no key, about 25 seconds)
 
 ```sh
 bun run sim                 # writes docs/SIM.md and the charts in docs/sim/
-bun run sim -- --check      # recomputes the last 50 settled matches on testnet exactly
+bun run sim -- --check      # recomputes the last 50 settled matches on testnet exactly, then prints today's share prices
 ```
 
 ### 1. Verify the recorded leagues (no chain, no key, about 2 seconds)
@@ -355,7 +367,7 @@ docs                 how it works, how to verify, limits
 
 ## Built with
 
-Rust and [near-sdk](https://github.com/near/near-sdk-rs) 5.30, [cargo-near](https://github.com/near/cargo-near), near-sandbox and near-api for contract tests, [Bun](https://bun.sh), TypeScript, React 18, Vite, [motion](https://motion.dev), [NEAR Connect](https://github.com/hot-dao/near-connect) for wallets, Inter, Bricolage Grotesque, Instrument Serif and JetBrains Mono fonts, NEAR AI Cloud models (`Qwen/Qwen3.8-27B`, `z-ai/glm-5.3-flash`). Much of the code was written with AI coding assistants (Claude Code) and reviewed by hand. Everything was built during the hackathon window.
+Rust and [near-sdk](https://github.com/near/near-sdk-rs) 5.30, [cargo-near](https://github.com/near/cargo-near), near-sandbox and near-api for contract tests, [Bun](https://bun.sh), TypeScript, React 18, Vite, [motion](https://motion.dev), [NEAR Connect](https://github.com/azbang/near-connect) for wallets, Inter, Bricolage Grotesque, Instrument Serif and JetBrains Mono fonts, NEAR AI Cloud models (`Qwen/Qwen3.8-27B`, `z-ai/glm-5.3-flash`). Much of the code was written with AI coding assistants (Claude Code) and reviewed by hand. Everything was built during the hackathon window.
 
 ## Tests
 
@@ -365,7 +377,7 @@ cargo test -p parley-arena --test sandbox          # contract on a real sandbox 
 bun test                                           # SDK, relayer, league and verifier
 ```
 
-141 arena and 7 token unit tests, 5 tests on a sandbox node (a full Parley, forged replies, real NEAR payouts, a 30 KB reasoning reply, wrapping shares into NEP-141 and back), and 119 TypeScript tests, including every forgery class the verifier must catch, the ported money math pinned to the contract, the ledger replay and the attack lab.
+141 arena and 7 token unit tests, 5 tests on a sandbox node (a full Parley, forged replies, real NEAR payouts, a 30 KB reasoning reply, wrapping shares into NEP-141 and back), and 130 TypeScript tests, including every forgery class the verifier must catch, the ported money math pinned to the contract, the ledger replay and the attack lab.
 
 ## Limits
 

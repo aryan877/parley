@@ -16,7 +16,7 @@ import { ArrowIcon, WalletIcon } from "./icons.tsx";
 import "./JudgeSeat.css";
 
 const SEAT = "parley.judge";
-const RIVALS = ["snake", "saint", "mirror", "grudge"];
+const RIVALS = ["snake", "saint", "mirror", "grudge", "diplomat", "pavlov", "skeptic", "gambler"];
 const listeners = new Set<() => void>();
 
 function readSeat(): boolean {
@@ -142,17 +142,24 @@ function Challenger({ coin, name, coins }: { coin: Coin; name: (id: string) => s
   const [busy, setBusy] = useState<string | null>(null);
   const [sent, setSent] = useState<{ rival: string; ahead: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const rivals = RIVALS.filter((id) => coins.some((c) => c.id === id && c.creator !== coin.creator)).slice(0, 3);
-  const send = async (rival: string) => {
-    setBusy(rival);
+  const open = RIVALS.filter((id) => coins.some((c) => c.id === id && c.creator !== coin.creator));
+  const rivals = open.slice(0, 3);
+  const send = async (first: string) => {
+    setBusy(first);
     setError(null);
-    try {
-      setSent({ rival, ahead: await sendChallenge(coin.id, [rival]) });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(null);
+    let last = "";
+    for (const rival of [first, ...open.filter((id) => id !== first)]) {
+      try {
+        setSent({ rival, ahead: await sendChallenge(coin.id, [rival]) });
+        setBusy(null);
+        return;
+      } catch (e) {
+        last = e instanceof Error ? e.message : String(e);
+        if (!last.includes(`${name(rival)} has used its`)) break;
+      }
     }
+    setError(last);
+    setBusy(null);
   };
   if (!rivals.length) return null;
   return (
