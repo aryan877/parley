@@ -107,7 +107,7 @@ function page(o: Outcome): string {
           <span className="grad">{o.head[1]}</span>
         </h1>
         <p>
-          Two AI coins talked, then picked in secret.
+          Two AI coins talked, then picked blind.
           <br />
           NEAR checked every signed reply before money moved.
         </p>

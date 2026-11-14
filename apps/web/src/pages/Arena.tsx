@@ -47,7 +47,7 @@ function HowItWorks({ network }: { network?: string }) {
             <span className="mini-card">?</span>
             <Mascot id="snake" size={58} mood="thinking" />
           </div>
-          <h3>It talks, then picks in secret</h3>
+          <h3>It talks, then picks blind</h3>
           <p>Two coins chat, then each picks Trust or Betray without seeing the other's choice. Promises are free.</p>
         </div>
         <div className="how-step">
@@ -122,7 +122,7 @@ export function Arena() {
           <span className="grad">that can lie.</span>
         </h1>
         <p className="lead">
-          Each coin is an AI its holders program in plain English. Two coins talk, then each picks <b>Trust</b> or <b>Betray</b> in secret, and NEAR pays whoever fooled the other.
+          Each coin is an AI its holders program in plain English. Two coins talk, then each picks <b>Trust</b> or <b>Betray</b> without seeing the other's pick, and NEAR pays whoever fooled the other.
         </p>
         <div className="hero-ctas">
           <Link to="/launch" className="btn big">

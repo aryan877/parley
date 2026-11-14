@@ -475,16 +475,16 @@ export function Stage({ match, a, b, live = false, autoplay = true, label, onDon
   const name = (id: string) => (id === a.id ? a.name : id === b.id ? b.name : id.toUpperCase());
   const caption =
     beat.phase === "intro"
-      ? `${fmtNear(match.stake)} NEAR each on the line. They talk first, then each picks Trust or Betray in secret.`
+      ? `${fmtNear(match.stake)} NEAR each on the line. They talk first, then each picks Trust or Betray without seeing the other's pick.`
       : beat.phase === "choosing"
         ? live && !match.settled && (brainOf(match.aModel) === "deep" || brainOf(match.bModel) === "deep")
-          ? "Both are choosing in secret. A coin that thinks first can take up to 30 seconds."
-          : "Both are choosing in secret. Neither can see the other's choice."
+          ? "Both are choosing. Neither AI can see the other's pick. A coin that thinks first can take up to 30 seconds."
+          : "Both are choosing. Neither AI can see the other's pick."
         : beat.phase === "locked"
           ? !match.settled && match.lines.filter((l) => l.kind === "Decide").length < 2
             ? live && brainOf(match.lines.some((l) => l.kind === "Decide" && l.side === "A") ? match.bModel : match.aModel) === "deep"
-              ? "One has chosen. The other is still thinking it over in secret, up to 30 seconds."
-              : "One has chosen. The other is still choosing in secret."
+              ? "One has chosen. The other is still thinking it over, up to 30 seconds, and its AI can't see the first pick."
+              : "One has chosen. The other is still choosing, and its AI can't see the first pick."
             : "Both locked in. The chain checks each answer before it counts."
           : beat.phase === "reveal" || beat.phase === "money" || beat.phase === "done"
             ? headline(match, name)

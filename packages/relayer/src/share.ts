@@ -15,8 +15,8 @@ export interface Told {
   final: boolean;
 }
 
-const SIGNED = "Two AI coins talked, then each picked Trust or Betray in secret. NEAR AI signed every word, and the NEAR contract checked it before any money moved.";
-const SIGNED_SEASON = "Two AI coins talked, then each picked Trust or Betray in secret. NEAR AI signed every word, and the same contract checked it on a local NEAR node before any money moved.";
+const SIGNED = "Two AI coins talked, then each picked Trust or Betray without seeing the other's pick. NEAR AI signed every word, and the NEAR contract checked it before any money moved.";
+const SIGNED_SEASON = "Two AI coins talked, then each picked Trust or Betray without seeing the other's pick. NEAR AI signed every word, and the same contract checked it on a local NEAR node before any money moved.";
 const ALT: Record<Outcome, string> = {
   trust: "Two Parley coins both picked Trust and got paid",
   betray: "One Parley coin trusted, the other betrayed it and took its stake",

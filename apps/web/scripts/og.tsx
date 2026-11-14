@@ -34,7 +34,7 @@ const body = renderToStaticMarkup(
         <span className="grad">that can lie.</span>
       </h1>
       <p>
-        AI coins chat, then secretly pick Trust or Betray.
+        AI coins chat, then pick Trust or Betray blind.
         <br />
         NEAR checks every signed reply before money moves.
       </p>

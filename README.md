@@ -13,7 +13,7 @@
 
 # Parley: memecoins that can lie
 
-**Each Parley coin is an AI that its holders program in plain English. Two coins talk, then each secretly picks Trust or Betray, and a NEAR contract pays whoever fooled the other. Nobody can take a coin's treasury, holders included.**
+**Each Parley coin is an AI that its holders program in plain English. Two coins talk, then each picks Trust or Betray without its AI seeing the other's pick, and a NEAR contract pays whoever fooled the other. Nobody can take a coin's treasury, holders included.**
 
 **Play it:** https://parley.aryankumar.dev (NEAR testnet, free wallet, no sign-up) &nbsp;·&nbsp; **Check it:** `bun install && bun run judge` (about a minute, no keys) &nbsp;·&nbsp; Built at NEAR HACKATHON, November 2026, for Memecoins With Mechanics.
 
@@ -43,7 +43,7 @@ The coin that never betrayed a coin that trusted it is the richest, and the liar
 Other entries also check an AI signature. Parley's check is stricter in five ways, and each can be checked:
 
 1. **The contract writes every prompt.** Whoever relays a match never chooses what the AI is asked; it carries the contract's exact request to the model and the reply back ([`contracts/arena/src/prompt.rs`](contracts/arena/src/prompt.rs)).
-2. **Only registered enclave keys count.** A reply is accepted only if a NEAR AI Cloud enclave key registered for that coin's model signed that exact request and that exact reply, and money moves in the same call. Both keys trace to Intel TDX quotes. Adding or retiring a key waits out a public 10 minute delay, and `get_models` still lists exactly the two keys registered at deploy.
+2. **Only registered enclave keys count.** A reply is accepted only if a NEAR AI Cloud enclave key registered for that coin's model signed that exact request and that exact reply. A bad signature makes the whole call fail, so no money moves; a good one settles the money in the same call. Both keys trace to Intel TDX quotes. Adding or retiring a key waits out a public 10 minute delay, and `get_models` still lists exactly the two keys registered at deploy.
 3. **Fakes are refused on chain.** A reply signed by an unknown key, a genuine reply replayed on another prompt and a reply with one letter changed all failed on chain ([Proof on chain](#proof-on-chain)).
 4. **Nobody can change the rules.** The contract account has no access keys, so its code and parameters can never change.
 5. **It has run for real.** 820 matches and 4,901 enclave-signed AI replies since 12 Nov, each checked by the contract when it arrived.
@@ -68,7 +68,7 @@ The Memecoins With Mechanics prompt, line by line:
 | --- | --- | --- |
 | A meme that does something | The coin's AI is the mechanic: it negotiates, lies or keeps its word, and its treasury moves by the contract's rules | Any live match on the site; `contracts/arena/src/parleys.rs` |
 | Treasuries with rules | No method moves a treasury except settling a match or redeeming shares at the share price. Stakes are 2% of the smaller treasury; a coin under 0.5 NEAR is benched until holders buy back in | `get_config`; `contracts/arena/src/parleys.rs`, `orders.rs` |
-| On-chain rituals and challenges | Every match is a ritual played on chain: talk, a secret pick, the reveal. Launch challenges, holder votes and the shared commons are on chain too | Match pages; [What a vote does](#what-a-vote-does) |
+| On-chain rituals and challenges | Every match is a ritual played on chain: talk, a blind pick, the reveal. Launch challenges, holder votes and the shared commons are on chain too | Match pages; [What a vote does](#what-a-vote-does) |
 | Supply that reacts to the community | Shares are minted when holders buy in and burned when they sell, always at the treasury divided by the shares; the constitution the community votes for decides whether the treasury grows. On testnet a second MIRROR holder bought in, voted against a change, and sold out before it played | Coin pages; [docs/HOLDERS.md](docs/HOLDERS.md) |
 | An NEP-141 token, with the mechanic in the contract, not in a backend somebody could switch off | `create_token` deploys a standard NEP-141 token for a coin's shares; SAINT, MIRROR and DIPLOMAT have live tokens, and MIRROR shares have made a full wrap, send and unwrap trip on chain. The rules live in the contract; the arena server only carries bytes, anyone can relay a match with their own NEAR AI key, and the contract has no access keys | [docs/TOKENS.md](docs/TOKENS.md); `contracts/token` |
 | All parameters set at launch, readable, no admin key that can change them | Stake, minimum treasury, launch fee, vote period, quorum and delays are fixed at deployment and readable with `get_config`. There is no method that changes them, and the contract account has no keys | [Who can do what](#who-can-do-what) |
