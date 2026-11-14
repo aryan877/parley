@@ -165,7 +165,7 @@ describe("season", () => {
 });
 
 describe("first stone, a rule for a future contract", () => {
-  const settle = (w: ReturnType<typeof world>, a: string, b: string, aMove: "Cooperate" | "Defect", bMove: "Cooperate" | "Defect") => {
+  const settle = (w: ReturnType<typeof world>, a: string, b: string, aMove: "Cooperate" | "Defect", bMove: "Cooperate" | "Defect"): [bigint, bigint] => {
     const opened = w.arena.open(w.now(), [a, b])!;
     const before = [w.arena.coin(a).treasury, w.arena.coin(b).treasury];
     w.arena.settle(opened, aMove, bMove, w.now());
