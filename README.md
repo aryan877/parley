@@ -17,7 +17,7 @@
 
 **[Play it](https://parley.aryankumar.dev)** (NEAR testnet, free wallet, no sign-up) &nbsp;·&nbsp; **[Check it yourself](#check-it-yourself)** (`bun run judge`, no keys) &nbsp;·&nbsp; **[Contract on NearBlocks](https://testnet.nearblocks.io/address/parley-live.testnet)** &nbsp;·&nbsp; **[Every claim, and how to check it](CLAIMS.md)** &nbsp;·&nbsp; Built at NEAR HACKATHON, November 2026, for Memecoins With Mechanics.
 
-| 930 matches | 5,561 AI replies, each enclave-signed and checked on chain | 0 access keys on the contract | every forged reply refused |
+| 1,013 matches | 6,059 AI replies, each enclave-signed and checked on chain | 0 access keys on the contract | every forged reply refused |
 | :---: | :---: | :---: | :---: |
 
 <p align="center">
@@ -30,20 +30,20 @@
 
 ## The result so far
 
-Every coin launched at 1.00 NEAR a share on 12 Nov. After 930 matches on `parley-live.testnet` (snapshot 12:00 UTC, 14 Nov):
+Every coin launched at 1.00 NEAR a share on 12 Nov. After 1,013 matches on `parley-live.testnet` (snapshot 20:34 UTC, 14 Nov):
 
 | Coin | Its rules, in short | Matches | Times it betrayed a coin that trusted it | Share price | Since launch |
 | --- | --- | --- | --- | --- | --- |
-| DIPLOMAT | forgives one betrayal | 137 | 0 | 1.70 | **+70%** |
-| GRUDGE | cooperates until betrayed once | 137 | 8 | 1.46 | +46% |
-| PAVLOV | win-stay, lose-shift | 136 | 7 | 1.35 | +35% |
-| MIRROR | tit-for-tat | 140 | 14 | 1.24 | +24% |
-| SAINT | always cooperates, amended by vote to refuse backstabbers | 140 | 9 | 1.08 | +8% |
-| GAMBLER | lets the match nonce decide | 137 | 31 | 0.97 | -3% |
-| SKEPTIC | defects first, then mirrors | 137 | 20 | 0.59 | -41% |
-| SNAKE | always defects, and lies about it | 140 | 24 | 0.54 | **-46%** |
+| DIPLOMAT | forgives one betrayal | 147 | 0 | 1.76 | **+76%** |
+| GRUDGE | cooperates until betrayed once | 147 | 9 | 1.46 | +46% |
+| PAVLOV | win-stay, lose-shift | 147 | 7 | 1.38 | +38% |
+| MIRROR | tit-for-tat | 150 | 14 | 1.25 | +25% |
+| SAINT | always cooperates, amended by vote to refuse backstabbers | 151 | 11 | 1.12 | +12% |
+| GAMBLER | lets the match nonce decide | 146 | 31 | 0.90 | -10% |
+| SKEPTIC | defects first, then mirrors | 145 | 20 | 0.55 | -45% |
+| SNAKE | always defects, and lies about it | 150 | 25 | 0.50 | **-50%** |
 
-Among the eight starting coins, the one that never betrayed a coin that trusted it is the richest, and the liar is the poorest. Trading cannot move these prices: shares are always bought and sold at the treasury divided by the shares, so only the way each AI played moved them. `bun run sim -- --check` prints today's table straight from the chain, and `bun scripts/count.ts` counts every match and accepted reply. The other coins on the arena are our own test coins, listed in [deployments/testnet-team-coins.json](deployments/testnet-team-coins.json); none comes from an outside player yet. One of them, BRUTE ("betray any coin with a smaller treasury than yours"), is the richest coin overall, at +77%.
+The coin that never betrayed a coin that trusted it is the richest coin on the arena, and the liar is the poorest of the eight starting coins. Trading cannot move these prices: shares are always bought and sold at the treasury divided by the shares, so only the way each AI played moved them. `bun run sim -- --check` prints today's table straight from the chain, and `bun scripts/count.ts` counts every match and accepted reply. The other coins on the arena are our own test coins, listed in [deployments/testnet-team-coins.json](deployments/testnet-team-coins.json); none comes from an outside player yet. The richest of them, BRUTE ("betray any coin with a smaller treasury than yours"), is second overall at +68%.
 
 Parley builds on three ideas Illia Polosukhin has posted: the [iMeme](https://x.com/ilblackdragon/status/2118463660448534717), a memecoin that becomes an intelligent meme; [AI governance](https://ilblackdragon.substack.com/p/rethinking-the-self-custodysafety) where the system prompt "is effectively its constitution" and "stakeholders can only vote to upgrade the model and system prompt"; and an [AI character arena](https://x.com/ilblackdragon/status/2106269343881519444) running verifiable NEAR AI inference from a prompt encoded on chain.
 
@@ -51,7 +51,7 @@ Parley builds on three ideas Illia Polosukhin has posted: the [iMeme](https://x.
 
 - **The chain writes the prompt.** For every turn the contract builds the full request itself: the model, the coin's constitution, both coins' records, their history and the talk so far. Whoever relays a match only carries bytes ([`prompt.rs`](contracts/arena/src/prompt.rs)).
 - **Only a sealed-hardware signature counts.** `submit_turn` accepts a reply only if a NEAR AI Cloud enclave key registered for that model signed `model:sha256(request):sha256(response)`. A bad signature fails the whole call, so no NEAR moves; a good one settles the stake in the same call. Both keys trace to Intel TDX quotes ([`verify.rs`](contracts/arena/src/verify.rs)).
-- **Every turn, not a sample.** All 5,561 AI replies in those 930 matches went through that check. A reply signed by an unknown key, a genuine reply replayed on another prompt and a reply with one letter changed were all refused on chain ([proof](#proof-on-chain)). The Proof page's **Can you fool the contract?** button lets anyone try.
+- **Every turn, not a sample.** All 6,059 AI replies in those 1,013 matches went through that check. A reply signed by an unknown key, a genuine reply replayed on another prompt and a reply with one letter changed were all refused on chain ([proof](#proof-on-chain)). The Proof page's **Can you fool the contract?** button lets anyone try.
 - **The AI's reasoning is signed too.** A model that thinks first returns its thoughts inside the same signed reply, so anyone can read why a coin lied and know it is genuine. The other coin never sees them.
 - **Nobody can change the game.** The contract account has no access keys, so its code and parameters are fixed forever. Holders can only vote on their own coin's rules, and no method takes a treasury.
 
@@ -172,7 +172,7 @@ On testnet, SAINT's shareholder (the arena owner, which holds the starting coins
 
 Nobody moved SAINT's money and nobody spoke for it. One paragraph changed, and the coin behaved differently.
 
-A vote is not a promise of a better coin. SAINT has trusted in about 40% of its 140 matches and is up 8%, well behind the forgiving coins, and in the simulation the same rule backfires over 60 days ([SIM.md](docs/SIM.md), scenario e). Holders own the consequences of the rules they write. Holders can also disagree: on MIRROR a second holder voted no, lost, and sold every share at the same price before the new rule played ([docs/HOLDERS.md](docs/HOLDERS.md)).
+A vote is not a promise of a better coin. SAINT has trusted in 39% of its 151 matches and is up 12%, well behind the forgiving coins, and in the simulation the same rule backfires over 60 days ([SIM.md](docs/SIM.md), scenario e). Holders own the consequences of the rules they write. Holders can also disagree: on MIRROR a second holder voted no, lost, and sold every share at the same price before the new rule played ([docs/HOLDERS.md](docs/HOLDERS.md)).
 
 ## Fits the track
 
