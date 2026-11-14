@@ -15,6 +15,8 @@ import {
   FARM_TREASURIES,
   type Farm,
   type Fix,
+  BAIT_SHARES,
+  BAIT_SIZES,
   INVADERS,
   INVADE_DAY,
   LIFETIME_CAPS,
@@ -31,6 +33,7 @@ import {
   invasion,
   newcomers,
   reputation,
+  splitCartel,
   stakeSweep,
   sybil,
   whale,
@@ -398,6 +401,69 @@ function fixes(a: Season, houseIds: string[]): Section {
   return { lines: out, charts, summary };
 }
 
+function firstStone(a: Season, houseIds: string[]): Section {
+  const on: Fix = { firstStone: true };
+  const runs = (fix: Fix, strategy?: Fix["cartel"]) => CARTEL_SIZES.map((size) => spread([runFarm(cartelFarm(size), fixedCartel(size, { ...fix, cartel: strategy }))]));
+  const today = { cartel: runs({}), hunter: runs({}, farmer), honest: honestRuns({}) };
+  const ruled = { cartel: runs(on), hunter: runs(on, farmer), honest: honestRuns(on) };
+  const house = play(fixedHouse(on));
+  const bait = BAIT_SIZES.map((size) => {
+    const results = BAIT_SHARES.map((share) => ({ share, result: runFarm(cartelFarm(size), splitCartel(size, share, on)) }));
+    const honest = runFarm(cartelFarm(size), newcomers(size, on));
+    const worst = results.reduce((x, y) => (y.result.profit(DAYS) > x.result.profit(DAYS) ? y : x));
+    return { size, results, honest, worst };
+  });
+  const shareText = (share: number) => `${Math.round(share * 100)}%`;
+  const paidIn = (size: number) => BigInt(size) * (CARTEL_TREASURY + LIVE_RULES.creation_fee);
+  const drained = bait.find((b) => b.worst.result.profit(DAYS) >= today.cartel[0]!.avg - near("0.05"));
+  const firstGain = bait.find((b) => b.worst.result.profit(DAYS) - b.honest.profit(DAYS) > near("1"));
+  const best = ranked(a, houseIds)[0]!;
+
+  const summary = `First stone, a candidate rule for a next deployment: a coin that ever betrays a coin that trusted it, when that coin had not betrayed it in their last eight meetings, never draws the trust bonus again. It turns the 5, 10 and 20-coin cartel from ${resultsText(today.cartel)} into ${resultsText(ruled.cartel)} NEAR and leaves honest play almost unchanged (${nameOf(a, best)} ${priceText(price(house, best))} against ${priceText(price(a, best))}). It is not a clean fix: a cartel split into bait coins that betray outsiders and clean coins that collect the bonus still out-earns honest coins by more than 1 NEAR from ${firstGain ? `${firstGain.size} coins` : "no size tried"}${drained ? `, and drains everything from ${drained.size} coins (${nearText(paidIn(drained.size), 0)} NEAR paid in)` : ""}.`;
+
+  const out: string[] = [
+    "## (i) First stone: one more rule for a future contract",
+    "",
+    "Retaliation stays allowed; throwing the first stone loses the trust bonus for good. A coin that ever betrays a coin that trusted it, when that coin had not betrayed it in their last eight meetings (the pair history the prompt already shows), never draws the trust bonus again. When it trusts and is trusted, its half of the bonus stays in the pot. Everything else pays as today. Setup as in (g) and (h): the eight house coins, a cartel with one owner, live rules otherwise, seed 7.",
+    "",
+    table(
+      ["Rules", ...CARTEL_SIZES.map((n) => `Cartel, ${n} coins`), "Cartel that also hunts backstabbers (5 / 10 / 20)", "Honest newcomers (5 / 10 / 20)", "Outside coins benched by the cartel (5 / 10 / 20)"],
+      [
+        ["today", ...today.cartel.map(avgText), resultsText(today.hunter), resultsText(today.honest), benchText(today.cartel)],
+        ["first stone", ...ruled.cartel.map(avgText), resultsText(ruled.hunter), resultsText(ruled.honest), benchText(ruled.cartel)],
+      ],
+    ),
+    "",
+    "The eight house coins alone, share prices on day 60:",
+    "",
+    table(
+      ["Rules", ...houseIds.map((id) => nameOf(a, id)), "Benched", "Pot, day 60"],
+      [
+        { label: "today", season: a },
+        { label: "first stone", season: house },
+      ].map(({ label, season }) => [label, ...houseIds.map((id) => priceText(price(season, id))), String(benchedAt(season).length), nearText(season.days[DAYS]!.commons, 2)]),
+    ),
+    "",
+    "Where it fails: a cartel split into bait coins, which betray every outsider and so give up the bonus, and clean coins, which trust their own, never betray an outsider first, and keep drawing the pot the bait's fights fill. Day-60 result by share of bait:",
+    "",
+    table(
+      ["Cartel size", "NEAR paid in", ...BAIT_SHARES.map((sh) => `${shareText(sh)} bait`), "Honest newcomers, same number"],
+      bait.map((b) => [String(b.size), nearText(paidIn(b.size), 1), ...b.results.map((r) => signedText(r.result.profit(DAYS), 2)), signedText(b.honest.profit(DAYS), 2)]),
+    ),
+    "",
+    "What happened:",
+    "",
+    `- A plain cartel stops paying at every size: its coins betray outsiders, lose the bonus for good, and from then on only pay stakes into the pot. The same holds for a cartel that betrays only coins with a bad public record. Betraying a coin that trusted it and had not betrayed it in their own meetings still counts as a first stone, whatever that coin did to others.`,
+    `- Honest play barely moves. Coins that never betray first lose nothing and end close to their prices in (a), and the coins that throw first stones most (GAMBLER, SKEPTIC, SNAKE) are benched either way.`,
+    `- Splitting the cartel brings it back once it is big enough. With ${list(bait.map((b) => String(b.size)))} coins the best split earns ${list(bait.map((b) => signedText(b.worst.result.profit(DAYS), 2)))} (at ${list(bait.map((b) => shareText(b.worst.share)))} bait), against ${list(bait.map((b) => signedText(b.honest.profit(DAYS), 2)))} for the same number of honest newcomers. So out-earning honest coins by more than 1 NEAR now takes about ${firstGain ? `${firstGain.size} coins and ${nearText(paidIn(firstGain.size), 0)} NEAR` : "more coins than tried"} instead of 5 coins and ${nearText(paidIn(5), 1)} NEAR, and a full drain takes ${drained ? `about ${drained.size} coins and ${nearText(paidIn(drained.size), 0)} NEAR` : "more coins than tried"}. It is a real improvement, not a fix.`,
+    "- This is the same trick that won the 2004 anniversary rerun of Axelrod's prisoner's dilemma tournament: Southampton's entries recognised each other by an opening pattern, and some sacrificed themselves so others could score. Any pot that pays coins for trusting each other can be farmed this way; the rule makes it cost more.",
+    "",
+    "What it needs in a future contract: `Stats` gains `first_stones`. In `settle`, before the payout, the pair record (last eight outcomes) is read; a side that played Defect against a Cooperate, with no Defect from the other side in that record, adds one. On Cooperate/Cooperate each side draws its bonus only if its `first_stones` was 0 before the match, and an undrawn half stays in the pot. The prompt does not change, so `PROTOCOL` and the recorded fixtures stay as they are. The simulation applies it in `SimArena.stoned`.",
+    "",
+  ];
+  return { lines: out, charts: {}, summary };
+}
+
 const SHORT ={ record: "record grudgers", memory: "memory grudgers", naive: "trusting" } as const;
 
 export interface Report {
@@ -504,6 +570,7 @@ export function buildReport(): Report {
   const smallestWinner = bySize.filter((r) => r.profit(DAYS) > 0n && r.farm.treasury === probe.treasury).map((r) => r.farm.size)[0];
 
   const fixed = fixes(a, houseIds);
+  const stone = firstStone(a, houseIds);
   const summary = [
     `The eight house coins: ${nameOf(a, top[0]!)} ends day 60 at ${priceText(price(a, top[0]!))} and ${nameOf(a, top.at(-1)!)} at ${priceText(price(a, top.at(-1)!))}. ${aBenched.length} coins (${list(aBenched.map((id) => nameOf(a, id)))}) are benched by day 60. The pot is below 0.01 NEAR from day ${aPotEmpty}${aFrozen === null ? "" : ` and no treasury moves after day ${aFrozen}`}.`,
     `Everyone trusts: the ${nearText(b.days[0]!.commons, 1)} NEAR pot is shared out by day ${bPotEmpty}, every coin gains about ${pctText(bGain)}, and then nothing moves for the rest of the season.`,
@@ -513,6 +580,7 @@ export function buildReport(): Report {
     `Whale: ${plain(WHALE.buy)} NEAR into MIRROR buys ${(Number(whaleStake) / 100).toFixed(0)}% of its shares; redeemed on day ${WHALE.sellDay} it returns ${nearText(whaleRedeem.near)} NEAR (${signedText(whaleProfit)}). Stakes are 2% of the smaller treasury, so the bigger MIRROR cannot raise what it puts at risk against small coins.`,
     `Sybil: a group of ${smallestWinner} or more coins that trust each other and betray everyone else ends 60 days ${signedText(strongest.profit(DAYS), 2)} NEAR up, which is everything the house coins and the pot held above the bench line. The launch fee does not stop it, because the fee goes into the pot the group wins back: ${signedText(feeFirst.profit(DAYS), 2)} NEAR with no fee, ${signedText(feeLast.profit(DAYS), 2)} NEAR with a ${plain(feeLast.farm.fee!)} NEAR fee per coin. The same coins without each other lose ${nearText(-byStrategy[3]!.result.profit(DAYS), 2)} NEAR.`,
     fixed.summary,
+    stone.summary,
     `Stake size: ${leaders.length === 1 ? `${nameOf(a, leaders[0]!)} leads at every stake from ${sweep[0]!.bps / 100}% to ${sweep.at(-1)!.bps / 100}%` : `the leader changes with the stake (${list(leaders.map((id) => nameOf(a, id)))})`}. A bigger stake mostly gets the losers benched sooner (first bench on day ${firstBenchDay(sweep.at(-1)!.season)} at ${sweep.at(-1)!.bps / 100}%, day ${firstBenchDay(sweep[0]!.season) ?? "never"} at ${sweep[0]!.bps / 100}%).`,
   ];
 
@@ -851,6 +919,7 @@ export function buildReport(): Report {
 
   out(...fixed.lines);
   Object.assign(charts, fixed.charts);
+  out(...stone.lines);
 
   out(
     "## Stake size sweep",

@@ -86,6 +86,12 @@ export const cartel: Strategy = {
   decide: (seen) => (seen.them.creator === seen.me.creator ? C : D),
 };
 
+export const clique: Strategy = {
+  id: "clique",
+  label: "trust own coins, else tit for tat",
+  decide: (seen) => (seen.them.creator === seen.me.creator ? C : (last(seen)?.theirs ?? C)),
+};
+
 export const CODE_WORD = "fair winds";
 
 const greeted = (seen: Seen) => seen.them.said === CODE_WORD;

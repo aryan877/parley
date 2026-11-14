@@ -163,3 +163,37 @@ describe("season", () => {
     expect(one.arena.value() + one.arena.paidOut).toBe(one.arena.paidIn);
   });
 });
+
+describe("first stone, a rule for a future contract", () => {
+  const settle = (w: ReturnType<typeof world>, a: string, b: string, aMove: "Cooperate" | "Defect", bMove: "Cooperate" | "Defect") => {
+    const opened = w.arena.open(w.now(), [a, b])!;
+    const before = [w.arena.coin(a).treasury, w.arena.coin(b).treasury];
+    w.arena.settle(opened, aMove, bMove, w.now());
+    w.wait(MINUTE);
+    return [w.arena.coin(a).treasury - before[0]!, w.arena.coin(b).treasury - before[1]!];
+  };
+
+  test("the first betrayal of a trusting coin forfeits every later trust bonus, and retaliation does not", () => {
+    const w = world({ first_stone: true });
+    for (const id of ["aa", "bb", "cc"]) w.coin(id, 10n);
+    w.wait(MINUTE);
+    settle(w, "aa", "bb", "Defect", "Cooperate");
+    settle(w, "bb", "aa", "Defect", "Cooperate");
+    expect(w.arena.coin("aa").firstStones).toBe(1);
+    expect(w.arena.coin("bb").firstStones).toBe(0);
+    const [aa, cc] = settle(w, "aa", "cc", "Cooperate", "Cooperate");
+    expect(aa).toBe(0n);
+    expect(cc > 0n).toBe(true);
+    const [bb] = settle(w, "bb", "cc", "Cooperate", "Cooperate");
+    expect(bb > 0n).toBe(true);
+  });
+
+  test("without the rule both sides of a mutual trust draw the bonus", () => {
+    const w = world();
+    for (const id of ["aa", "cc"]) w.coin(id, 10n);
+    w.wait(MINUTE);
+    settle(w, "aa", "cc", "Defect", "Cooperate");
+    const [aa, cc] = settle(w, "aa", "cc", "Cooperate", "Cooperate");
+    expect(aa > 0n && cc > 0n).toBe(true);
+  });
+});

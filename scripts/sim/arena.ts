@@ -10,6 +10,8 @@ export interface Rules extends Economics {
   order_timeout_ns: bigint;
   anonymous?: boolean;
   pair_cap?: PairCap;
+  /** A coin that ever betrays a coin that trusted it, when that coin had not betrayed it in their pair history, never draws the trust bonus again. */
+  first_stone?: boolean;
 }
 
 export interface SimCoin {
@@ -27,6 +29,7 @@ export interface SimCoin {
   stats: Stats;
   wins: number;
   benchEvents: number;
+  firstStones: number;
 }
 
 export interface Opened {
@@ -123,6 +126,7 @@ export class SimArena {
       stats: { matches: 0, cooperated: 0, defected: 0, was_betrayed: 0, betrayed_other: 0 },
       wins: 0,
       benchEvents: 0,
+      firstStones: 0,
     };
     this.coins.set(id, coin);
     this.holders.set(id, new Map([[creator, made.shares]]));
@@ -208,7 +212,16 @@ export class SimArena {
     const b = this.coin(opened.b);
     const key = pairKey(a.id, b.id);
     const pair = this.pairs.get(key) ?? { outcomes: [], lastMet: 0n, drawn: 0n, window: 0n };
-    const delta = this.capped(pair, payoff(opened.stake, this.commons, aMove, bMove), now);
+    const delta = this.stoned(a, b, aMove, bMove, this.capped(pair, payoff(opened.stake, this.commons, aMove, bMove), now));
+    if (this.rules.first_stone) {
+      for (const [coin, mine, theirs] of [
+        [a, aMove, bMove],
+        [b, bMove, aMove],
+      ] as const) {
+        const provoked = pair.outcomes.some(([low, high]) => (coin.id < (coin === a ? b : a).id ? high : low) === "Defect");
+        if (mine === "Defect" && theirs === "Cooperate" && !provoked) coin.firstStones += 1;
+      }
+    }
     this.setTreasury(a, a.treasury + delta.a);
     this.setTreasury(b, b.treasury + delta.b);
     this.commons += delta.commons;
@@ -231,6 +244,13 @@ export class SimArena {
     pair.lastMet = now;
     this.pairs.set(key, pair);
     return { ...opened, aMove, bMove, aDelta: delta.a, bDelta: delta.b, commonsDelta: delta.commons, settledAt: now };
+  }
+
+  private stoned(a: SimCoin, b: SimCoin, aMove: Move, bMove: Move, delta: Payoff): Payoff {
+    if (!this.rules.first_stone || aMove !== "Cooperate" || bMove !== "Cooperate") return delta;
+    const ga = a.firstStones === 0 ? delta.a : 0n;
+    const gb = b.firstStones === 0 ? delta.b : 0n;
+    return { a: ga, b: gb, commons: -(ga + gb) };
   }
 
   private capped(pair: Pair, delta: Payoff, now: bigint): Payoff {

@@ -14,6 +14,7 @@
 - Whale: 20 NEAR into MIRROR buys 83% of its shares; redeemed on day 30 it returns 20.565 NEAR (+0.565). Stakes are 2% of the smaller treasury, so the bigger MIRROR cannot raise what it puts at risk against small coins.
 - Sybil: a group of 5 or more coins that trust each other and betray everyone else ends 60 days +16.81 NEAR up, which is everything the house coins and the pot held above the bench line. The launch fee does not stop it, because the fee goes into the pot the group wins back: +16.81 NEAR with no fee, +16.81 NEAR with a 5 NEAR fee per coin. The same coins without each other lose 2.01 NEAR.
 - Cartel fixes for a next deployment: hiding rival names does not stop a cartel on its own, because its coins can greet each other with a code word in public talk. If outside coins copy the code word only after the cartel has betrayed them, a cartel that refuses coins that betrayed it still ends +6.62 / +15.18 / +15.72 NEAR with 5, 10 and 20 coins; only if every outside coin knows the code word before day 0 does it fall to +3.69 / +5.75 / +6.89, exactly what honest newcomers earn. A per-pair cap on the trust bonus removes the profit only when it is tight (0.02 NEAR in total per pair stops all three sizes), still lets the cartel bench 5 / 6 / 8 of 8 outside coins, and with no cartel at all leaves 16.3 NEAR stuck in the pot and 5 of 8 house coins benched.
+- First stone, a candidate rule for a next deployment: a coin that ever betrays a coin that trusted it, when that coin had not betrayed it in their last eight meetings, never draws the trust bonus again. It turns the 5, 10 and 20-coin cartel from +16.82 / +16.81 / +16.83 into -1.01 / -2.03 / -4.05 NEAR and leaves honest play almost unchanged (DIPLOMAT 2.563 against 2.600). It is not a clean fix: a cartel split into bait coins that betray outsiders and clean coins that collect the bonus still out-earns honest coins by more than 1 NEAR from 10 coins, and drains everything from 40 coins (28.0 NEAR paid in).
 - Stake size: DIPLOMAT leads at every stake from 0.5% to 20%. A bigger stake mostly gets the losers benched sooner (first bench on day 2 at 20%, day 60 at 0.5%).
 
 ## Setup
@@ -562,6 +563,39 @@ What each fix needs in a future contract:
 - **Names hidden.** `prompt.rs` `build_request` writes the rival's name in three places: "Opponent is ...", the speaker label on each line of talk, and "Write your next public message to ...". All three would use a fixed word such as "your opponent" instead, while the rival's record, treasury, stake and the pair's history stay. That changes the request format, so `PROTOCOL` is bumped, `packages/league/src/prompt.ts` changes in step, and the fixtures are recorded again. The simulation models it in `SimArena`'s view of the rival, which then carries no id or owner.
 - **Cap per pair.** `PairRecord` gains `drawn`, the trust bonus the pair has taken, and for a daily cap the day it was counted in; `Config` gains the cap. In `settle`, the pair record is read before the payout and the Cooperate/Cooperate bonus becomes the smallest of half the stake, an eighth of the pot and half of what the pair has left under its cap; `drawn` grows by both bonuses. Betrayals pay exactly as today. The simulation applies this in `SimArena.capped` on top of the unchanged `payoff` from `economy.ts`.
 - **Both.** The two changes are independent and need nothing extra.
+
+## (i) First stone: one more rule for a future contract
+
+Retaliation stays allowed; throwing the first stone loses the trust bonus for good. A coin that ever betrays a coin that trusted it, when that coin had not betrayed it in their last eight meetings (the pair history the prompt already shows), never draws the trust bonus again. When it trusts and is trusted, its half of the bonus stays in the pot. Everything else pays as today. Setup as in (g) and (h): the eight house coins, a cartel with one owner, live rules otherwise, seed 7.
+
+| Rules | Cartel, 5 coins | Cartel, 10 coins | Cartel, 20 coins | Cartel that also hunts backstabbers (5 / 10 / 20) | Honest newcomers (5 / 10 / 20) | Outside coins benched by the cartel (5 / 10 / 20) |
+| --- | ---: | ---: | ---: | --- | --- | --- |
+| today | +16.82 | +16.81 | +16.83 | +4.00 / +12.54 / +14.31 | +3.69 / +5.75 / +6.89 | 8 / 8 / 8 |
+| first stone | -1.01 | -2.03 | -4.05 | -1.00 / -2.02 / -4.02 | +3.56 / +5.63 / +6.87 | 3 / 3 / 5 |
+
+The eight house coins alone, share prices on day 60:
+
+| Rules | DIPLOMAT | GAMBLER | GRUDGE | MIRROR | PAVLOV | SAINT | SKEPTIC | SNAKE | Benched | Pot, day 60 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| today | 2.600 | 0.248 | 1.723 | 2.405 | 1.647 | 1.279 | 0.250 | 0.248 | 3 | 0.00 |
+| first stone | 2.563 | 0.245 | 1.875 | 2.406 | 1.614 | 1.201 | 0.248 | 0.248 | 3 | 0.00 |
+
+Where it fails: a cartel split into bait coins, which betray every outsider and so give up the bonus, and clean coins, which trust their own, never betray an outsider first, and keep drawing the pot the bait's fights fill. Day-60 result by share of bait:
+
+| Cartel size | NEAR paid in | 10% bait | 25% bait | 50% bait | 75% bait | Honest newcomers, same number |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 10 | 7.0 | +6.86 | +6.64 | +6.14 | +3.52 | +5.63 |
+| 20 | 14.0 | +7.88 | +9.59 | +12.14 | +10.85 | +6.87 |
+| 40 | 28.0 | +8.38 | +11.57 | +15.71 | +16.83 | +7.96 |
+
+What happened:
+
+- A plain cartel stops paying at every size: its coins betray outsiders, lose the bonus for good, and from then on only pay stakes into the pot. The same holds for a cartel that betrays only coins with a bad public record. Betraying a coin that trusted it and had not betrayed it in their own meetings still counts as a first stone, whatever that coin did to others.
+- Honest play barely moves. Coins that never betray first lose nothing and end close to their prices in (a), and the coins that throw first stones most (GAMBLER, SKEPTIC, SNAKE) are benched either way.
+- Splitting the cartel brings it back once it is big enough. With 10, 20 and 40 coins the best split earns +6.86, +12.14 and +16.83 (at 10%, 50% and 75% bait), against +5.63, +6.87 and +7.96 for the same number of honest newcomers. So out-earning honest coins by more than 1 NEAR now takes about 10 coins and 7.0 NEAR instead of 5 coins and 3.5 NEAR, and a full drain takes about 40 coins and 28.0 NEAR. It is a real improvement, not a fix.
+- This is the same trick that won the 2004 anniversary rerun of Axelrod's prisoner's dilemma tournament: Southampton's entries recognised each other by an opening pattern, and some sacrificed themselves so others could score. Any pot that pays coins for trusting each other can be farmed this way; the rule makes it cost more.
+
+What it needs in a future contract: `Stats` gains `first_stones`. In `settle`, before the payout, the pair record (last eight outcomes) is read; a side that played Defect against a Cooperate, with no Defect from the other side in that record, adds one. On Cooperate/Cooperate each side draws its bonus only if its `first_stones` was 0 before the match, and an undrawn half stays in the pot. The prompt does not change, so `PROTOCOL` and the recorded fixtures stay as they are. The simulation applies it in `SimArena.stoned`.
 
 ## Stake size sweep
 

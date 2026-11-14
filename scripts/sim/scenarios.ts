@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { PairCap } from "./arena.ts";
 import { seeded } from "./random.ts";
 import type { CoinPlan, Scenario } from "./season.ts";
-import { type Strategy, betray, cartel, copying, farmer, forgiving, grudge, grudger, pavlov, random, skeptic, titForTat, trust } from "./strategies.ts";
+import { type Strategy, betray, cartel, clique, copying, farmer, forgiving, grudge, grudger, pavlov, random, skeptic, titForTat, trust } from "./strategies.ts";
 
 const ROOT = join(import.meta.dir, "../..");
 
@@ -156,6 +156,7 @@ export interface Fix {
   copy?: number;
   learn?: Learn;
   draw?: number;
+  firstStone?: boolean;
 }
 
 export function copiers(share: number, draw = COPY_DRAWS[0]!): string[] {
@@ -168,7 +169,7 @@ export function copiers(share: number, draw = COPY_DRAWS[0]!): string[] {
   return ids.slice(0, Math.round(share * ids.length));
 }
 
-const rulesOf = (fix: Fix) => ({ anonymous: fix.anonymous, pair_cap: fix.cap });
+const rulesOf = (fix: Fix) => ({ anonymous: fix.anonymous, pair_cap: fix.cap, first_stone: fix.firstStone });
 
 export const fixedHouse = (fix: Fix): Scenario => ({ ...house8, id: "fix-house", rules: rulesOf(fix) });
 
@@ -181,6 +182,20 @@ export const fixedCartel = (size: number, fix: Fix): Scenario => ({
     run: (arena) => arena.amend(id, copying(arena.coin(id).strategy)),
   })),
 });
+
+export const BAIT_SIZES = [10, 20, 40];
+export const BAIT_SHARES = [0.1, 0.25, 0.5, 0.75];
+
+/** A cartel split into bait coins, which betray every outsider, and clean coins, which trust their own and never betray an outsider first. */
+export const splitCartel = (size: number, share: number, fix: Fix): Scenario => {
+  const base = fixedCartel(size, fix);
+  const bait = Math.max(1, Math.round(share * size));
+  return {
+    ...base,
+    id: `split-cartel-${size}-${bait}`,
+    coins: base.coins.map((c) => (c.group === "FARM" ? { ...c, strategy: Number(c.id.slice("farm".length)) <= bait ? cartel : clique } : c)),
+  };
+};
 
 export const newcomers = (size: number, fix: Fix): Scenario => ({
   ...sybil({ size, treasury: CARTEL_TREASURY, strategy: grudge, independent: true }),
